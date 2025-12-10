@@ -14,9 +14,29 @@ import {
     FiXCircle,
     FiFilter,
     FiSearch,
-    FiFileText
+    FiFileText,
+    FiAlertCircle
 } from 'react-icons/fi';
+import { supabase } from '@/lib/supabase';
 import * as XLSX from 'xlsx';
+
+// Helper to parse DD/MM/YYYY dates
+const parseDate = (dateStr: any) => {
+    if (!dateStr) return null;
+    const s = String(dateStr).trim();
+    if (!s || s === '#REF!') return null;
+
+    // Try DD/MM/YYYY
+    const parts = s.split('/');
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+    }
+
+    // Check if mostly YYYY-MM-DD
+    if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+
+    return null;
+};
 
 // Mock data
 const mockHafiz = [
@@ -51,30 +71,141 @@ function DataHafizContent() {
     const [selectedHafiz, setSelectedHafiz] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('semua');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadLog, setUploadLog] = useState<string[]>([]);
 
     const userData = {
         role: role,
         nama: role === 'admin_provinsi' ? 'Admin Provinsi' : 'Admin Kab/Ko',
-        email: `${role}@example.com`,
+        email: `${role}@lptq.jatimprov.go.id`,
         kabupaten_kota: role === 'admin_kabko' ? 'Kota Surabaya' : ''
     };
 
-    const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = event.target?.result;
-            const workbook = XLSX.read(data, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        setIsUploading(true);
 
-            console.log('Excel data:', jsonData);
-            // TODO: Upload to Supabase
-            alert(`✅ Berhasil membaca ${jsonData.length} data dari Excel. Siap diupload ke database.`);
-            setShowUploadModal(false);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                setUploadLog(['⏳ Membaca file...']);
+                const data = event.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Get raw data
+                const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                console.log('Raw Excel Data:', rawData.slice(0, 2)); // Debugging
+                setUploadLog(prev => [...prev, `✅ Berhasil membaca ${rawData.length} baris data.`]);
+
+                // Fetch periods
+                const { data: periods } = await supabase.from('periode_tes').select('id, tahun');
+                const periodMap = new Map(periods?.map((p: any) => [p.tahun, p.id]));
+
+                let successCount = 0;
+                let failCount = 0;
+                const batchSize = 50;
+                const chunks = [];
+
+                // MAP DATA
+                const preparedRows = rawData.map((row: any, index: number) => {
+                    // Helper to get value ignoring case/trim
+                    const getVal = (keys: string[]) => {
+                        for (const key of keys) {
+                            if (row[key] !== undefined) return row[key];
+                            // Try upper case
+                            const upperKey = key.toUpperCase();
+                            if (row[upperKey] !== undefined) return row[upperKey];
+
+                            // Try finding key in row keys loosely
+                            const actualKeys = Object.keys(row);
+                            const found = actualKeys.find(k => k.toUpperCase().trim() === upperKey.trim());
+                            if (found) return row[found];
+                        }
+                        return null;
+                    };
+
+                    const nik = getVal(['NIK', 'Nik'])?.toString().replace(/['"`]/g, '').trim();
+                    if (!nik) {
+                        console.warn(`Row ${index + 1}: No NIK found`);
+                        return null;
+                    }
+
+                    const tahun = parseInt(getVal(['TAHUN SELEKSI', 'Tahun Seleksi']) || '0');
+                    const periodeId = periodMap.get(tahun);
+
+                    // Mapping based on user request
+                    return {
+                        nik: nik,
+                        nama: getVal(['NAMA', 'NAMA.', 'Nama']),
+                        tempat_lahir: getVal(['TEMPAT LAHIR', 'Tempat Lahir']),
+                        tanggal_lahir: parseDate(getVal(['TANGGAL LAHIR', 'TANGGAL LAHIR NIK', 'Tanggal Lahir'])),
+                        jenis_kelamin: (getVal(['SEX', 'JK', 'Gender']) === 'P' || getVal(['SEX', 'JK', 'Gender']) === 'Perempuan') ? 'P' : 'L',
+                        alamat: getVal(['ALAMAT', 'Alamat']),
+                        rt: String(getVal(['RT']) || '').replace(/\D/g, ''),
+                        rw: String(getVal(['RW']) || '').replace(/\D/g, ''),
+                        desa_kelurahan: getVal(['DESA/KELURAHAN', 'Desa/Kelurahan']),
+                        kecamatan: getVal(['KECAMATAN', 'Kecamatan']),
+                        kabupaten_kota: getVal(['DAERAH', 'Daerah', 'KABUPATEN/KOTA']) || 'Jawa Timur',
+                        telepon: getVal(['TELEPON', 'Telepon'])?.toString(),
+                        sertifikat_tahfidz: getVal(['SERTIFIKAT TAHFIDZ', 'Sertifikat']),
+                        mengajar: getVal(['MENGAJAR']) && getVal(['MENGAJAR']) !== '-' && getVal(['MENGAJAR']) !== 'TIDAK',
+                        tempat_mengajar: (getVal(['MENGAJAR']) !== '-' && getVal(['MENGAJAR']) !== 'TIDAK') ? getVal(['MENGAJAR']) : null,
+                        tmt_mengajar: parseDate(getVal(['TMT MENGAJAR', 'TMT'])),
+                        tahun_tes: tahun,
+                        periode_tes_id: periodeId,
+                        keterangan: getVal(['KETERANGAN']),
+                        status_kelulusan: (getVal(['LULUS']) || getVal(['LULUS']) === 'YA') ? 'lulus' : 'pending',
+                        tanggal_lulus: getVal(['LULUS']) && String(getVal(['LULUS'])).match(/^\d{4}$/) ? `${getVal(['LULUS'])}-01-01` : null,
+                        updated_at: new Date().toISOString()
+                    };
+                }).filter(r => r !== null);
+
+                setUploadLog(prev => [...prev, `⏳ Memproses ${preparedRows.length} data valid...`]);
+
+                // CHUNK UPLOAD
+                for (let i = 0; i < preparedRows.length; i += batchSize) {
+                    chunks.push(preparedRows.slice(i, i + batchSize));
+                }
+
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    setUploadLog(prev => {
+                        const newLog = [...prev];
+                        if (newLog.length > 5) newLog.shift(); // Keep list short
+                        return [...newLog, `Sending batch ${i + 1}/${chunks.length}...`];
+                    });
+
+                    const { error } = await supabase.from('hafiz').upsert(chunk, {
+                        onConflict: 'nik',
+                        ignoreDuplicates: false
+                    });
+
+                    if (error) {
+                        console.error('Error inserting chunk:', error);
+                        failCount += chunk.length;
+                        setUploadLog(prev => [...prev, `❌ Batch ${i + 1} gagal: ${error.message}`]);
+                    } else {
+                        successCount += chunk.length;
+                    }
+                }
+
+                setUploadLog(prev => [...prev, '✅ Selesai!']);
+                alert(`✅ Upload Selesai!\nSukses: ${successCount}\nGagal: ${failCount}`);
+                setShowUploadModal(false);
+                setUploadLog([]);
+
+            } catch (err: any) {
+                console.error('Upload Error:', err);
+                alert('❌ Terjadi kesalahan: ' + err.message);
+                setUploadLog(prev => [...prev, `❌ Error: ${err.message}`]);
+            } finally {
+                setIsUploading(false);
+                if (e.target) e.target.value = '';
+            }
         };
         reader.readAsBinaryString(file);
     };
@@ -170,8 +301,8 @@ function DataHafizContent() {
                             <button
                                 onClick={() => setFilterStatus('semua')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterStatus === 'semua'
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Semua
@@ -179,8 +310,8 @@ function DataHafizContent() {
                             <button
                                 onClick={() => setFilterStatus('aktif')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterStatus === 'aktif'
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Aktif
@@ -188,8 +319,8 @@ function DataHafizContent() {
                             <button
                                 onClick={() => setFilterStatus('tidak_aktif')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterStatus === 'tidak_aktif'
-                                        ? 'bg-red-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Tidak Aktif
@@ -272,21 +403,28 @@ function DataHafizContent() {
                                     <div>
                                         <p className="font-semibold">Panduan Upload:</p>
                                         <ul className="text-sm mt-1 space-y-1">
-                                            <li>1. Download template Excel terlebih dahulu</li>
-                                            <li>2. Isi data sesuai format template</li>
-                                            <li>3. Upload file Excel yang sudah diisi</li>
-                                            <li>4. Sistem akan memvalidasi dan menyimpan data</li>
+                                            <li>1. Pastikan header sesuai: TAHUN SELEKSI, DAERAH, NIK, NAMA, dll.</li>
+                                            <li>2. Tanggal format: DD/MM/YYYY atau YYYY-MM-DD</li>
+                                            <li>3. NIK harus unik</li>
                                         </ul>
                                     </div>
                                 </div>
+                                {uploadLog.length > 0 && (
+                                    <div className="bg-neutral-900 text-green-400 p-3 rounded-lg text-xs font-mono max-h-32 overflow-y-auto">
+                                        {uploadLog.map((log, i) => (
+                                            <div key={i}>{log}</div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <div className="form-group">
                                     <label className="form-label">File Excel</label>
                                     <input
                                         type="file"
-                                        accept=".xlsx,.xls"
+                                        accept=".xlsx,.xls,.csv"
                                         className="form-input"
                                         onChange={handleExcelUpload}
+                                        disabled={isUploading}
                                     />
                                     <span className="form-help">
                                         Format: .xlsx atau .xls (max 10MB)
@@ -299,11 +437,12 @@ function DataHafizContent() {
                                         className="btn btn-secondary flex-1"
                                     >
                                         <FiDownload />
-                                        Download Template
+                                        {isUploading ? 'Sedang Memproses...' : 'Download Template'}
                                     </button>
                                     <button
                                         onClick={() => setShowUploadModal(false)}
                                         className="btn btn-secondary"
+                                        disabled={isUploading}
                                     >
                                         Tutup
                                     </button>
