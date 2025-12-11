@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { FiMail, FiLock, FiArrowRight, FiAlertCircle, FiLoader } from 'react-icons/fi';
 
 export default function LoginPage() {
     const router = useRouter();
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
@@ -15,164 +15,168 @@ export default function LoginPage() {
         password: ''
     });
 
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
-            // TODO: Implement Supabase authentication
-            // const { data, error } = await supabase.auth.signInWithPassword({
-            //   email: formData.email,
-            //   password: formData.password
-            // });
+            // Supabase Authentication
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: formData.email,
+                password: formData.password
+            });
 
-            // Temporary demo login
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Demo: redirect based on email
-            if (formData.email.includes('admin.provinsi')) {
-                router.push('/dashboard?role=admin_provinsi');
-            } else if (formData.email.includes('admin')) {
-                router.push('/dashboard?role=admin_kabko');
-            } else {
-                router.push('/dashboard?role=hafiz');
+            if (error) {
+                throw error;
             }
-        } catch (err) {
-            setError('Email atau password salah. Silakan coba lagi.');
+
+            if (data.user) {
+                // Check user role from public.users table to redirect correctly
+                // Note: This matches the table schema we saw earlier
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (userError) {
+                    console.error('Error fetching user role:', userError);
+                    // Fallback to generic dashboard if role check fails
+                    router.push('/dashboard');
+                } else if (userData) {
+                    router.push(`/dashboard?role=${userData.role}`);
+                } else {
+                    router.push('/dashboard');
+                }
+            }
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err.message || 'Email atau password salah. Silakan coba lagi.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-5">
-                <div className="absolute top-0 left-0 w-96 h-96 bg-primary-500 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent-500 rounded-full blur-3xl"></div>
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden font-sans py-12 px-4 sm:px-6 lg:px-8 bg-neutral-50">
+            {/* Background Gradients */}
+            <div className="absolute inset-0 pointer-events-none -z-10">
+                <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary-200/40 rounded-full blur-[100px] animate-float opacity-60 mix-blend-multiply"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-200/40 rounded-full blur-[100px] animate-float opacity-60 mix-blend-multiply" style={{ animationDelay: '2s' }}></div>
             </div>
 
-            <div className="w-full max-w-md relative z-10">
-                {/* Logo/Header */}
-                <div className="text-center mb-8">
-                    <Link href="/" className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg mb-4">
-                        <span className="text-2xl">📖</span>
-                        <span className="font-semibold text-primary-700">LPTQ Jawa Timur</span>
+            <div className="max-w-md w-full space-y-8 glass p-10 rounded-[2.5rem] shadow-2xl relative z-10 animate-fade-in border border-white/50">
+                <div className="text-center">
+                    <Link href="/" className="inline-block mb-6 group">
+                        <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-primary-500/30 mx-auto group-hover:scale-105 transition-transform">
+                            L
+                        </div>
                     </Link>
-                    <h1 className="text-3xl font-bold text-neutral-800 mb-2">Selamat Datang</h1>
-                    <p className="text-neutral-600">Masuk ke Sistem Pendataan Huffadz</p>
-                </div>
-
-                {/* Login Card */}
-                <div className="card-glass">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Error Alert */}
-                        {error && (
-                            <div className="alert alert-error">
-                                <FiAlertCircle className="flex-shrink-0" />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        {/* Email Field */}
-                        <div className="form-group">
-                            <label className="form-label required">Email</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                    <FiMail />
-                                </div>
-                                <input
-                                    type="email"
-                                    className="form-input pl-10"
-                                    placeholder="email@example.com"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Password Field */}
-                        <div className="form-group">
-                            <label className="form-label required">Password</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                    <FiLock />
-                                </div>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    className="form-input pl-10 pr-10"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? <FiEyeOff /> : <FiEye />}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Remember & Forgot */}
-                        <div className="flex items-center justify-between text-sm">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="w-4 h-4 rounded border-neutral-300" />
-                                <span className="text-neutral-600">Ingat saya</span>
-                            </label>
-                            <Link href="/forgot-password" className="text-primary-600 hover:text-primary-700 font-medium">
-                                Lupa password?
-                            </Link>
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            className="btn btn-primary w-full"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <div className="spinner w-5 h-5 border-2"></div>
-                                    <span>Memproses...</span>
-                                </>
-                            ) : (
-                                'Masuk'
-                            )}
-                        </button>
-
-                        {/* Demo Accounts */}
-                        <div className="bg-accent-50 border border-accent-200 rounded-lg p-4 text-sm">
-                            <p className="font-semibold text-accent-800 mb-2">🔑 Demo Accounts:</p>
-                            <div className="space-y-1 text-neutral-700">
-                                <p>• Admin Provinsi: admin.provinsi@lptq.jatimprov.go.id</p>
-                                <p>• Admin Kab/Ko: admin.surabaya@lptq.jatimprov.go.id</p>
-                                <p>• Hafiz: hafiz@example.com</p>
-                                <p className="text-accent-700 font-medium mt-2">Password: admin123</p>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Register Link */}
-                <div className="text-center mt-6">
-                    <p className="text-neutral-600">
-                        Belum punya akun?{' '}
-                        <Link href="/register" className="text-primary-600 hover:text-primary-700 font-semibold">
-                            Daftar sebagai Hafiz
-                        </Link>
+                    <h2 className="text-3xl font-display font-bold text-neutral-800 tracking-tight">
+                        Selamat Datang
+                    </h2>
+                    <p className="mt-2 text-neutral-500 font-light">
+                        Masuk untuk mengakses dashboard Huffadz
                     </p>
                 </div>
 
-                {/* Back to Home */}
-                <div className="text-center mt-4">
-                    <Link href="/" className="text-neutral-500 hover:text-neutral-700 text-sm">
-                        ← Kembali ke Beranda
-                    </Link>
+                {error && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm animate-fade-in">
+                        <FiAlertCircle size={20} className="flex-shrink-0" />
+                        <p>{error}</p>
+                    </div>
+                )}
+
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
+                                <FiMail size={20} />
+                            </div>
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className="input-modern pl-12 w-full"
+                                placeholder="Alamat Email"
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-primary-500 transition-colors">
+                                <FiLock size={20} />
+                            </div>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                className="input-modern pl-12 w-full"
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center">
+                            <input
+                                id="remember-me"
+                                name="remember-me"
+                                type="checkbox"
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded-lg transition-colors"
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-neutral-500">
+                                Ingat saya
+                            </label>
+                        </div>
+
+                        <div className="text-sm">
+                            <a href="#" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
+                                Lupa password?
+                            </a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn btn-primary w-full py-3.5 text-lg shadow-lg shadow-primary-500/20 flex items-center justify-center gap-2 group"
+                        >
+                            {loading ? (
+                                <>
+                                    <FiLoader className="animate-spin" /> Masuk...
+                                </>
+                            ) : (
+                                <>
+                                    Masuk <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
+
+                <div className="text-center mt-6 pt-6 border-t border-neutral-100">
+                    <p className="text-sm text-neutral-500">
+                        Belum punya akun?{' '}
+                        <Link href="/register" className="font-bold text-primary-600 hover:text-primary-500 transition-colors">
+                            Daftar sekarang
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

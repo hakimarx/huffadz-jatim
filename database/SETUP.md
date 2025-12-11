@@ -84,8 +84,8 @@ RLS sudah otomatis dibuat dari schema.sql, tapi verifikasi:
 
 1. Buka menu **Settings** > **API**
 2. Copy credentials berikut:
-   - **Project URL**: `https://xxxxx.supabase.co`
-   - **anon public**: `eyJhbGc...` (API Key yang panjang)
+   - **Project URL**: `https://sczdpueymqspwnhbuomf.supabase.co`
+   - **anon public**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemRwdWV5bXFzcHduaGJ1b21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNTQ3MzIsImV4cCI6MjA4MDkzMDczMn0.PAYAg5sHJ873Qfy1bmIYWjQD36Ryb3VIHUYg-QdmPCY` (API Key yang panjang)
 
 ### 9. Update Environment Variables
 
@@ -93,8 +93,8 @@ RLS sudah otomatis dibuat dari schema.sql, tapi verifikasi:
 2. Update dengan credentials Anda:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+NEXT_PUBLIC_SUPABASE_URL=https://sczdpueymqspwnhbuomf.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemRwdWV5bXFzcHduaGJ1b21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNTQ3MzIsImV4cCI6MjA4MDkzMDczMn0.PAYAg5sHJ873Qfy1bmIYWjQD36Ryb3VIHUYg-QdmPCY
 ```
 
 ### 10. Test Koneksi

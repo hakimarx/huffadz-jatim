@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import Sidebar from '@/components/Sidebar';
+import Navbar from '@/components/Navbar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { supabase } from '@/lib/supabase';
 import {
@@ -15,7 +15,8 @@ import {
     FiAward,
     FiPieChart,
     FiBarChart2,
-    FiActivity
+    FiActivity,
+    FiAlertCircle
 } from 'react-icons/fi';
 
 // Interfaces
@@ -25,6 +26,7 @@ interface DashboardStats {
     gender: { L: number; P: number };
     age: { '<20': number; '20-29': number; '30-39': number; '40+': number };
     loading: boolean;
+    error?: string;
 }
 
 function DashboardContent() {
@@ -56,50 +58,57 @@ function DashboardContent() {
     const user = userData[role as keyof typeof userData] || userData.hafiz;
 
     return (
-        <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-900">
-            <Sidebar
+        <div className="min-h-screen font-sans">
+            {/* Background Gradients */}
+            <div className="fixed inset-0 pointer-events-none -z-10 bg-neutral-50 overflow-hidden">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-200/40 rounded-full blur-[100px] animate-float opacity-60"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-200/40 rounded-full blur-[100px] animate-float opacity-60" style={{ animationDelay: '2s' }}></div>
+            </div>
+
+            <Navbar
                 userRole={user.role}
                 userName={user.nama}
-                userEmail={user.email}
             />
 
-            <main className="flex-1 p-6 lg:p-10 overflow-auto">
-                {/* Modern Header */}
-                <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                {/* Clean Header */}
+                <div className="mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 animate-fade-in">
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-                            Dashboard
+                        <h1 className="text-3xl font-bold tracking-tight mb-2">
+                            Dashboard <span className="gradient-text">Overview</span>
                         </h1>
-                        <p className="text-slate-500 text-lg">
-                            Selamat datang kembali, <span className="font-semibold text-indigo-600">{user.nama}</span>
+                        <p className="text-neutral-500 text-lg">
+                            Selamat datang kembali, <span className="font-semibold text-neutral-800">{user.nama}</span>
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-200">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"></div>
-                        <span className="text-sm font-medium text-slate-600">
-                            {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </span>
+                    <div className="glass px-6 py-3 rounded-2xl flex items-center gap-3 text-sm font-medium text-neutral-600 shadow-sm border border-white/50">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
                 </div>
 
                 {/* Dashboard Content Based on Role */}
-                {user.role === 'admin_provinsi' && <AdminProvinsiDashboard />}
-                {user.role === 'admin_kabko' && <AdminKabKoDashboard kabko={user.kabupaten_kota} />}
-                {user.role === 'hafiz' && <HafizDashboard />}
+                <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                    {user.role === 'admin_provinsi' && <AdminProvinsiDashboard />}
+                    {user.role === 'admin_kabko' && <AdminKabKoDashboard kabko={user.kabupaten_kota} />}
+                    {user.role === 'hafiz' && <HafizDashboard />}
+                </div>
 
                 {/* Recent Activity Section */}
-                <div className="mt-10">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <FiActivity className="text-indigo-500" />
+                <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                    <div className="card-modern">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-xl font-bold flex items-center gap-3">
+                                <div className="p-2 bg-primary-50 rounded-lg text-primary-600">
+                                    <FiActivity size={24} />
+                                </div>
                                 Aktivitas Terbaru
                             </h2>
-                            <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            <button className="btn btn-ghost text-sm font-medium">
                                 Lihat Semua
                             </button>
                         </div>
-                        <div className="divide-y divide-slate-50">
+                        <div className="space-y-6">
                             <ActivityItem
                                 icon={<FiCheckCircle className="text-emerald-500" />}
                                 title="Laporan harian disetujui"
@@ -136,10 +145,13 @@ function AdminProvinsiDashboard() {
         lulus: 0,
         gender: { L: 0, P: 0 },
         age: { '<20': 0, '20-29': 0, '30-39': 0, '40+': 0 },
-        loading: true
+        loading: true,
+        error: ''
     });
 
     useEffect(() => {
+        let isMounted = true;
+
         async function fetchStats() {
             try {
                 // Fetch basic columns for aggregation
@@ -148,12 +160,16 @@ function AdminProvinsiDashboard() {
                     .select('jenis_kelamin, tanggal_lahir, status_kelulusan');
 
                 if (error) {
-                    console.error('Error fetching stats:', error);
-                    setStats(s => ({ ...s, loading: false }));
+                    // Log the full error object for debugging
+                    console.error('Supabase fetch error:', JSON.stringify(error, null, 2));
+                    if (isMounted) setStats(s => ({ ...s, loading: false, error: error.message || 'Gagal mengambil data statistik' }));
                     return;
                 }
 
-                if (!data) return;
+                if (!data) {
+                    if (isMounted) setStats(s => ({ ...s, loading: false }));
+                    return;
+                }
 
                 let total = data.length;
                 let lulus = 0;
@@ -183,21 +199,26 @@ function AdminProvinsiDashboard() {
                     }
                 });
 
-                setStats({
-                    total,
-                    lulus,
-                    gender: { L: l, P: p },
-                    age: ageGroups,
-                    loading: false
-                });
+                if (isMounted) {
+                    setStats({
+                        total,
+                        lulus,
+                        gender: { L: l, P: p },
+                        age: ageGroups,
+                        loading: false,
+                        error: ''
+                    });
+                }
 
-            } catch (err) {
-                console.error(err);
-                setStats(s => ({ ...s, loading: false }));
+            } catch (err: any) {
+                console.error('Unexpected error fetching stats:', err);
+                if (isMounted) setStats(s => ({ ...s, loading: false, error: err.message || 'Terjadi kesalahan tidak terduga' }));
             }
         }
 
         fetchStats();
+
+        return () => { isMounted = false; };
     }, []);
 
     // Derived Percentages
@@ -206,50 +227,57 @@ function AdminProvinsiDashboard() {
         P: Math.round((stats.gender.P / stats.total) * 100) || 0
     } : { L: 0, P: 0 };
 
-    // Fix rounding errors to ensure 100% if total > 0 (simplification)
-
     const lulusPercent = stats.total > 0 ? Math.round((stats.lulus / stats.total) * 100) : 0;
 
     if (stats.loading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-pulse">
                 {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-32 bg-slate-200 rounded-2xl"></div>
+                    <div key={i} className="h-40 bg-white rounded-3xl border border-slate-100 shadow-sm"></div>
                 ))}
             </div>
         );
     }
 
+    if (stats.error) {
+        return (
+            <div className="p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 flex items-center gap-3">
+                <FiAlertCircle size={24} />
+                <p>Error: {stats.error}. Pastikan koneksi internet stabil dan konfigurasi Supabase benar.</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-10">
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <ModernStatCard
                     title="Total Huffadz"
                     value={stats.total.toLocaleString()}
                     icon={<FiUsers className="w-6 h-6 text-white" />}
-                    gradient="from-indigo-500 to-blue-600"
+                    gradient="bg-gradient-to-br from-primary-500 to-primary-600"
                     trend="+12%"
                 />
                 <ModernStatCard
                     title="Lulus Sertifikasi"
                     value={stats.lulus.toLocaleString()}
                     icon={<FiCheckCircle className="w-6 h-6 text-white" />}
-                    gradient="from-emerald-500 to-green-600"
+                    gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
                     trend={`${lulusPercent}% Rate`}
                 />
                 <ModernStatCard
                     title="Laki-laki"
                     value={stats.gender.L.toLocaleString()}
                     icon={<FiUsers className="w-6 h-6 text-white" />}
-                    gradient="from-blue-400 to-cyan-500"
+                    gradient="bg-gradient-to-br from-blue-400 to-blue-500"
                     subtext={`${genderPercent.L}% dari total`}
                 />
                 <ModernStatCard
                     title="Perempuan"
                     value={stats.gender.P.toLocaleString()}
                     icon={<FiUsers className="w-6 h-6 text-white" />}
-                    gradient="from-pink-500 to-rose-500"
+                    gradient="bg-gradient-to-br from-secondary-500 to-pink-600"
                     subtext={`${genderPercent.P}% dari total`}
                 />
             </div>
@@ -257,46 +285,48 @@ function AdminProvinsiDashboard() {
             {/* Infographics Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Gender Distribution Chart */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2 self-start">
-                        <FiPieChart className="text-indigo-500" />
+                <div className="card-modern flex flex-col items-center justify-center text-center">
+                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2 self-start">
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500">
+                            <FiPieChart size={20} />
+                        </div>
                         Distribusi Gender
                     </h3>
 
                     {stats.total === 0 ? (
-                        <div className="text-slate-400 py-10">Belum ada data</div>
+                        <div className="text-neutral-400 py-10">Belum ada data</div>
                     ) : (
-                        <div className="flex flex-col md:flex-row items-center gap-10">
+                        <div className="flex flex-col md:flex-row items-center gap-10 w-full px-4">
                             {/* CSS Donut Chart */}
-                            <div className="relative w-56 h-56 rounded-full shadow-xl shadow-indigo-100"
+                            <div className="relative w-48 h-48 rounded-full shadow-2xl shadow-primary-200/50 flex-shrink-0"
                                 style={{
                                     background: `conic-gradient(#3b82f6 0% ${genderPercent.L}%, #ec4899 ${genderPercent.L}% 100%)`
                                 }}>
-                                <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center flex-col shadow-inner">
-                                    <span className="text-4xl font-extrabold text-slate-800">{stats.total}</span>
-                                    <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Total</span>
+                                <div className="absolute inset-3 bg-white rounded-full flex items-center justify-center flex-col">
+                                    <span className="text-4xl font-extrabold text-neutral-800 tracking-tight">{stats.total}</span>
+                                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">Total</span>
                                 </div>
                             </div>
 
                             <div className="flex flex-col gap-4 text-left w-full">
-                                <div className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="w-3 h-12 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></div>
+                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 hover:border-blue-200 transition-colors">
+                                    <div className="w-2 h-10 rounded-full bg-blue-500 shadow-md shadow-blue-200"></div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-baseline mb-1">
-                                            <p className="font-bold text-slate-800">Laki-laki</p>
-                                            <p className="text-sm font-bold text-blue-500">{genderPercent.L}%</p>
+                                            <p className="font-bold text-neutral-800">Laki-laki</p>
+                                            <p className="text-sm font-bold text-blue-600">{genderPercent.L}%</p>
                                         </div>
-                                        <p className="text-xs text-slate-500 font-medium">{stats.gender.L} Orang</p>
+                                        <p className="text-xs text-neutral-500 font-medium">{stats.gender.L} Orang</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="w-3 h-12 rounded-full bg-pink-500 shadow-sm shadow-pink-200"></div>
+                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 hover:border-pink-200 transition-colors">
+                                    <div className="w-2 h-10 rounded-full bg-secondary-500 shadow-md shadow-pink-200"></div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-baseline mb-1">
-                                            <p className="font-bold text-slate-800">Perempuan</p>
-                                            <p className="text-sm font-bold text-pink-500">{genderPercent.P}%</p>
+                                            <p className="font-bold text-neutral-800">Perempuan</p>
+                                            <p className="text-sm font-bold text-secondary-500">{genderPercent.P}%</p>
                                         </div>
-                                        <p className="text-xs text-slate-500 font-medium">{stats.gender.P} Orang</p>
+                                        <p className="text-xs text-neutral-500 font-medium">{stats.gender.P} Orang</p>
                                     </div>
                                 </div>
                             </div>
@@ -305,9 +335,11 @@ function AdminProvinsiDashboard() {
                 </div>
 
                 {/* Age Distribution Chart */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 className="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2">
-                        <FiBarChart2 className="text-indigo-500" />
+                <div className="card-modern">
+                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500">
+                            <FiBarChart2 size={20} />
+                        </div>
                         Rentang Usia Huffadz
                     </h3>
                     <div className="space-y-6">
@@ -316,32 +348,22 @@ function AdminProvinsiDashboard() {
                             return (
                                 <div key={range}>
                                     <div className="flex justify-between items-end mb-2">
-                                        <span className="font-semibold text-slate-700">{range} Tahun</span>
+                                        <span className="font-semibold text-neutral-700">{range} Tahun</span>
                                         <div className="text-right">
-                                            <span className="font-bold text-slate-900">{count}</span>
-                                            <span className="text-xs text-slate-500 ml-1">({Math.round(percent)}%)</span>
+                                            <span className="font-bold text-neutral-900">{count}</span>
+                                            <span className="text-xs text-neutral-500 ml-1 font-medium">({Math.round(percent)}%)</span>
                                         </div>
                                     </div>
-                                    <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden relative">
+                                    <div className="w-full bg-neutral-100 rounded-full h-3 overflow-hidden relative">
                                         <div
-                                            className="bg-indigo-500 h-4 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-indigo-200"
+                                            className="bg-gradient-to-r from-primary-500 to-primary-400 h-3 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-primary-500/20"
                                             style={{ width: `${percent}%` }}
-                                        >
-                                            {/* Shine effect */}
-                                            <div className="absolute top-0 right-0 bottom-0 left-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                                        </div>
+                                        ></div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
-                    {stats.total > 0 && (
-                        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                            <p className="text-sm text-slate-500">
-                                Mayoritas huffadz berada di rentang usia <span className="font-bold text-indigo-600">20-29 Tahun</span>.
-                            </p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -352,31 +374,34 @@ function AdminProvinsiDashboard() {
 function AdminKabKoDashboard({ kabko }: { kabko: string }) {
     return (
         <div className="space-y-6">
-            <div className="p-8 bg-gradient-to-r from-indigo-700 to-blue-800 rounded-3xl shadow-xl shadow-indigo-900/20 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-sm">Wilayah</span>
-                    </div>
-                    <h2 className="text-3xl font-bold mb-2">{kabko}</h2>
-                    <p className="text-indigo-100 opacity-90 text-lg">Laporan Statistik Wilayah Terkini</p>
+            <div className="p-10 bg-gradient-to-br from-indigo-900 to-primary-900 rounded-[2.5rem] shadow-2xl shadow-primary-900/30 text-white relative overflow-hidden group">
+                {/* Abstract Shapes */}
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-500/20 rounded-full blur-3xl -mr-32 -mt-32 mix-blend-overlay group-hover:scale-110 transition-transform duration-1000"></div>
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-secondary-500/20 rounded-full blur-3xl -ml-20 -mb-20 mix-blend-overlay group-hover:scale-110 transition-transform duration-1000"></div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-10">
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                            <p className="text-indigo-200 text-sm font-medium mb-1">Total Hafiz</p>
-                            <p className="text-3xl font-bold">487</p>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/10">Wilayah</span>
+                    </div>
+                    <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{kabko}</h2>
+                    <p className="text-primary-100 opacity-90 text-xl font-light max-w-xl">Laporan Statistik Wilayah Terkini</p>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+                        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+                            <p className="text-primary-200 text-sm font-medium mb-2 uppercase tracking-wider">Total Hafiz</p>
+                            <p className="text-4xl font-extrabold">487</p>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                            <p className="text-indigo-200 text-sm font-medium mb-1">Lulus</p>
-                            <p className="text-3xl font-bold text-emerald-300">312</p>
+                        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+                            <p className="text-emerald-300 text-sm font-medium mb-2 uppercase tracking-wider">Lulus</p>
+                            <p className="text-4xl font-extrabold text-emerald-400">312</p>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                            <p className="text-indigo-200 text-sm font-medium mb-1">Pending</p>
-                            <p className="text-3xl font-bold text-amber-300">175</p>
+                        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+                            <p className="text-amber-300 text-sm font-medium mb-2 uppercase tracking-wider">Pending</p>
+                            <p className="text-4xl font-extrabold text-amber-400">175</p>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                            <p className="text-indigo-200 text-sm font-medium mb-1">Insentif Aktif</p>
-                            <p className="text-3xl font-bold">290</p>
+                        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+                            <p className="text-primary-200 text-sm font-medium mb-2 uppercase tracking-wider">Insentif Aktif</p>
+                            <p className="text-4xl font-extrabold">290</p>
                         </div>
                     </div>
                 </div>
@@ -388,30 +413,31 @@ function AdminKabKoDashboard({ kabko }: { kabko: string }) {
 // --- Hafiz Dashboard (Modern) ---
 function HafizDashboard() {
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Greeting Card */}
-            <div className="relative overflow-hidden bg-[#2D31FA] rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-500/30">
-                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-500/30 group">
+                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-1000"></div>
                 <div className="relative z-10">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
                         <div>
-                            <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-4 border border-emerald-500/30 shadow-lg shadow-emerald-900/10 backdrop-blur-sm">
-                                STATUS: LULUS SELEKSI
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-bold mb-6 border border-emerald-500/30 shadow-lg shadow-emerald-900/10 backdrop-blur-sm uppercase tracking-wider">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Status: Lulus Seleksi
                             </span>
-                            <h2 className="text-4xl font-bold mb-3 leading-tight">Pencapaian <br />Luar Biasa!</h2>
-                            <p className="text-indigo-100 max-w-lg text-lg leading-relaxed opacity-90">
+                            <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-none tracking-tight">Pencapaian <br />Luar Biasa!</h2>
+                            <p className="text-indigo-100 max-w-lg text-lg leading-relaxed opacity-90 font-light">
                                 Selamat! Anda menyelesaikan seleksi 2024 dengan hasil memuaskan.
                             </p>
                         </div>
-                        <div className="flex gap-8 text-center bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10">
+                        <div className="flex gap-8 text-center bg-white/10 p-8 rounded-3xl backdrop-blur-md border border-white/10 shadow-xl">
                             <div>
-                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold">Nilai Tahfidz</p>
-                                <p className="text-5xl font-extrabold mt-2">92.5</p>
+                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold mb-2">Nilai Tahfidz</p>
+                                <p className="text-5xl font-extrabold">92.5</p>
                             </div>
                             <div className="w-px bg-indigo-400/30 h-16 self-center"></div>
                             <div>
-                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold">Wawasan</p>
-                                <p className="text-5xl font-extrabold mt-2">88.0</p>
+                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold mb-2">Wawasan</p>
+                                <p className="text-5xl font-extrabold">88.0</p>
                             </div>
                         </div>
                     </div>
@@ -423,19 +449,19 @@ function HafizDashboard() {
                     title="Laporan Bulan Ini"
                     value="18"
                     icon={<FiFileText className="text-white" />}
-                    gradient="from-orange-400 to-orange-600"
+                    gradient="bg-gradient-to-br from-orange-400 to-orange-600"
                 />
                 <ModernStatCard
                     title="Insentif Diterima"
                     value="Rp 12.000.000"
                     icon={<FiAward className="text-white" />}
-                    gradient="from-emerald-400 to-teal-500"
+                    gradient="bg-gradient-to-br from-emerald-400 to-teal-500"
                 />
                 <ModernStatCard
                     title="Total Jam Mengajar"
                     value="124 Jam"
                     icon={<FiClock className="text-white" />}
-                    gradient="from-purple-400 to-purple-600"
+                    gradient="bg-gradient-to-br from-purple-400 to-purple-600"
                 />
             </div>
         </div>
@@ -444,38 +470,56 @@ function HafizDashboard() {
 
 // --- Components ---
 
-function ModernStatCard({ title, value, icon, gradient, trend, subtext }: any) {
+interface ModernStatCardProps {
+    title: string;
+    value: string;
+    icon: React.ReactNode;
+    gradient: string;
+    trend?: string;
+    subtext?: string;
+}
+
+function ModernStatCard({ title, value, icon, gradient, trend, subtext }: ModernStatCardProps) {
     return (
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-start justify-between mb-5">
-                <div className={`p-3.5 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg shadow-indigo-500/10`}>
+        <div className="card-modern group">
+            <div className="flex items-start justify-between mb-6">
+                <div className={`p-4 rounded-2xl ${gradient} shadow-lg shadow-indigo-500/10 text-white transform group-hover:scale-110 transition-transform duration-300`}>
                     {icon}
                 </div>
                 {trend && (
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                        <FiTrendingUp />
                         {trend}
                     </span>
                 )}
             </div>
             <div>
-                <p className="text-slate-500 text-sm font-medium mb-1 tracking-wide">{title}</p>
-                <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight">{value}</h3>
-                {subtext && <p className="text-xs text-slate-400 mt-2 font-medium">{subtext}</p>}
+                <p className="text-neutral-500 text-sm font-medium mb-1 tracking-wide">{title}</p>
+                <h3 className="text-3xl font-extrabold text-neutral-800 tracking-tight">{value}</h3>
+                {subtext && <p className="text-xs text-neutral-400 mt-2 font-medium">{subtext}</p>}
             </div>
         </div>
     );
 }
 
-function ActivityItem({ icon, title, description, time, bg }: any) {
+interface ActivityItemProps {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    time: string;
+    bg: string;
+}
+
+function ActivityItem({ icon, title, description, time, bg }: ActivityItemProps) {
     return (
-        <div className="p-5 hover:bg-slate-50 transition-colors flex gap-5 items-start group">
-            <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center flex-shrink-0 text-xl group-hover:scale-110 transition-transform duration-300`}>
+        <div className="p-4 hover:bg-neutral-50 rounded-2xl transition-colors flex gap-5 items-start group border border-transparent hover:border-neutral-100">
+            <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center flex-shrink-0 text-xl group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
                 {icon}
             </div>
             <div>
-                <h4 className="font-bold text-slate-800 text-sm">{title}</h4>
-                <p className="text-slate-500 text-sm mt-1 leading-relaxed">{description}</p>
-                <p className="text-xs text-indigo-500 font-medium mt-2">{time}</p>
+                <h4 className="font-bold text-neutral-800 text-base">{title}</h4>
+                <p className="text-neutral-500 text-sm mt-1 leading-relaxed">{description}</p>
+                <p className="text-xs text-primary-500 font-medium mt-2">{time}</p>
             </div>
         </div>
     );

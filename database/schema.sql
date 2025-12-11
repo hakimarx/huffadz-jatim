@@ -145,6 +145,7 @@ CREATE TABLE public.hafiz (
   nomor_piagam TEXT,
   tanggal_lulus DATE,
   status_insentif TEXT DEFAULT 'tidak_aktif' CHECK (status_insentif IN ('aktif', 'tidak_aktif', 'suspend')),
+  keterangan TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

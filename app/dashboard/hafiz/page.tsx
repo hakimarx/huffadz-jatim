@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
+import Navbar from '@/components/Navbar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import {
     FiPlus,
@@ -23,16 +23,31 @@ import * as XLSX from 'xlsx';
 // Helper to parse DD/MM/YYYY dates
 const parseDate = (dateStr: any) => {
     if (!dateStr) return null;
+
+    // Handle Excel serial date (number)
+    if (typeof dateStr === 'number' && dateStr > 20000) {
+        // Excel base date is Dec 30 1899
+        const date = new Date((dateStr - 25569) * 86400 * 1000);
+        return date.toISOString().split('T')[0];
+    }
+
     const s = String(dateStr).trim();
     if (!s || s === '#REF!') return null;
 
-    // Try DD/MM/YYYY
-    const parts = s.split('/');
+    // Try DD/MM/YYYY (common in Indonesia)
+    const parts = s.split(/[\/-]/); // split by / or -
     if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+        // Assume DD/MM/YYYY if first part is <= 31 and last part is > 31 (year)
+        if (parts[0].length <= 2 && parts[2].length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        // Assume YYYY-MM-DD if first part is 4 digits
+        if (parts[0].length === 4) {
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
     }
 
-    // Check if mostly YYYY-MM-DD
+    // Fallback normal check
     if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
 
     return null;
@@ -86,6 +101,7 @@ function DataHafizContent() {
         if (!file) return;
 
         setIsUploading(true);
+        setUploadLog([]);
 
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -103,7 +119,7 @@ function DataHafizContent() {
 
                 // Fetch periods
                 const { data: periods } = await supabase.from('periode_tes').select('id, tahun');
-                const periodMap = new Map(periods?.map((p: any) => [p.tahun, p.id]));
+                const periodMap = new Map((periods || []).map((p: any) => [p.tahun, p.id]));
 
                 let successCount = 0;
                 let failCount = 0;
@@ -115,10 +131,11 @@ function DataHafizContent() {
                     // Helper to get value ignoring case/trim
                     const getVal = (keys: string[]) => {
                         for (const key of keys) {
-                            if (row[key] !== undefined) return row[key];
+                            if (row[key] !== undefined && row[key] !== null) return row[key];
+
                             // Try upper case
                             const upperKey = key.toUpperCase();
-                            if (row[upperKey] !== undefined) return row[upperKey];
+                            if (row[upperKey] !== undefined && row[upperKey] !== null) return row[upperKey];
 
                             // Try finding key in row keys loosely
                             const actualKeys = Object.keys(row);
@@ -128,41 +145,75 @@ function DataHafizContent() {
                         return null;
                     };
 
-                    const nik = getVal(['NIK', 'Nik'])?.toString().replace(/['"`]/g, '').trim();
-                    if (!nik) {
-                        console.warn(`Row ${index + 1}: No NIK found`);
+                    const nikRaw = getVal(['NIK', 'Nik', 'nik']);
+                    const nik = nikRaw ? String(nikRaw).replace(/['"`\s]/g, '') : '';
+
+                    if (!nik || nik.length < 10) { // Basic NIK validation
+                        console.warn(`Row ${index + 1}: Invalid or missing NIK`);
                         return null;
                     }
 
-                    const tahun = parseInt(getVal(['TAHUN SELEKSI', 'Tahun Seleksi']) || '0');
-                    const periodeId = periodMap.get(tahun);
+                    const tahunStr = getVal(['TAHUN SELEKSI', 'Tahun Seleksi', 'TAHUN_SELEKSI']);
+                    const tahun = parseInt(String(tahunStr || '0'), 10) || 0;
 
-                    // Mapping based on user request
+                    // If period doesn't exist, we might want to default or skip. For now, try to find closest or leave null.
+                    const periodeId = periodMap.get(tahun) || null;
+
+                    const jenisKelaminRaw = getVal(['JK', 'JEKEL', 'SEX', 'Gender']);
+                    const jenisKelamin = (jenisKelaminRaw === 'P' || String(jenisKelaminRaw).toLowerCase() === 'perempuan') ? 'P' : 'L';
+
+                    // Logic for Status Kelulusan & Tanggal Lulus
+                    const lulusRaw = getVal(['LULUS', 'Status Lulus', 'Lulus']);
+                    let statusKelulusan = 'pending';
+                    let tanggalLulus = null;
+
+                    if (lulusRaw && String(lulusRaw).match(/^20\d{2}$/)) {
+                        statusKelulusan = 'lulus';
+                        tanggalLulus = `${lulusRaw}-01-01`;
+                    } else if (['LULUS', 'YA', 'SUCCESS'].includes(String(lulusRaw).toUpperCase())) {
+                        statusKelulusan = 'lulus';
+                        tanggalLulus = (tahun > 0) ? `${tahun}-01-01` : new Date().toISOString().split('T')[0];
+                    }
+
+                    // Logic for Mengajar
+                    const mengajarRaw = getVal(['MENGAJAR', 'Mengajar', 'Tempat Mengajar']);
+                    const mengajarStr = String(mengajarRaw).toUpperCase();
+                    const isMengajar = !!(mengajarRaw && mengajarStr.length > 3 && !['TIDAK', 'NA', '-', '0'].includes(mengajarStr));
+
+                    // Build object
                     return {
                         nik: nik,
-                        nama: getVal(['NAMA', 'NAMA.', 'Nama']),
+                        nama: String(getVal(['NAMA', 'Nama', 'Nama Lengkap']) || '').toUpperCase(),
                         tempat_lahir: getVal(['TEMPAT LAHIR', 'Tempat Lahir']),
-                        tanggal_lahir: parseDate(getVal(['TANGGAL LAHIR', 'TANGGAL LAHIR NIK', 'Tanggal Lahir'])),
-                        jenis_kelamin: (getVal(['SEX', 'JK', 'Gender']) === 'P' || getVal(['SEX', 'JK', 'Gender']) === 'Perempuan') ? 'P' : 'L',
+                        tanggal_lahir: parseDate(getVal(['TANGGAL LAHIR', 'Tanggal Lahir', 'TANGGAL LAHIR NIK'])) || '1990-01-01', // Fallback
+                        jenis_kelamin: jenisKelamin,
                         alamat: getVal(['ALAMAT', 'Alamat']),
-                        rt: String(getVal(['RT']) || '').replace(/\D/g, ''),
-                        rw: String(getVal(['RW']) || '').replace(/\D/g, ''),
-                        desa_kelurahan: getVal(['DESA/KELURAHAN', 'Desa/Kelurahan']),
+                        rt: String(getVal(['RT']) || '').replace(/\D/g, '').substring(0, 5),
+                        rw: String(getVal(['RW']) || '').replace(/\D/g, '').substring(0, 5),
+                        desa_kelurahan: getVal(['DESA/KELURAHAN', 'Desa/Kelurahan', 'KELURAHAN', 'Desa']),
                         kecamatan: getVal(['KECAMATAN', 'Kecamatan']),
-                        kabupaten_kota: getVal(['DAERAH', 'Daerah', 'KABUPATEN/KOTA']) || 'Jawa Timur',
-                        telepon: getVal(['TELEPON', 'Telepon'])?.toString(),
-                        sertifikat_tahfidz: getVal(['SERTIFIKAT TAHFIDZ', 'Sertifikat']),
-                        mengajar: getVal(['MENGAJAR']) && getVal(['MENGAJAR']) !== '-' && getVal(['MENGAJAR']) !== 'TIDAK',
-                        tempat_mengajar: (getVal(['MENGAJAR']) !== '-' && getVal(['MENGAJAR']) !== 'TIDAK') ? getVal(['MENGAJAR']) : null,
-                        tmt_mengajar: parseDate(getVal(['TMT MENGAJAR', 'TMT'])),
+                        kabupaten_kota: getVal(['DAERAH', 'Daerah', 'KABUPATEN/KOTA', 'Kabupaten/Kota']) || 'Jawa Timur',
+                        telepon: String(getVal(['TELEPON', 'Telepon', 'HP', 'No HP']) || '').replace(/\D/g, ''),
+                        sertifikat_tahfidz: getVal(['SERTIFIKAT TAHFIDZ', 'Sertifikat Tahfidz', 'Sertifikat']),
+
+                        mengajar: isMengajar,
+                        tempat_mengajar: isMengajar ? String(mengajarRaw) : null,
+                        tmt_mengajar: parseDate(getVal(['TMT MENGAJAR', 'TMT Mengajar', 'TMT'])),
+
+                        keterangan: getVal(['KETERANGAN', 'Keterangan']),
                         tahun_tes: tahun,
                         periode_tes_id: periodeId,
-                        keterangan: getVal(['KETERANGAN']),
-                        status_kelulusan: (getVal(['LULUS']) || getVal(['LULUS']) === 'YA') ? 'lulus' : 'pending',
-                        tanggal_lulus: getVal(['LULUS']) && String(getVal(['LULUS'])).match(/^\d{4}$/) ? `${getVal(['LULUS'])}-01-01` : null,
+
+                        status_kelulusan: statusKelulusan,
+                        tanggal_lulus: tanggalLulus,
+
                         updated_at: new Date().toISOString()
                     };
                 }).filter(r => r !== null);
+
+                if (preparedRows.length === 0) {
+                    throw new Error("Tidak ada data valid yang ditemukan dalam file Excel. Periksa nama kolom header.");
+                }
 
                 setUploadLog(prev => [...prev, `⏳ Memproses ${preparedRows.length} data valid...`]);
 
@@ -175,8 +226,8 @@ function DataHafizContent() {
                     const chunk = chunks[i];
                     setUploadLog(prev => {
                         const newLog = [...prev];
-                        if (newLog.length > 5) newLog.shift(); // Keep list short
-                        return [...newLog, `Sending batch ${i + 1}/${chunks.length}...`];
+                        if (newLog.length > 4) newLog.shift();
+                        return [...newLog, `Sending batch ${i + 1} / ${chunks.length}...`];
                     });
 
                     const { error } = await supabase.from('hafiz').upsert(chunk, {
@@ -186,6 +237,10 @@ function DataHafizContent() {
 
                     if (error) {
                         console.error('Error inserting chunk:', error);
+                        // If policy recursion error, it's CRITICAL.
+                        if (error.message.includes('recursion')) {
+                            throw new Error("Critical RLS Error: Infinite Recursion. Please contact admin.");
+                        }
                         failCount += chunk.length;
                         setUploadLog(prev => [...prev, `❌ Batch ${i + 1} gagal: ${error.message}`]);
                     } else {
@@ -193,10 +248,11 @@ function DataHafizContent() {
                     }
                 }
 
-                setUploadLog(prev => [...prev, '✅ Selesai!']);
+                setUploadLog(prev => [...prev, '✅ Proses selesai!']);
                 alert(`✅ Upload Selesai!\nSukses: ${successCount}\nGagal: ${failCount}`);
-                setShowUploadModal(false);
-                setUploadLog([]);
+                if (successCount > 0) {
+                    setTimeout(() => setShowUploadModal(false), 1500);
+                }
 
             } catch (err: any) {
                 console.error('Upload Error:', err);
@@ -210,52 +266,84 @@ function DataHafizContent() {
         reader.readAsBinaryString(file);
     };
 
-    const handleMutasi = (status: string, keterangan?: string) => {
-        // TODO: Update to Supabase
-        console.log('Mutasi hafiz:', selectedHafiz.id, status, keterangan);
-        alert(`✅ Status hafiz berhasil diubah menjadi: ${status}`);
-        setShowMutasiModal(false);
-        setSelectedHafiz(null);
+    const handleMutasi = async (type: 'status' | 'wilayah', data: any) => {
+        try {
+            if (type === 'status') {
+                const { status, keterangan } = data;
+                // Update status in Supabase
+                const { error } = await supabase
+                    .from('hafiz')
+                    .update({
+                        status_insentif: status,
+                        keterangan: keterangan,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', selectedHafiz.id);
+
+                if (error) throw error;
+                alert(`✅ Status berhasil diubah menjadi: ${status}`);
+            } else if (type === 'wilayah') {
+                const { kabupaten_kota, keterangan } = data;
+                // Update wilayah in Supabase
+                const { error } = await supabase
+                    .from('hafiz')
+                    .update({
+                        kabupaten_kota: kabupaten_kota,
+                        keterangan: keterangan ? `${selectedHafiz.keterangan || ''}; Mutasi ke ${kabupaten_kota} (${keterangan})` : undefined,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', selectedHafiz.id);
+
+                if (error) throw error;
+                alert(`✅ Berhasil mutasi wilayah ke: ${kabupaten_kota}`);
+            }
+
+            // Refresh data (Reload page for simplicity or refetch)
+            window.location.reload();
+
+        } catch (err: any) {
+            console.error('Mutasi Error:', err);
+            alert('❌ Gagal melakukan mutasi: ' + err.message);
+        } finally {
+            setShowMutasiModal(false);
+            setSelectedHafiz(null);
+        }
     };
 
     const downloadTemplate = () => {
-        const template = [
-            {
-                NIK: '3578012345670001',
-                NAMA: 'Muhammad Ahmad',
-                TEMPAT_LAHIR: 'Surabaya',
-                TANGGAL_LAHIR: '1995-05-15',
-                JENIS_KELAMIN: 'L',
-                ALAMAT: 'Jl. Raya Darmo No. 123',
-                RT: '001',
-                RW: '002',
-                DESA_KELURAHAN: 'Darmo',
-                KECAMATAN: 'Wonokromo',
-                KABUPATEN_KOTA: 'Kota Surabaya',
-                TELEPON: '081234567890',
-                EMAIL: 'ahmad@example.com',
-                SERTIFIKAT_TAHFIDZ: '30 Juz',
-                MENGAJAR: 'Ya',
-                TMT_MENGAJAR: '2020-01-01',
-                TAHUN_TES: 2024
-            }
+        const headers = [
+            'NIK', 'NAMA', 'TEMPAT LAHIR', 'TANGGAL LAHIR', 'JK',
+            'ALAMAT', 'RT', 'RW', 'DESA/KELURAHAN', 'KECAMATAN',
+            'DAERAH', 'TELEPON', 'SERTIFIKAT TAHFIDZ',
+            'MENGAJAR', 'TMT MENGAJAR', 'KETERANGAN',
+            'TAHUN SELEKSI', 'LULUS'
         ];
-
-        const ws = XLSX.utils.json_to_sheet(template);
+        const sample = [
+            '357801...', 'Fulan', 'Surabaya', '01/01/2000', 'L',
+            'Jl. Mawar', '01', '02', 'Gubeng', 'Gubeng',
+            'Kota Surabaya', '081234567890', 'Juz 30',
+            'Ponpes A', '01/01/2020', '-',
+            '2024', 'LULUS'
+        ];
+        const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Template Data Hafiz');
-        XLSX.writeFile(wb, 'Template_Data_Hafiz.xlsx');
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, "Template_Import_Hafiz.xlsx");
     };
 
+    // ... (rest of component) ...
+
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-            <Sidebar
+        <div className="flex flex-col min-h-screen bg-neutral-50">
+            {/* ... (Navbar and Main content remain same) ... */}
+            <Navbar
                 userRole={userData.role}
                 userName={userData.nama}
-                userEmail={userData.email}
             />
 
-            <main className="flex-1 p-6 lg:p-8 overflow-auto">
+            <main className="flex-1 p-4 lg:p-8 overflow-auto max-w-7xl mx-auto w-full">
+                {/* ... (Header, Search, Table remain same) ... */}
+
                 {/* Header */}
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
                     <div>
@@ -389,7 +477,7 @@ function DataHafizContent() {
                     </table>
                 </div>
 
-                {/* Upload Excel Modal */}
+                {/* Upload Excel Modal (Keep as is) */}
                 {showUploadModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-2xl max-w-2xl w-full p-6">
@@ -403,8 +491,8 @@ function DataHafizContent() {
                                     <div>
                                         <p className="font-semibold">Panduan Upload:</p>
                                         <ul className="text-sm mt-1 space-y-1">
-                                            <li>1. Pastikan header sesuai: TAHUN SELEKSI, DAERAH, NIK, NAMA, dll.</li>
-                                            <li>2. Tanggal format: DD/MM/YYYY atau YYYY-MM-DD</li>
+                                            <li>1. Pastikan header sesuai template (TAHUN SELEKSI, DAERAH, NIK, dll)</li>
+                                            <li>2. Tanggal format: DD/MM/YYYY (contoh: 31/12/2024)</li>
                                             <li>3. NIK harus unik</li>
                                         </ul>
                                     </div>
@@ -469,76 +557,153 @@ function DataHafizContent() {
 }
 
 function MutasiModal({ hafiz, onClose, onSubmit }: any) {
+    const [mutasiType, setMutasiType] = useState<'status' | 'wilayah'>('status');
     const [status, setStatus] = useState(hafiz.status_insentif);
     const [keterangan, setKeterangan] = useState(hafiz.keterangan || '');
+    const [targetWilayah, setTargetWilayah] = useState('');
+
+    const kabKoList = [
+        'Kota Surabaya', 'Kota Malang', 'Kota Kediri', 'Kota Blitar', 'Kota Mojokerto', 'Kota Madiun', 'Kota Pasuruan', 'Kota Probolinggo', 'Kota Batu',
+        'Kabupaten Gresik', 'Kabupaten Sidoarjo', 'Kabupaten Mojokerto', 'Kabupaten Jombang', 'Kabupaten Bojonegoro', 'Kabupaten Tuban', 'Kabupaten Lamongan',
+        'Kabupaten Madiun', 'Kabupaten Magetan', 'Kabupaten Ngawi', 'Kabupaten Ponorogo', 'Kabupaten Pacitan', 'Kabupaten Kediri', 'Kabupaten Nganjuk',
+        'Kabupaten Blitar', 'Kabupaten Tulungagung', 'Kabupaten Trenggalek', 'Kabupaten Malang', 'Kabupaten Pasuruan', 'Kabupaten Probolinggo', 'Kabupaten Lumajang',
+        'Kabupaten Jember', 'Kabupaten Bondowoso', 'Kabupaten Situbondo', 'Kabupaten Banyuwangi', 'Kabupaten Sampang', 'Kabupaten Pamekasan', 'Kabupaten Sumenep', 'Kabupaten Bangkalan'
+    ];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(status, keterangan);
+        if (mutasiType === 'status') {
+            onSubmit('status', { status, keterangan });
+        } else {
+            onSubmit('wilayah', { kabupaten_kota: targetWilayah, keterangan });
+        }
     };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-lg w-full p-6">
                 <h2 className="text-2xl font-bold text-neutral-800 mb-4">
-                    Mutasi Status Hafiz
+                    Mutasi Data Hafiz
                 </h2>
 
-                <div className="mb-4 p-4 bg-neutral-50 rounded-lg">
-                    <p className="text-sm text-neutral-600">NIK: {hafiz.nik}</p>
-                    <p className="font-bold text-lg">{hafiz.nama}</p>
+                <div className="mb-4 p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                    <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Profil Hafiz</p>
+                    <p className="font-bold text-lg text-primary-700">{hafiz.nama}</p>
+                    <p className="text-sm text-neutral-600 font-mono">{hafiz.nik}</p>
+                    <p className="text-sm text-neutral-600 mt-1 flex items-center gap-1">
+                        📍 {hafiz.kabupaten_kota}
+                    </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="form-group">
-                        <label className="form-label required">Status Insentif</label>
-                        <select
-                            className="form-select"
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            required
-                        >
-                            <option value="aktif">✓ Aktif</option>
-                            <option value="tidak_aktif">✗ Tidak Aktif</option>
-                            <option value="suspend">⏸ Suspend</option>
-                        </select>
+                        <label className="form-label">Jenis Mutasi</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setMutasiType('status')}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium border ${mutasiType === 'status' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-neutral-300 text-neutral-600'}`}
+                            >
+                                Status Insentif
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMutasiType('wilayah')}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium border ${mutasiType === 'wilayah' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-neutral-300 text-neutral-600'}`}
+                            >
+                                Pindah Wilayah
+                            </button>
+                        </div>
                     </div>
 
-                    {status === 'tidak_aktif' && (
-                        <div className="form-group">
-                            <label className="form-label required">Alasan Tidak Aktif</label>
-                            <select
-                                className="form-select"
-                                value={keterangan}
-                                onChange={(e) => setKeterangan(e.target.value)}
-                                required
-                            >
-                                <option value="">Pilih Alasan</option>
-                                <option value="Meninggal dunia">Meninggal dunia</option>
-                                <option value="Pindah domisili">Pindah domisili</option>
-                                <option value="Mengundurkan diri">Mengundurkan diri</option>
-                                <option value="Lainnya">Lainnya</option>
-                            </select>
-                        </div>
+                    {mutasiType === 'status' ? (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label required">Status Baru</label>
+                                <select
+                                    className="form-select"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    required
+                                >
+                                    <option value="aktif">✓ Aktif</option>
+                                    <option value="tidak_aktif">✗ Tidak Aktif</option>
+                                    <option value="suspend">⏸ Suspend</option>
+                                </select>
+                            </div>
+
+                            {status === 'tidak_aktif' && (
+                                <div className="form-group">
+                                    <label className="form-label required">Alasan</label>
+                                    <select
+                                        className="form-select"
+                                        value={keterangan}
+                                        onChange={(e) => setKeterangan(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Pilih Alasan</option>
+                                        <option value="Meninggal dunia">Meninggal dunia</option>
+                                        <option value="Pindah domisili">Pindah domisili (Keluar Jatim)</option>
+                                        <option value="Mengundurkan diri">Mengundurkan diri</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {status === 'suspend' && (
+                                <div className="form-group">
+                                    <label className="form-label required">Keterangan Suspend</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={keterangan}
+                                        onChange={(e) => setKeterangan(e.target.value)}
+                                        placeholder="Alasan suspend..."
+                                        rows={2}
+                                        required
+                                    />
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label required">Pindah Ke Kabupaten/Kota</label>
+                                <select
+                                    className="form-select"
+                                    value={targetWilayah}
+                                    onChange={(e) => setTargetWilayah(e.target.value)}
+                                    required
+                                >
+                                    <option value="">-- Pilih Tujuan Mutasi --</option>
+                                    {kabKoList.filter(k => k !== hafiz.kabupaten_kota).map(kota => (
+                                        <option key={kota} value={kota}>
+                                            {kota}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-neutral-500 mt-1">
+                                    Data akan dipindahkan ke admin Kab/Ko tujuan.
+                                </p>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label required">Alasan Pindah</label>
+                                <textarea
+                                    className="form-textarea"
+                                    value={keterangan}
+                                    onChange={(e) => setKeterangan(e.target.value)}
+                                    placeholder="Contoh: Mengikuti suami/istri, Pindah tugas, dll."
+                                    rows={2}
+                                    required
+                                />
+                            </div>
+                        </>
                     )}
 
-                    {status === 'suspend' && (
-                        <div className="form-group">
-                            <label className="form-label">Keterangan Suspend</label>
-                            <textarea
-                                className="form-textarea"
-                                value={keterangan}
-                                onChange={(e) => setKeterangan(e.target.value)}
-                                placeholder="Alasan suspend..."
-                                rows={3}
-                            />
-                        </div>
-                    )}
-
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 pt-2">
                         <button type="submit" className="btn btn-primary flex-1">
                             <FiCheckCircle />
-                            Simpan Mutasi
+                            Simpan Perubahan
                         </button>
                         <button type="button" onClick={onClose} className="btn btn-secondary">
                             Batal
