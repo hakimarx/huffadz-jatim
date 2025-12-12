@@ -163,7 +163,7 @@ function AdminProvinsiDashboard() {
                 // Fetch basic columns for aggregation
                 const { data, error } = await supabase
                     .from('hafiz')
-                    .select('jenis_kelamin, tanggal_lahir, status_kelulusan');
+                    .select('tanggal_lahir, status_kelulusan');
 
                 if (error) {
                     // Log the full error object for debugging
@@ -188,9 +188,9 @@ function AdminProvinsiDashboard() {
                     if (row.status_kelulusan === 'lulus') lulus++;
 
                     // Gender - Normalize various inputs if dirty data
-                    const val = String(row.jenis_kelamin || '').toUpperCase().trim();
-                    if (val === 'L' || val === 'LAKI-LAKI') l++;
-                    else if (val === 'P' || val === 'PEREMPUAN') p++;
+                    // const val = String(row.jenis_kelamin || '').toUpperCase().trim();
+                    // if (val === 'L' || val === 'LAKI-LAKI') l++;
+                    // else if (val === 'P' || val === 'PEREMPUAN') p++;
 
                     // Age
                     if (row.tanggal_lahir) {

@@ -9,13 +9,14 @@ dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sczdpueymqspwnhbuomf.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemRwdWV5bXFzcHduaGJ1b21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNTQ3MzIsImV4cCI6MjA4MDkzMDczMn0.PAYAg5sHJ873Qfy1bmIYWjQD36Ryb3VIHUYg-QdmPCY';
 
+console.log('Testing connection to:', supabaseUrl);
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function verifyLogin() {
+async function testLogin(password: string) {
     const email = 'hakimarx@gmail.com';
-    const password = 'g4yung4n';
-
-    console.log(`Verifying login for ${email}...`);
+    console.log(`\n----------------------------------------`);
+    console.log(`Trying login for ${email} with password: ${password}`);
 
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -23,29 +24,41 @@ async function verifyLogin() {
     });
 
     if (error) {
-        console.error('LOGIN FAILED:', error.message);
-        if (error.message.includes('Invalid login credentials')) {
-            console.error('Possible causes: Wrong password, user not confirmed, or user deleted.');
-        }
+        console.error('❌ Login FAILED:', error.message);
+        return false;
     } else {
-        console.log('LOGIN SUCCESS!');
+        console.log('✅ Login SUCCESS!');
         console.log('User ID:', data.user?.id);
-        console.log('Email:', data.user?.email);
-        console.log('Role (Auth):', data.user?.role);
+        console.log('Email Confirmed At:', data.user?.email_confirmed_at);
 
-        // Check public.users
-        const { data: userData, error: userError } = await supabase
+        // Check profile
+        const { data: profile, error: profileError } = await supabase
             .from('users')
             .select('*')
             .eq('id', data.user?.id)
             .single();
 
-        if (userError) {
-            console.error('Error fetching public profile:', userError.message);
+        if (profileError) {
+            console.error('❌ Profile Fetch FAILED:', profileError.message);
+            console.log('   (This means the user exists in Auth but not in public.users table)');
         } else {
-            console.log('Public Profile:', userData);
+            console.log('✅ Profile Found:', profile);
         }
+        return true;
     }
 }
 
-verifyLogin();
+async function run() {
+    // Try new password first
+    const successNew = await testLogin('123456');
+    if (successNew) return;
+
+    // Try old password
+    const successOld = await testLogin('g4yung4n');
+    if (successOld) return;
+
+    // Try demo password
+    await testLogin('demo123');
+}
+
+run();
