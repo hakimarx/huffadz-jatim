@@ -3,15 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@/lib/supabase/client';
 import { FiMail, FiLock, FiUser, FiHash, FiPhone, FiMapPin, FiEye, FiEyeOff, FiLoader, FiArrowRight, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 export default function RegisterPage() {
     const router = useRouter();
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createClient();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');

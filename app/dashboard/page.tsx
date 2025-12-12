@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import {
     FiUsers,
     FiCheckCircle,
@@ -160,6 +160,7 @@ function AdminProvinsiDashboard() {
 
         async function fetchStats() {
             try {
+                const supabase = createClient();
                 // Fetch basic columns for aggregation
                 const { data, error } = await supabase
                     .from('hafiz')

@@ -17,7 +17,7 @@ import {
     FiFileText,
     FiAlertCircle
 } from 'react-icons/fi';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 
 // Helper to parse DD/MM/YYYY dates
@@ -118,6 +118,7 @@ function DataHafizContent() {
                 setUploadLog(prev => [...prev, `✅ Berhasil membaca ${rawData.length} baris data.`]);
 
                 // Fetch periods
+                const supabase = createClient();
                 const { data: periods } = await supabase.from('periode_tes').select('id, tahun');
                 const periodMap = new Map((periods || []).map((p: any) => [p.tahun, p.id]));
 
@@ -268,6 +269,7 @@ function DataHafizContent() {
 
     const handleMutasi = async (type: 'status' | 'wilayah', data: any) => {
         try {
+            const supabase = createClient();
             if (type === 'status') {
                 const { status, keterangan } = data;
                 // Update status in Supabase
