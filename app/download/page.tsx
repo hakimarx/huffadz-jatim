@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FiDownload, FiSmartphone, FiArrowLeft, FiCheck } from 'react-icons/fi';
 
-export default function DownloadPage() {
+import { Suspense } from 'react';
+
+function DownloadContent() {
     const searchParams = useSearchParams();
     const os = searchParams.get('os'); // 'android' or 'ios'
 
@@ -121,6 +123,14 @@ export default function DownloadPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function DownloadPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div></div>}>
+            <DownloadContent />
+        </Suspense>
     );
 }
 

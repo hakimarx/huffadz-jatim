@@ -52,6 +52,12 @@ function DashboardContent() {
             nama: 'Muhammad Ahmad',
             email: 'hafiz@example.com',
             kabupaten_kota: 'Kota Surabaya'
+        },
+        hafiz_banyuwangi: {
+            role: 'hafiz',
+            nama: 'Abdullah Banyuwangi',
+            email: 'hafiz.bwi@example.com',
+            kabupaten_kota: 'Kabupaten Banyuwangi'
         }
     };
 

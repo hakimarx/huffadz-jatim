@@ -35,17 +35,17 @@ export default function LoginPage() {
             });
 
             if (error) {
+                console.error('Supabase Auth Error:', error.message);
                 throw error;
             }
 
             if (data.user) {
                 // Check user role from public.users table to redirect correctly
-                // Note: This matches the table schema we saw earlier
                 const { data: userData, error: userError } = await supabase
                     .from('users')
                     .select('role')
                     .eq('id', data.user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (userError) {
                     console.error('Error fetching user role:', userError);
@@ -54,12 +54,17 @@ export default function LoginPage() {
                 } else if (userData) {
                     router.push(`/dashboard?role=${userData.role}`);
                 } else {
+                    console.log('User has no profile in public.users, defaulting to generic dashboard');
                     router.push('/dashboard');
                 }
             }
         } catch (err: any) {
-            console.error('Login error:', err);
-            setError(err.message || 'Email atau password salah. Silakan coba lagi.');
+            console.error('Login exception:', err);
+            if (err.message && err.message.includes('Email not confirmed')) {
+                setError('Email belum dikonfirmasi. Silakan cek inbox email Anda atau hubungi admin.');
+            } else {
+                setError(err.message || 'Email atau password salah. Silakan coba lagi.');
+            }
         } finally {
             setLoading(false);
         }
