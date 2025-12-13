@@ -1,10 +1,9 @@
 # 📖 Sistem Pendataan Huffadz Jawa Timur
 
-Aplikasi web untuk pendataan, seleksi, dan pelaporan kegiatan Huffadz penerima insentif Gubernur Jawa Timur melalui dana hibah LPTQ Provinsi Jawa Timur.
-
+Aplikasi web untuk pendataan, seleksi, dan pelaporan kegiatan Huffadz penerima insentif 
 ## 🎯 Tentang Aplikasi
 
-Sistem ini dibuat untuk mengelola **7000+ Huffadz** penerima insentif Rp 250.000/bulan dari Pemerintah Provinsi Jawa Timur. Dengan total **14,349 pendaftar** dari **38 Kabupaten/Kota** se-Jawa Timur, sistem ini memfasilitasi:
+Sistem ini memfasilitasi:
 
 - ✅ Pendataan Huffadz
 - ✅ Manajemen Tes Seleksi (Tahfidz & Wawasan Kebangsaan)
