@@ -96,18 +96,6 @@ http://localhost:3000
 
 Database terdiri dari 12 tabel utama:
 
-- `users` - Data pengguna (Admin & Hafiz)
-- `kabupaten_kota` - Master data 38 Kab/Ko
-- `periode_tes` - Periode tes (2015-2024)
-- `hafiz` - Data lengkap Huffadz
-- `laporan_harian` - Laporan kegiatan harian
-- `kuota` - Kuota per periode per daerah
-- `penguji` - Data penguji tes
-- `jadwal_tes` - Jadwal tes per daerah
-- `absensi_tes` - Absensi peserta tes
-- `penugasan_penguji` - Assignment penguji
-- `dokumen` - SPJ, Berita Acara, Piagam
-
 **Row Level Security (RLS)** diaktifkan untuk keamanan data.
 
 ## 👥 Role & Permissions
@@ -135,16 +123,15 @@ Database terdiri dari 12 tabel utama:
 Untuk testing, gunakan akun berikut:
 
 **Admin Provinsi:**
-- Email: `admin.provinsi@lptq.jatimprov.go.id`
-- Password: `admin123`
+- Email: `admin.provinsi
 
 **Admin Kab/Ko (Surabaya):**
 - Email: `admin.surabaya@lptq.jatimprov.go.id`
-- Password: `admin123`
+
 
 **Hafiz:**
 - Email: `hafiz@example.com`
-- Password: `admin123`
+
 
 ## 📱 Responsive Design
 
