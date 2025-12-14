@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
     { label: 'Periode', href: '/dashboard/periode-tes', icon: <FiCalendar />, roles: ['admin_provinsi'] },
     { label: 'Statistik', href: '/dashboard/kuota', icon: <FiPieChart />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Penguji', href: '/dashboard/penguji', icon: <FiUserCheck />, roles: ['admin_provinsi'] },
+    { label: 'Al-Quran', href: '/dashboard/quran', icon: <FiBook />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Profil', href: '/dashboard/profil', icon: <FiSettings />, roles: ['hafiz'] }
 ];
 

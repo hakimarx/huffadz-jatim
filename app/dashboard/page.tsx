@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -31,52 +31,90 @@ interface DashboardStats {
 
 function DashboardContent() {
     const searchParams = useSearchParams();
-    const role = searchParams.get('role') || 'hafiz';
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const supabase = createClient();
 
-    // Mock user data - akan diganti dengan data dari Supabase nanti untuk user session
-    const userData = {
-        admin_provinsi: {
-            role: 'admin_provinsi',
-            nama: 'Admin Provinsi LPTQ',
-            email: 'admin.provinsi@lptq.jatimprov.go.id',
-            kabupaten_kota: 'Provinsi Jawa Timur'
-        },
-        admin_kabko: {
-            role: 'admin_kabko',
-            nama: 'Admin Kota Surabaya',
-            email: 'admin.surabaya@lptq.jatimprov.go.id',
-            kabupaten_kota: 'Kota Surabaya'
-        },
-        hafiz: {
-            role: 'hafiz',
-            nama: 'Muhammad Ahmad',
-            email: 'hafiz@example.com',
-            kabupaten_kota: 'Kota Surabaya'
-        },
-        hafiz_banyuwangi: {
-            role: 'hafiz',
-            nama: 'Abdullah Banyuwangi',
-            email: 'hafiz.bwi@example.com',
-            kabupaten_kota: 'Kabupaten Banyuwangi'
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                // Get current session
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError || !session) {
+                    console.error('No session found:', sessionError);
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Fetch user data from public.users table
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, nama, role, kabupaten_kota')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                    // Fallback to basic session data
+                    setUser({
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                        kabupaten_kota: 'Unknown'
+                    });
+                } else if (userData) {
+                    setUser(userData);
+                } else {
+                    // User not found in users table, use session data
+                    setUser({
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                        kabupaten_kota: 'Unknown'
+                    });
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching user:', err);
+            } finally {
+                setLoading(false);
+            }
         }
-    };
 
-    const user = userData[role as keyof typeof userData] || userData.hafiz;
+        fetchUserData();
+    }, []);
+
+    if (loading) {
+        return <PageLoader />;
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                        Kembali ke Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen font-sans">
+        <div className="min-h-screen font-sans flex">
             {/* Background Gradients */}
             <div className="fixed inset-0 pointer-events-none -z-10 bg-neutral-50 overflow-hidden">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-200/40 rounded-full blur-[100px] animate-float opacity-60"></div>
                 <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-200/40 rounded-full blur-[100px] animate-float opacity-60" style={{ animationDelay: '2s' }}></div>
             </div>
 
-            <Navbar
+            <Sidebar
                 userRole={user.role}
                 userName={user.nama}
             />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <main className="flex-1 px-4 sm:px-6 lg:px-8 py-10">
                 {/* Clean Header */}
                 <div className="mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 animate-fade-in">
                     <div>
@@ -161,10 +199,10 @@ function AdminProvinsiDashboard() {
         async function fetchStats() {
             try {
                 const supabase = createClient();
-                // Fetch basic columns for aggregation
+                // Fetch basic columns for aggregation - select only columns that exist
                 const { data, error } = await supabase
                     .from('hafiz')
-                    .select('tanggal_lahir, status_kelulusan');
+                    .select('jenis_kelamin, status_kelulusan, tanggal_lahir');
 
                 if (error) {
                     // Log the full error object for debugging
@@ -189,9 +227,9 @@ function AdminProvinsiDashboard() {
                     if (row.status_kelulusan === 'lulus') lulus++;
 
                     // Gender - Normalize various inputs if dirty data
-                    // const val = String(row.jenis_kelamin || '').toUpperCase().trim();
-                    // if (val === 'L' || val === 'LAKI-LAKI') l++;
-                    // else if (val === 'P' || val === 'PEREMPUAN') p++;
+                    const val = String(row.jenis_kelamin || '').toUpperCase().trim();
+                    if (val === 'L' || val === 'LAKI-LAKI') l++;
+                    else if (val === 'P' || val === 'PEREMPUAN') p++;
 
                     // Age
                     if (row.tanggal_lahir) {
