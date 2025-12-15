@@ -1,6 +1,5 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
@@ -29,16 +28,24 @@ interface DashboardStats {
     error?: string;
 }
 
+interface UserData {
+    id: string;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
+
 function DashboardContent() {
-    const searchParams = useSearchParams();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const supabase = createClient();
 
     useEffect(() => {
         async function fetchUserData() {
             try {
-                // Get current session
+                // Get current session from Supabase
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (sessionError || !session) {
@@ -47,31 +54,35 @@ function DashboardContent() {
                     return;
                 }
 
-                // Fetch user data from public.users table
+                // Fetch user data from public.users table using session user ID
                 const { data: userData, error: userError } = await supabase
                     .from('users')
-                    .select('id, email, nama, role, kabupaten_kota')
+                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
                     .eq('id', session.user.id)
                     .maybeSingle();
 
                 if (userError) {
                     console.error('Error fetching user data:', userError);
-                    // Fallback to basic session data
+                    // Fallback to basic session data - use session email as default
                     setUser({
+                        id: session.user.id,
                         role: 'hafiz',
                         nama: session.user.email?.split('@')[0] || 'User',
                         email: session.user.email || '',
-                        kabupaten_kota: 'Unknown'
+                        kabupaten_kota: undefined
                     });
                 } else if (userData) {
-                    setUser(userData);
+                    // Successfully fetched user from database
+                    setUser(userData as UserData);
                 } else {
-                    // User not found in users table, use session data
+                    // User authenticated but no profile in users table
+                    console.warn('User authenticated but no profile found in public.users');
                     setUser({
+                        id: session.user.id,
                         role: 'hafiz',
                         nama: session.user.email?.split('@')[0] || 'User',
                         email: session.user.email || '',
-                        kabupaten_kota: 'Unknown'
+                        kabupaten_kota: undefined
                     });
                 }
             } catch (err) {
@@ -112,6 +123,7 @@ function DashboardContent() {
             <Sidebar
                 userRole={user.role}
                 userName={user.nama}
+                userPhoto={user.foto_profil}
             />
 
             <main className="flex-1 px-4 sm:px-6 lg:px-8 py-10">
@@ -134,7 +146,7 @@ function DashboardContent() {
                 {/* Dashboard Content Based on Role */}
                 <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
                     {user.role === 'admin_provinsi' && <AdminProvinsiDashboard />}
-                    {user.role === 'admin_kabko' && <AdminKabKoDashboard kabko={user.kabupaten_kota} />}
+                    {user.role === 'admin_kabko' && <AdminKabKoDashboard kabko={user.kabupaten_kota || 'Unknown'} />}
                     {user.role === 'hafiz' && <HafizDashboard />}
                 </div>
 

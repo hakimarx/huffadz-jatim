@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
     FiHome,
     FiUsers,
@@ -16,7 +17,8 @@ import {
     FiMenu,
     FiX,
     FiChevronLeft,
-    FiChevronRight
+    FiChevronRight,
+    FiLoader
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -40,14 +42,35 @@ const navItems: NavItem[] = [
 interface SidebarProps {
     userRole: string;
     userName: string;
+    userPhoto?: string;
 }
 
-export default function Sidebar({ userRole, userName }: SidebarProps) {
+export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps) {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+    const supabase = createClient();
 
     const filteredNavItems = navItems.filter(item => item.roles.includes(userRole));
+
+    const handleLogout = async () => {
+        setLoggingOut(true);
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Error signing out:', error);
+                alert('Gagal logout: ' + error.message);
+            } else {
+                // Redirect to login after successful sign out
+                window.location.href = '/login';
+            }
+        } catch (err) {
+            console.error('Unexpected error during logout:', err);
+        } finally {
+            setLoggingOut(false);
+        }
+    };
 
     return (
         <>
@@ -91,12 +114,20 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                         </Link>
                     </div>
 
-                    {/* User Info */}
+                    {/* User Info with Profile Photo */}
                     <div className="p-4 border-b border-neutral-200">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-primary-600 flex items-center justify-center font-bold text-lg border-2 border-white shadow-md flex-shrink-0">
-                                {userName.charAt(0)}
-                            </div>
+                            {userPhoto ? (
+                                <img
+                                    src={userPhoto}
+                                    alt={userName}
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-primary-600 flex items-center justify-center font-bold text-lg border-2 border-white shadow-md flex-shrink-0">
+                                    {userName.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                             {!collapsed && (
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold text-neutral-800 leading-none mb-1 truncate">{userName}</p>
@@ -138,19 +169,24 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                         </div>
                     </nav>
 
-                    {/* Logout Button */}
+                    {/* Logout Button - Now uses Supabase signOut */}
                     <div className="p-4 border-t border-neutral-200">
                         <button
-                            onClick={() => window.location.href = '/login'}
+                            onClick={handleLogout}
+                            disabled={loggingOut}
                             className={`
                                 w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                                text-red-600 bg-red-50 hover:bg-red-100 transition-colors
+                                text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50
                                 ${collapsed ? 'justify-center' : ''}
                             `}
                             title={collapsed ? 'Keluar' : ''}
                         >
-                            <FiLogOut className="text-xl flex-shrink-0" />
-                            {!collapsed && <span>Keluar</span>}
+                            {loggingOut ? (
+                                <FiLoader className="text-xl flex-shrink-0 animate-spin" />
+                            ) : (
+                                <FiLogOut className="text-xl flex-shrink-0" />
+                            )}
+                            {!collapsed && <span>{loggingOut ? 'Keluar...' : 'Keluar'}</span>}
                         </button>
                     </div>
 

@@ -17,7 +17,7 @@ const hafizSchema = z.object({
     nama: z.string().min(3, 'Nama minimal 3 karakter'),
     tempat_lahir: z.string().min(2, 'Tempat lahir minimal 2 karakter'),
     tanggal_lahir: z.string().min(1, 'Tanggal lahir harus diisi'),
-    jenis_kelamin: z.enum(['L', 'P'], { required_error: 'Pilih jenis kelamin' }),
+    jenis_kelamin: z.enum(['L', 'P'], { message: 'Pilih jenis kelamin' }),
     alamat: z.string().min(5, 'Alamat minimal 5 karakter'),
     rt: z.string().optional(),
     rw: z.string().optional(),
@@ -57,10 +57,10 @@ export default function HafizForm({ initialData, mode, hafizId }: HafizFormProps
         watch,
         formState: { errors },
         setValue,
-    } = useForm<HafizFormData>({
-        resolver: zodResolver(hafizSchema),
+    } = useForm({
+        resolver: zodResolver(hafizSchema) as any,
         defaultValues: {
-            jenis_kelamin: 'L',
+            jenis_kelamin: 'L' as const,
             mengajar: false,
             tahun_tes: new Date().getFullYear(),
             ...initialData,
@@ -201,7 +201,7 @@ export default function HafizForm({ initialData, mode, hafizId }: HafizFormProps
     ];
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
             {/* Error Alert */}
             {error && (
                 <div className="alert alert-error animate-fade-in">

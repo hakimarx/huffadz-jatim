@@ -1,40 +1,182 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { FiCamera, FiSave, FiUpload, FiCheckCircle } from 'react-icons/fi';
+import { createClient } from '@/lib/supabase/client';
+import { FiCamera, FiSave, FiUpload, FiCheckCircle, FiUser } from 'react-icons/fi';
+
+interface UserData {
+    id: string;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
 
 function ProfilContent() {
-    const searchParams = useSearchParams();
-    const role = searchParams.get('role') || 'hafiz';
+    const [user, setUser] = useState<UserData | null>(null);
+    const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [ocrProcessing, setOcrProcessing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const supabase = createClient();
 
     const [formData, setFormData] = useState({
-        nik: '3578012345670001',
-        nama: 'Muhammad Ahmad',
-        tempat_lahir: 'Surabaya',
-        tanggal_lahir: '1995-05-15',
+        nik: '',
+        nama: '',
+        tempat_lahir: '',
+        tanggal_lahir: '',
         jenis_kelamin: 'L',
-        alamat: 'Jl. Raya Darmo No. 123',
-        rt: '001',
-        rw: '002',
-        desa_kelurahan: 'Darmo',
-        kecamatan: 'Wonokromo',
-        kabupaten_kota: 'Kota Surabaya',
-        telepon: '081234567890',
-        email: 'ahmad@example.com',
-        sertifikat_tahfidz: '30 Juz',
-        mengajar: true,
-        tmt_mengajar: '2020-01-01'
+        alamat: '',
+        rt: '',
+        rw: '',
+        desa_kelurahan: '',
+        kecamatan: '',
+        kabupaten_kota: '',
+        telepon: '',
+        email: '',
+        sertifikat_tahfidz: '',
+        mengajar: false,
+        tmt_mengajar: '',
+        foto_profil: ''
     });
 
-    const userData = {
-        role: role,
-        nama: role === 'admin_provinsi' ? 'Admin Provinsi' : role === 'admin_kabko' ? 'Admin Kab/Ko' : 'Muhammad Ahmad',
-        email: `${role}@example.com`
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError || !session) {
+                    console.error('No session found:', sessionError);
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Fetch user from public.users
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                    });
+                } else if (userData) {
+                    setUser(userData as UserData);
+
+                    // For hafiz role, also fetch hafiz profile
+                    if (userData.role === 'hafiz') {
+                        const { data: hafizData, error: hafizError } = await supabase
+                            .from('hafiz')
+                            .select('*')
+                            .eq('user_id', session.user.id)
+                            .maybeSingle();
+
+                        if (hafizData && !hafizError) {
+                            setFormData({
+                                nik: hafizData.nik || '',
+                                nama: hafizData.nama || '',
+                                tempat_lahir: hafizData.tempat_lahir || '',
+                                tanggal_lahir: hafizData.tanggal_lahir || '',
+                                jenis_kelamin: hafizData.jenis_kelamin || 'L',
+                                alamat: hafizData.alamat || '',
+                                rt: hafizData.rt || '',
+                                rw: hafizData.rw || '',
+                                desa_kelurahan: hafizData.desa_kelurahan || '',
+                                kecamatan: hafizData.kecamatan || '',
+                                kabupaten_kota: hafizData.kabupaten_kota || '',
+                                telepon: hafizData.telepon || '',
+                                email: hafizData.email || '',
+                                sertifikat_tahfidz: hafizData.sertifikat_tahfidz || '',
+                                mengajar: hafizData.mengajar || false,
+                                tmt_mengajar: hafizData.tmt_mengajar || '',
+                                foto_profil: hafizData.foto_profil || ''
+                            });
+                        }
+                    }
+                } else {
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                    });
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching user:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchUserData();
+    }, []);
+
+    const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        setUploadingPhoto(true);
+        try {
+            // Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `profile-photos/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('uploads')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) {
+                console.error('Error uploading photo:', uploadError);
+                alert('Gagal upload foto: ' + uploadError.message);
+                return;
+            }
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('uploads')
+                .getPublicUrl(filePath);
+
+            // Update user foto_profil in database
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ foto_profil: publicUrl })
+                .eq('id', user.id);
+
+            if (updateError) {
+                console.error('Error updating profile photo:', updateError);
+                alert('Gagal menyimpan URL foto: ' + updateError.message);
+                return;
+            }
+
+            // Also update hafiz table if applicable
+            await supabase
+                .from('hafiz')
+                .update({ foto_profil: publicUrl })
+                .eq('user_id', user.id);
+
+            setFormData({ ...formData, foto_profil: publicUrl });
+            setUser({ ...user, foto_profil: publicUrl });
+            alert('✅ Foto profil berhasil diperbarui!');
+        } catch (err) {
+            console.error('Unexpected error uploading photo:', err);
+            alert('Terjadi kesalahan saat upload foto');
+        } finally {
+            setUploadingPhoto(false);
+        }
     };
 
     const handleKTPUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,9 +185,8 @@ function ProfilContent() {
 
         setOcrProcessing(true);
 
-        // Simulasi OCR processing
+        // Simulasi OCR processing - dalam implementasi nyata, gunakan API OCR
         setTimeout(() => {
-            // Mock OCR result - dalam implementasi nyata, gunakan API OCR
             setFormData({
                 ...formData,
                 nik: '3578012345670001',
@@ -64,20 +205,74 @@ function ProfilContent() {
         }, 2000);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO: Save to Supabase
-        console.log('Save profil:', formData);
-        setIsEditing(false);
-        alert('✅ Profil berhasil diperbarui!');
+        if (!user) return;
+
+        setSaving(true);
+        try {
+            // Update hafiz table
+            const { error } = await supabase
+                .from('hafiz')
+                .update({
+                    nama: formData.nama,
+                    tempat_lahir: formData.tempat_lahir,
+                    tanggal_lahir: formData.tanggal_lahir,
+                    jenis_kelamin: formData.jenis_kelamin,
+                    alamat: formData.alamat,
+                    rt: formData.rt,
+                    rw: formData.rw,
+                    desa_kelurahan: formData.desa_kelurahan,
+                    kecamatan: formData.kecamatan,
+                    kabupaten_kota: formData.kabupaten_kota,
+                    telepon: formData.telepon,
+                    email: formData.email,
+                    sertifikat_tahfidz: formData.sertifikat_tahfidz,
+                    mengajar: formData.mengajar,
+                    tmt_mengajar: formData.tmt_mengajar || null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error updating profile:', error);
+                alert('Gagal menyimpan profil: ' + error.message);
+                return;
+            }
+
+            setIsEditing(false);
+            alert('✅ Profil berhasil diperbarui!');
+        } catch (err) {
+            console.error('Unexpected error saving profile:', err);
+            alert('Terjadi kesalahan saat menyimpan profil');
+        } finally {
+            setSaving(false);
+        }
     };
+
+    if (loading) {
+        return <PageLoader />;
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                        Kembali ke Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
             <Sidebar
-                userRole={userData.role}
-                userName={userData.nama}
-                userEmail={userData.email}
+                userRole={user.role}
+                userName={user.nama}
+                userPhoto={user.foto_profil}
             />
 
             <main className="flex-1 p-6 lg:p-8 overflow-auto">
@@ -103,7 +298,7 @@ function ProfilContent() {
                     </div>
 
                     {/* Upload KTP Section */}
-                    {role === 'hafiz' && (
+                    {user.role === 'hafiz' && (
                         <div className="card mb-6 bg-gradient-to-r from-primary-50 to-accent-50 border-2 border-primary-200">
                             <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center text-white text-xl flex-shrink-0">

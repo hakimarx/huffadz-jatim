@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
+import { createClient } from '@/lib/supabase/client';
 import { FiUpload, FiDownload, FiFileText, FiFile } from 'react-icons/fi';
 
 const mockDokumen = [
@@ -12,16 +12,50 @@ const mockDokumen = [
     { id: '3', jenis: 'piagam', nama: 'Template Piagam Kelulusan', file_url: '#', periode: '2024', uploaded_at: '2024-10-01' },
 ];
 
-function DokumenContent() {
-    const searchParams = useSearchParams();
-    const role = searchParams.get('role') || 'admin_provinsi';
-    const [showUploadModal, setShowUploadModal] = useState(false);
+interface UserData {
+    id: string;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
 
-    const userData = {
-        role: role,
-        nama: role === 'admin_provinsi' ? 'Admin Provinsi' : 'Admin Kab/Ko',
-        email: `${role}@example.com`
-    };
+function DokumenContent() {
+    const [user, setUser] = useState<UserData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const supabase = createClient();
+
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError || !session) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                setUser(userData as UserData || {
+                    id: session.user.id,
+                    role: 'hafiz',
+                    nama: session.user.email?.split('@')[0] || 'User',
+                    email: session.user.email || '',
+                });
+            } catch (err) {
+                console.error('Error fetching user:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchUserData();
+    }, []);
 
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -32,9 +66,24 @@ function DokumenContent() {
         }
     };
 
+    if (loading) return <PageLoader />;
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                        Kembali ke Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-            <Sidebar userRole={userData.role} userName={userData.nama} userEmail={userData.email} />
+            <Sidebar userRole={user.role} userName={user.nama} userPhoto={user.foto_profil} />
 
             <main className="flex-1 p-6 lg:p-8 overflow-auto">
                 <div className="flex items-center justify-between mb-8">

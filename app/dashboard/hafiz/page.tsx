@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import {
@@ -17,11 +17,21 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 
-function DataHafizContent() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const role = searchParams.get('role') || 'admin_provinsi';
+interface UserData {
+    id: string;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
 
+function DataHafizContent() {
+    const router = useRouter();
+    const supabase = createClient();
+
+    const [user, setUser] = useState<UserData | null>(null);
+    const [userLoading, setUserLoading] = useState(true);
     const [hafizData, setHafizData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -31,26 +41,73 @@ function DataHafizContent() {
     const [totalCount, setTotalCount] = useState(0);
     const itemsPerPage = 50;
 
-    const userData = {
-        role: role,
-        nama: role === 'admin_provinsi' ? 'Admin Provinsi' : 'Admin Kab/Ko',
-        email: `${role}@lptq.jatimprov.go.id`,
-        kabupaten_kota: role === 'admin_kabko' ? 'Kota Surabaya' : ''
-    };
+    // Upload Excel states
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ success: 0, failed: 0, total: 0 });
+    const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+
+    // Fetch user data from session
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError || !session) {
+                    console.error('No session found:', sessionError);
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                    });
+                } else if (userData) {
+                    setUser(userData as UserData);
+                } else {
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                    });
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching user:', err);
+            } finally {
+                setUserLoading(false);
+            }
+        }
+
+        fetchUserData();
+    }, []);
 
     // Fetch data from Supabase
     const fetchHafizData = async () => {
+        if (!user) return;
+
         try {
             setLoading(true);
-            const supabase = createClient();
 
             let query = supabase
                 .from('hafiz')
                 .select('*', { count: 'exact' });
 
             // Filter by kabupaten for admin_kabko
-            if (role === 'admin_kabko' && userData.kabupaten_kota) {
-                query = query.eq('kabupaten_kota', userData.kabupaten_kota);
+            if (user.role === 'admin_kabko' && user.kabupaten_kota) {
+                query = query.eq('kabupaten_kota', user.kabupaten_kota);
             }
 
             // Search filter
@@ -87,8 +144,10 @@ function DataHafizContent() {
     };
 
     useEffect(() => {
-        fetchHafizData();
-    }, [searchQuery, filterStatus, currentPage, role]);
+        if (user) {
+            fetchHafizData();
+        }
+    }, [user, searchQuery, filterStatus, currentPage]);
 
     // Download template
     const downloadTemplate = () => {
@@ -110,13 +169,151 @@ function DataHafizContent() {
         XLSX.writeFile(wb, "Template_Import_Hafiz.xlsx");
     };
 
+    // Handle Excel Upload
+    const handleUploadExcel = async () => {
+        if (!uploadFile) {
+            alert('Pilih file Excel terlebih dahulu');
+            return;
+        }
+
+        setUploading(true);
+        setUploadErrors([]);
+        setUploadProgress({ success: 0, failed: 0, total: 0 });
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+                    // Skip header row
+                    const rows = jsonData.slice(1).filter(row => row.length > 0 && row[0]);
+                    setUploadProgress(prev => ({ ...prev, total: rows.length }));
+
+                    const errors: string[] = [];
+                    let successCount = 0;
+                    let failedCount = 0;
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        try {
+                            // Parse date
+                            let tanggalLahir = null;
+                            if (row[3]) {
+                                const dateStr = String(row[3]);
+                                if (dateStr.includes('/')) {
+                                    const parts = dateStr.split('/');
+                                    tanggalLahir = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                } else {
+                                    tanggalLahir = dateStr;
+                                }
+                            }
+
+                            let tmtMengajar = null;
+                            if (row[14] && row[14] !== '-') {
+                                const dateStr = String(row[14]);
+                                if (dateStr.includes('/')) {
+                                    const parts = dateStr.split('/');
+                                    tmtMengajar = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                }
+                            }
+
+                            const hafizRecord = {
+                                nik: String(row[0]).trim(),
+                                nama: String(row[1] || '').toUpperCase().trim(),
+                                tempat_lahir: String(row[2] || '').trim(),
+                                tanggal_lahir: tanggalLahir,
+                                jenis_kelamin: String(row[4] || 'L').toUpperCase().trim(),
+                                alamat: String(row[5] || '').trim(),
+                                rt: String(row[6] || '').trim(),
+                                rw: String(row[7] || '').trim(),
+                                desa_kelurahan: String(row[8] || '').trim(),
+                                kecamatan: String(row[9] || '').trim(),
+                                kabupaten_kota: String(row[10] || '').trim(),
+                                telepon: String(row[11] || '').trim(),
+                                sertifikat_tahfidz: String(row[12] || '').trim(),
+                                mengajar: String(row[13] || '').toLowerCase() === 'ya',
+                                tmt_mengajar: tmtMengajar,
+                                keterangan: String(row[15] || '').trim(),
+                                tahun_tes: parseInt(String(row[16])) || new Date().getFullYear(),
+                                status_insentif: 'tidak_aktif'
+                            };
+
+                            const { error: insertError } = await supabase
+                                .from('hafiz')
+                                .upsert([hafizRecord], { onConflict: 'nik' });
+
+                            if (insertError) {
+                                errors.push(`Baris ${i + 2}: ${insertError.message}`);
+                                failedCount++;
+                            } else {
+                                successCount++;
+                            }
+
+                            setUploadProgress({ success: successCount, failed: failedCount, total: rows.length });
+                        } catch (rowErr: any) {
+                            errors.push(`Baris ${i + 2}: ${rowErr.message}`);
+                            failedCount++;
+                        }
+                    }
+
+                    setUploadErrors(errors);
+
+                    if (successCount > 0) {
+                        alert(`✅ Import selesai!\n\nBerhasil: ${successCount}\nGagal: ${failedCount}`);
+                        // Refresh data
+                        fetchHafizData();
+                    }
+
+                    if (failedCount > 0 && successCount === 0) {
+                        alert('❌ Import gagal. Periksa format data.');
+                    }
+
+                } catch (parseErr: any) {
+                    console.error('Parse error:', parseErr);
+                    alert('Gagal membaca file Excel: ' + parseErr.message);
+                }
+
+                setUploading(false);
+            };
+
+            reader.readAsArrayBuffer(uploadFile);
+        } catch (err: any) {
+            console.error('Upload error:', err);
+            alert('Gagal upload: ' + err.message);
+            setUploading(false);
+        }
+    };
+
     const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+    if (userLoading) {
+        return <PageLoader />;
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                        Kembali ke Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-neutral-50">
             <Sidebar
-                userRole={userData.role}
-                userName={userData.nama}
+                userRole={user.role}
+                userName={user.nama}
+                userPhoto={user.foto_profil}
             />
 
             <main className="flex-1 p-4 lg:p-8 overflow-auto">
@@ -125,7 +322,7 @@ function DataHafizContent() {
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div className="flex-1">
                             <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                                Data Hafiz {role === 'admin_kabko' && `- ${userData.kabupaten_kota}`}
+                                Data Hafiz {user.role === 'admin_kabko' && `- ${user.kabupaten_kota}`}
                             </h1>
                             <p className="text-neutral-600">
                                 Kelola data Huffadz dan status insentif
@@ -144,6 +341,14 @@ function DataHafizContent() {
                                 <FiPlus />
                                 <span className="hidden sm:inline">Tambah Hafiz</span>
                                 <span className="sm:hidden">Tambah</span>
+                            </button>
+                            <button
+                                onClick={() => setShowUploadModal(true)}
+                                className="btn btn-primary flex-shrink-0"
+                            >
+                                <FiUpload />
+                                <span className="hidden sm:inline">Upload Excel</span>
+                                <span className="sm:hidden">Upload</span>
                             </button>
                             <button
                                 onClick={downloadTemplate}
@@ -254,8 +459,8 @@ function DataHafizContent() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${hafiz.status_insentif === 'aktif'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-100 text-gray-800'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-gray-100 text-gray-800'
                                                         }`}>
                                                         {hafiz.status_insentif === 'aktif' ? 'Aktif' : 'Tidak Aktif'}
                                                     </span>
@@ -315,8 +520,8 @@ function DataHafizContent() {
                                                         key={i}
                                                         onClick={() => setCurrentPage(pageNum)}
                                                         className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
-                                                                ? 'bg-primary-600 text-white'
-                                                                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                                                            ? 'bg-primary-600 text-white'
+                                                            : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                                                             }`}
                                                     >
                                                         {pageNum}
@@ -337,6 +542,98 @@ function DataHafizContent() {
                         </>
                     )}
                 </div>
+
+                {/* Upload Excel Modal */}
+                {showUploadModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl max-w-lg w-full">
+                            <div className="p-6 border-b border-neutral-200">
+                                <h2 className="text-2xl font-bold text-neutral-800">Upload Data Hafiz dari Excel</h2>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div className="alert alert-info">
+                                    <div>
+                                        <p className="font-semibold">Petunjuk:</p>
+                                        <ul className="text-sm mt-2 space-y-1 list-disc list-inside">
+                                            <li>Download template terlebih dahulu</li>
+                                            <li>Isi data sesuai format template</li>
+                                            <li>NIK harus unik (16 digit)</li>
+                                            <li>Format tanggal: DD/MM/YYYY</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label required">Pilih File Excel</label>
+                                    <input
+                                        type="file"
+                                        className="form-input"
+                                        accept=".xlsx,.xls"
+                                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                                    />
+                                    <span className="form-help">Format: .xlsx atau .xls</span>
+                                </div>
+
+                                {uploadProgress.total > 0 && (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span>Progress: {uploadProgress.success + uploadProgress.failed} / {uploadProgress.total}</span>
+                                            <span className="text-green-600">✓ {uploadProgress.success}</span>
+                                            {uploadProgress.failed > 0 && (
+                                                <span className="text-red-600">✗ {uploadProgress.failed}</span>
+                                            )}
+                                        </div>
+                                        <div className="w-full bg-neutral-200 rounded-full h-2">
+                                            <div
+                                                className="bg-primary-600 h-2 rounded-full transition-all"
+                                                style={{ width: `${((uploadProgress.success + uploadProgress.failed) / uploadProgress.total) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {uploadErrors.length > 0 && (
+                                    <div className="alert alert-error max-h-32 overflow-y-auto">
+                                        <div>
+                                            <p className="font-semibold">Error ({uploadErrors.length}):</p>
+                                            <ul className="text-sm mt-1 space-y-1">
+                                                {uploadErrors.slice(0, 5).map((err, i) => (
+                                                    <li key={i}>{err}</li>
+                                                ))}
+                                                {uploadErrors.length > 5 && (
+                                                    <li>...dan {uploadErrors.length - 5} error lainnya</li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        onClick={handleUploadExcel}
+                                        className="btn btn-primary flex-1"
+                                        disabled={uploading || !uploadFile}
+                                    >
+                                        {uploading ? 'Mengimport...' : 'Import Data'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowUploadModal(false);
+                                            setUploadFile(null);
+                                            setUploadProgress({ success: 0, failed: 0, total: 0 });
+                                            setUploadErrors([]);
+                                        }}
+                                        className="btn btn-secondary"
+                                        disabled={uploading}
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

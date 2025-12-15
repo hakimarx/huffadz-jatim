@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
+import { createClient } from '@/lib/supabase/client';
 import {
     FiPlus,
     FiFilter,
@@ -52,26 +52,108 @@ const mockLaporan = [
     }
 ];
 
+interface UserData {
+    id: string;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
+
 function LaporanHarianContent() {
-    const searchParams = useSearchParams();
-    const role = searchParams.get('role') || 'hafiz';
+    const [user, setUser] = useState<UserData | null>(null);
+    const [hafizId, setHafizId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState('semua');
+    const supabase = createClient();
 
-    const userData = {
-        role: role,
-        nama: role === 'admin_provinsi' ? 'Admin Provinsi' : role === 'admin_kabko' ? 'Admin Kab/Ko' : 'Muhammad Ahmad',
-        email: `${role}@example.com`
-    };
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    const isHafiz = role === 'hafiz';
+                if (sessionError || !session) {
+                    console.error('No session found:', sessionError);
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                        kabupaten_kota: undefined
+                    });
+                } else if (userData) {
+                    setUser(userData as UserData);
+
+                    // If user is hafiz, fetch their hafiz record ID
+                    if (userData.role === 'hafiz') {
+                        const { data: hafizData } = await supabase
+                            .from('hafiz')
+                            .select('id')
+                            .eq('user_id', session.user.id)
+                            .maybeSingle();
+
+                        if (hafizData) {
+                            setHafizId(hafizData.id);
+                        }
+                    }
+                } else {
+                    setUser({
+                        id: session.user.id,
+                        role: 'hafiz',
+                        nama: session.user.email?.split('@')[0] || 'User',
+                        email: session.user.email || '',
+                        kabupaten_kota: undefined
+                    });
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching user:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchUserData();
+    }, []);
+
+    if (loading) {
+        return <PageLoader />;
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                        Kembali ke Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const isHafiz = user.role === 'hafiz';
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
             <Sidebar
-                userRole={userData.role}
-                userName={userData.nama}
-                userEmail={userData.email}
+                userRole={user.role}
+                userName={user.nama}
+                userPhoto={user.foto_profil}
             />
 
             <main className="flex-1 p-6 lg:p-8 overflow-auto">
@@ -113,8 +195,8 @@ function LaporanHarianContent() {
                             <button
                                 onClick={() => setFilter('semua')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'semua'
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Semua
@@ -122,8 +204,8 @@ function LaporanHarianContent() {
                             <button
                                 onClick={() => setFilter('pending')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'pending'
-                                        ? 'bg-accent-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-accent-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Pending
@@ -131,8 +213,8 @@ function LaporanHarianContent() {
                             <button
                                 onClick={() => setFilter('disetujui')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'disetujui'
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Disetujui
@@ -140,8 +222,8 @@ function LaporanHarianContent() {
                             <button
                                 onClick={() => setFilter('ditolak')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'ditolak'
-                                        ? 'bg-red-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                                     }`}
                             >
                                 Ditolak
@@ -157,13 +239,14 @@ function LaporanHarianContent() {
                             key={laporan.id}
                             laporan={laporan}
                             isHafiz={isHafiz}
+                            userRole={user.role}
                         />
                     ))}
                 </div>
 
                 {/* Add Laporan Modal */}
                 {showModal && (
-                    <AddLaporanModal onClose={() => setShowModal(false)} />
+                    <AddLaporanModal onClose={() => setShowModal(false)} hafizId={hafizId || undefined} />
                 )}
             </main>
         </div>
@@ -173,9 +256,12 @@ function LaporanHarianContent() {
 interface LaporanCardProps {
     laporan: any;
     isHafiz: boolean;
+    userRole: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
 }
 
-function LaporanCard({ laporan, isHafiz }: LaporanCardProps) {
+function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: LaporanCardProps) {
     const statusConfig = {
         pending: {
             badge: 'badge-warning',
@@ -273,17 +359,30 @@ function LaporanCard({ laporan, isHafiz }: LaporanCardProps) {
                                 </button>
                             </>
                         )}
-                        {!isHafiz && laporan.status_verifikasi === 'pending' && (
+                        {/* Admin Kab/Ko can approve/reject laporan */}
+                        {userRole === 'admin_kabko' && laporan.status_verifikasi === 'pending' && (
                             <>
-                                <button className="btn btn-primary text-sm">
+                                <button
+                                    onClick={() => onApprove?.(laporan.id)}
+                                    className="btn btn-primary text-sm"
+                                >
                                     <FiCheckCircle />
                                     Setujui
                                 </button>
-                                <button className="btn btn-danger text-sm">
+                                <button
+                                    onClick={() => onReject?.(laporan.id)}
+                                    className="btn btn-danger text-sm"
+                                >
                                     <FiXCircle />
                                     Tolak
                                 </button>
                             </>
+                        )}
+                        {/* Admin Provinsi only sees view-only mode */}
+                        {userRole === 'admin_provinsi' && (
+                            <span className="text-sm text-neutral-500 italic">
+                                (Lihat saja - verifikasi oleh Admin Kab/Ko)
+                            </span>
                         )}
                     </div>
                 </div>
@@ -292,7 +391,7 @@ function LaporanCard({ laporan, isHafiz }: LaporanCardProps) {
     );
 }
 
-function AddLaporanModal({ onClose }: { onClose: () => void }) {
+function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: string }) {
     const [formData, setFormData] = useState({
         tanggal: new Date().toISOString().split('T')[0],
         jenis_kegiatan: 'mengajar',
@@ -300,12 +399,77 @@ function AddLaporanModal({ onClose }: { onClose: () => void }) {
         lokasi: '',
         durasi_menit: ''
     });
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO: Submit to Supabase
-        console.log('Submit laporan:', formData);
-        onClose();
+        if (!hafizId) {
+            setError('Hafiz ID tidak ditemukan. Pastikan profil hafiz sudah lengkap.');
+            return;
+        }
+
+        setSaving(true);
+        setError('');
+
+        try {
+            const supabase = (await import('@/lib/supabase/client')).createClient();
+
+            let foto_url = null;
+
+            // Upload photo if exists
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const fileName = `${hafizId}-${Date.now()}.${fileExt}`;
+                const filePath = `activity-photos/${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('uploads')
+                    .upload(filePath, photoFile, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    // Continue without photo if upload fails
+                } else {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('uploads')
+                        .getPublicUrl(filePath);
+                    foto_url = publicUrl;
+                }
+            }
+
+            // Save laporan to database
+            const { error: insertError } = await supabase
+                .from('laporan_harian')
+                .insert([{
+                    hafiz_id: hafizId,
+                    tanggal: formData.tanggal,
+                    jenis_kegiatan: formData.jenis_kegiatan,
+                    deskripsi: formData.deskripsi,
+                    lokasi: formData.lokasi,
+                    durasi_menit: parseInt(formData.durasi_menit) || 0,
+                    foto_url: foto_url,
+                    status_verifikasi: 'pending'
+                }]);
+
+            if (insertError) {
+                console.error('Insert error:', insertError);
+                setError('Gagal menyimpan laporan: ' + insertError.message);
+                return;
+            }
+
+            alert('✅ Laporan berhasil disimpan!');
+            onClose();
+        } catch (err: any) {
+            console.error('Error:', err);
+            setError('Terjadi kesalahan: ' + (err.message || 'Unknown error'));
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -314,6 +478,12 @@ function AddLaporanModal({ onClose }: { onClose: () => void }) {
                 <div className="p-6 border-b border-neutral-200">
                     <h2 className="text-2xl font-bold text-neutral-800">Tambah Laporan Harian</h2>
                 </div>
+
+                {error && (
+                    <div className="mx-6 mt-4 alert alert-error">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="form-group">
@@ -378,21 +548,30 @@ function AddLaporanModal({ onClose }: { onClose: () => void }) {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label required">Foto Kegiatan</label>
+                        <label className="form-label">Foto Kegiatan</label>
                         <input
                             type="file"
                             className="form-input"
                             accept="image/*"
-                            required
+                            onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
                         />
-                        <span className="form-help">Upload foto kegiatan (max 5MB)</span>
+                        <span className="form-help">Upload foto kegiatan (opsional, max 5MB)</span>
                     </div>
 
                     <div className="flex gap-3 pt-4">
-                        <button type="submit" className="btn btn-primary flex-1">
-                            Simpan Laporan
+                        <button
+                            type="submit"
+                            className="btn btn-primary flex-1"
+                            disabled={saving}
+                        >
+                            {saving ? 'Menyimpan...' : 'Simpan Laporan'}
                         </button>
-                        <button type="button" onClick={onClose} className="btn btn-secondary">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="btn btn-secondary"
+                            disabled={saving}
+                        >
                             Batal
                         </button>
                     </div>
