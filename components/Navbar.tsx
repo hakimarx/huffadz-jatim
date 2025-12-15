@@ -64,9 +64,11 @@ export default function Navbar({ userRole, userName }: NavbarProps) {
                     {/* Logo & Desktop Nav */}
                     <div className="flex items-center gap-10">
                         <Link href="/dashboard" className="flex items-center gap-3 group">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
-                                L
-                            </div>
+                            <img
+                                src="/logo-lptq.png"
+                                alt="Logo LPTQ"
+                                className="w-10 h-10 group-hover:scale-105 transition-transform"
+                            />
                             <span className="font-display font-bold text-neutral-800 text-xl tracking-tight group-hover:text-primary-600 transition-colors">
                                 LPTQ <span className="text-primary-600">Jatim</span>
                             </span>

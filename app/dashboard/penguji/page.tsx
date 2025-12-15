@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
-import { FiPlus, FiEdit, FiTrash2, FiUserCheck, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiX, FiCheck } from 'react-icons/fi';
 
 interface Penguji {
     id: string;
@@ -30,21 +30,23 @@ function PengujiContent() {
     const [loading, setLoading] = useState(true);
     const [pengujiList, setPengujiList] = useState<Penguji[]>([]);
     const [showModal, setShowModal] = useState(false);
+    const [editingPenguji, setEditingPenguji] = useState<Penguji | null>(null);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         nama: '',
         gelar: '',
         institusi: '',
         telepon: '',
-        email: ''
+        email: '',
+        is_active: true
     });
     const supabase = createClient();
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session) {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
                     window.location.href = '/login';
                     return;
                 }
@@ -62,15 +64,7 @@ function PengujiContent() {
                     email: session.user.email || '',
                 });
 
-                // Fetch penguji list
-                const { data: pengujiData, error: pengujiError } = await supabase
-                    .from('penguji')
-                    .select('*')
-                    .order('nama');
-
-                if (!pengujiError && pengujiData) {
-                    setPengujiList(pengujiData);
-                }
+                await refreshPengujiList();
 
             } catch (err) {
                 console.error('Error fetching data:', err);
@@ -81,62 +75,104 @@ function PengujiContent() {
         fetchData();
     }, []);
 
-    const handleAddPenguji = async (e: React.FormEvent) => {
+    const refreshPengujiList = async () => {
+        const { data } = await supabase.from('penguji').select('*').order('nama');
+        if (data) setPengujiList(data);
+    };
+
+    const openAddModal = () => {
+        setEditingPenguji(null);
+        setFormData({ nama: '', gelar: '', institusi: '', telepon: '', email: '', is_active: true });
+        setShowModal(true);
+    };
+
+    const openEditModal = (penguji: Penguji) => {
+        setEditingPenguji(penguji);
+        setFormData({
+            nama: penguji.nama || '',
+            gelar: penguji.gelar || '',
+            institusi: penguji.institusi || '',
+            telepon: penguji.telepon || '',
+            email: penguji.email || '',
+            is_active: penguji.is_active
+        });
+        setShowModal(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
 
         try {
-            const { error } = await supabase
-                .from('penguji')
-                .insert([{
-                    nama: formData.nama,
-                    gelar: formData.gelar,
-                    institusi: formData.institusi,
-                    telepon: formData.telepon,
-                    email: formData.email || null,
-                    is_active: true
-                }]);
+            if (editingPenguji) {
+                // Update
+                const { error } = await supabase
+                    .from('penguji')
+                    .update({
+                        nama: formData.nama,
+                        gelar: formData.gelar || null,
+                        institusi: formData.institusi || null,
+                        telepon: formData.telepon || null,
+                        email: formData.email || null,
+                        is_active: formData.is_active,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', editingPenguji.id);
 
-            if (error) {
-                console.error('Error adding penguji:', error);
-                alert('Gagal menambahkan penguji: ' + error.message);
-                return;
+                if (error) throw error;
+                alert('✅ Penguji berhasil diupdate!');
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('penguji')
+                    .insert([{
+                        nama: formData.nama,
+                        gelar: formData.gelar || null,
+                        institusi: formData.institusi || null,
+                        telepon: formData.telepon || null,
+                        email: formData.email || null,
+                        is_active: true
+                    }]);
+
+                if (error) throw error;
+                alert('✅ Penguji berhasil ditambahkan!');
             }
 
-            alert('✅ Penguji berhasil ditambahkan!');
             setShowModal(false);
-            setFormData({ nama: '', gelar: '', institusi: '', telepon: '', email: '' });
-
-            // Refresh list
-            const { data } = await supabase.from('penguji').select('*').order('nama');
-            if (data) setPengujiList(data);
+            await refreshPengujiList();
 
         } catch (err: any) {
             console.error('Error:', err);
-            alert('Terjadi kesalahan: ' + err.message);
+            alert('Gagal: ' + err.message);
         } finally {
             setSaving(false);
         }
     };
 
-    const handleDeletePenguji = async (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm('Apakah Anda yakin ingin menghapus penguji ini?')) return;
 
         try {
-            const { error } = await supabase
-                .from('penguji')
-                .delete()
-                .eq('id', id);
-
-            if (error) {
-                alert('Gagal menghapus: ' + error.message);
-                return;
-            }
-
+            const { error } = await supabase.from('penguji').delete().eq('id', id);
+            if (error) throw error;
             setPengujiList(pengujiList.filter(p => p.id !== id));
             alert('✅ Penguji berhasil dihapus!');
         } catch (err: any) {
-            alert('Error: ' + err.message);
+            alert('Gagal: ' + err.message);
+        }
+    };
+
+    const toggleActive = async (penguji: Penguji) => {
+        try {
+            const { error } = await supabase
+                .from('penguji')
+                .update({ is_active: !penguji.is_active })
+                .eq('id', penguji.id);
+
+            if (error) throw error;
+            await refreshPengujiList();
+        } catch (err: any) {
+            alert('Gagal: ' + err.message);
         }
     };
 
@@ -163,9 +199,9 @@ function PengujiContent() {
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-neutral-800 mb-2">Data Penguji</h1>
-                        <p className="text-neutral-600">Kelola data penguji tes seleksi Huffadz</p>
+                        <p className="text-neutral-600">Kelola data penguji tes seleksi Huffadz ({pengujiList.length} penguji)</p>
                     </div>
-                    <button onClick={() => setShowModal(true)} className="btn btn-primary">
+                    <button onClick={openAddModal} className="btn btn-primary">
                         <FiPlus /> Tambah Penguji
                     </button>
                 </div>
@@ -198,15 +234,23 @@ function PengujiContent() {
                                             <td>{penguji.institusi || '-'}</td>
                                             <td>{penguji.telepon || '-'}</td>
                                             <td>
-                                                <span className={`badge ${penguji.is_active ? 'badge-success' : 'badge-neutral'}`}>
+                                                <button
+                                                    onClick={() => toggleActive(penguji)}
+                                                    className={`badge cursor-pointer ${penguji.is_active ? 'badge-success' : 'badge-neutral'}`}
+                                                >
                                                     {penguji.is_active ? 'Aktif' : 'Tidak Aktif'}
-                                                </span>
+                                                </button>
                                             </td>
                                             <td>
                                                 <div className="flex gap-2">
-                                                    <button className="btn btn-secondary text-sm"><FiEdit /> Edit</button>
                                                     <button
-                                                        onClick={() => handleDeletePenguji(penguji.id)}
+                                                        onClick={() => openEditModal(penguji)}
+                                                        className="btn btn-secondary text-sm"
+                                                    >
+                                                        <FiEdit /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(penguji.id)}
                                                         className="btn btn-danger text-sm"
                                                     >
                                                         <FiTrash2 /> Hapus
@@ -221,18 +265,20 @@ function PengujiContent() {
                     </div>
                 </div>
 
-                {/* Add Penguji Modal */}
+                {/* Add/Edit Penguji Modal */}
                 {showModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-2xl max-w-lg w-full">
                             <div className="p-6 border-b border-neutral-200 flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-neutral-800">Tambah Penguji</h2>
+                                <h2 className="text-2xl font-bold text-neutral-800">
+                                    {editingPenguji ? 'Edit Penguji' : 'Tambah Penguji'}
+                                </h2>
                                 <button onClick={() => setShowModal(false)} className="text-neutral-500 hover:text-neutral-700">
                                     <FiX size={24} />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleAddPenguji} className="p-6 space-y-4">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
                                 <div className="form-group">
                                     <label className="form-label required">Nama Lengkap</label>
                                     <input
@@ -289,9 +335,23 @@ function PengujiContent() {
                                     />
                                 </div>
 
+                                {editingPenguji && (
+                                    <div className="form-group">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="form-checkbox"
+                                                checked={formData.is_active}
+                                                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                            />
+                                            <span>Penguji Aktif</span>
+                                        </label>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-3 pt-4">
                                     <button type="submit" className="btn btn-primary flex-1" disabled={saving}>
-                                        {saving ? 'Menyimpan...' : 'Simpan Penguji'}
+                                        {saving ? 'Menyimpan...' : (editingPenguji ? 'Update' : 'Simpan')}
                                     </button>
                                     <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary" disabled={saving}>
                                         Batal

@@ -43,9 +43,10 @@ interface HafizFormProps {
     initialData?: Partial<HafizFormData>;
     mode: 'create' | 'edit';
     hafizId?: string;
+    ktpImageFile?: File | null;
 }
 
-export default function HafizForm({ initialData, mode, hafizId }: HafizFormProps) {
+export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: HafizFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');

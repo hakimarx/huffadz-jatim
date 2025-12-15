@@ -45,7 +45,6 @@ function DashboardContent() {
     useEffect(() => {
         async function fetchUserData() {
             try {
-                // Get current session from Supabase
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (sessionError || !session) {
@@ -54,7 +53,6 @@ function DashboardContent() {
                     return;
                 }
 
-                // Fetch user data from public.users table using session user ID
                 const { data: userData, error: userError } = await supabase
                     .from('users')
                     .select('id, email, nama, role, kabupaten_kota, foto_profil')
@@ -63,7 +61,6 @@ function DashboardContent() {
 
                 if (userError) {
                     console.error('Error fetching user data:', userError);
-                    // Fallback to basic session data - use session email as default
                     setUser({
                         id: session.user.id,
                         role: 'hafiz',
@@ -72,10 +69,8 @@ function DashboardContent() {
                         kabupaten_kota: undefined
                     });
                 } else if (userData) {
-                    // Successfully fetched user from database
                     setUser(userData as UserData);
                 } else {
-                    // User authenticated but no profile in users table
                     console.warn('User authenticated but no profile found in public.users');
                     setUser({
                         id: session.user.id,
@@ -194,7 +189,7 @@ function DashboardContent() {
     );
 }
 
-// --- Admin Provinsi Dashboard with Real Stats ---
+// --- Admin Provinsi Dashboard ---
 function AdminProvinsiDashboard() {
     const [stats, setStats] = useState<DashboardStats>({
         total: 0,
@@ -207,24 +202,15 @@ function AdminProvinsiDashboard() {
 
     useEffect(() => {
         let isMounted = true;
+        const supabase = createClient();
 
         async function fetchStats() {
             try {
-                const supabase = createClient();
-                // Fetch basic columns for aggregation - select only columns that exist
-                const { data, error } = await supabase
-                    .from('hafiz')
-                    .select('jenis_kelamin, status_kelulusan, tanggal_lahir');
+                const { data, error } = await supabase.from('hafiz').select('*');
 
                 if (error) {
-                    // Log the full error object for debugging
-                    console.error('Supabase fetch error:', JSON.stringify(error, null, 2));
-                    if (isMounted) setStats(s => ({ ...s, loading: false, error: error.message || 'Gagal mengambil data statistik' }));
-                    return;
-                }
-
-                if (!data) {
-                    if (isMounted) setStats(s => ({ ...s, loading: false }));
+                    console.error('Error fetching hafiz data:', error);
+                    if (isMounted) setStats(s => ({ ...s, loading: false, error: error.message }));
                     return;
                 }
 
@@ -235,15 +221,12 @@ function AdminProvinsiDashboard() {
                 const currentYear = new Date().getFullYear();
 
                 data.forEach((row: any) => {
-                    // Grad Status
                     if (row.status_kelulusan === 'lulus') lulus++;
 
-                    // Gender - Normalize various inputs if dirty data
                     const val = String(row.jenis_kelamin || '').toUpperCase().trim();
                     if (val === 'L' || val === 'LAKI-LAKI') l++;
                     else if (val === 'P' || val === 'PEREMPUAN') p++;
 
-                    // Age
                     if (row.tanggal_lahir) {
                         const birthYear = new Date(row.tanggal_lahir).getFullYear();
                         if (!isNaN(birthYear)) {
@@ -274,11 +257,9 @@ function AdminProvinsiDashboard() {
         }
 
         fetchStats();
-
         return () => { isMounted = false; };
     }, []);
 
-    // Derived Percentages
     const genderPercent = stats.total > 0 ? {
         L: Math.round((stats.gender.L / stats.total) * 100) || 0,
         P: Math.round((stats.gender.P / stats.total) * 100) || 0
@@ -307,7 +288,6 @@ function AdminProvinsiDashboard() {
 
     return (
         <div className="space-y-10">
-            {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <ModernStatCard
                     title="Total Huffadz"
@@ -339,9 +319,7 @@ function AdminProvinsiDashboard() {
                 />
             </div>
 
-            {/* Infographics Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Gender Distribution Chart */}
                 <div className="card-modern flex flex-col items-center justify-center text-center">
                     <h3 className="text-xl font-bold mb-8 flex items-center gap-2 self-start">
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500">
@@ -349,12 +327,10 @@ function AdminProvinsiDashboard() {
                         </div>
                         Distribusi Gender
                     </h3>
-
                     {stats.total === 0 ? (
                         <div className="text-neutral-400 py-10">Belum ada data</div>
                     ) : (
                         <div className="flex flex-col md:flex-row items-center gap-10 w-full px-4">
-                            {/* CSS Donut Chart */}
                             <div className="relative w-48 h-48 rounded-full shadow-2xl shadow-primary-200/50 flex-shrink-0"
                                 style={{
                                     background: `conic-gradient(#3b82f6 0% ${genderPercent.L}%, #ec4899 ${genderPercent.L}% 100%)`
@@ -364,10 +340,9 @@ function AdminProvinsiDashboard() {
                                     <span className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-1">Total</span>
                                 </div>
                             </div>
-
                             <div className="flex flex-col gap-4 text-left w-full">
-                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 hover:border-blue-200 transition-colors">
-                                    <div className="w-2 h-10 rounded-full bg-blue-500 shadow-md shadow-blue-200"></div>
+                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100">
+                                    <div className="w-2 h-10 rounded-full bg-blue-500"></div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-baseline mb-1">
                                             <p className="font-bold text-neutral-800">Laki-laki</p>
@@ -376,8 +351,8 @@ function AdminProvinsiDashboard() {
                                         <p className="text-xs text-neutral-500 font-medium">{stats.gender.L} Orang</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 hover:border-pink-200 transition-colors">
-                                    <div className="w-2 h-10 rounded-full bg-secondary-500 shadow-md shadow-pink-200"></div>
+                                <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100">
+                                    <div className="w-2 h-10 rounded-full bg-secondary-500"></div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-baseline mb-1">
                                             <p className="font-bold text-neutral-800">Perempuan</p>
@@ -391,7 +366,6 @@ function AdminProvinsiDashboard() {
                     )}
                 </div>
 
-                {/* Age Distribution Chart */}
                 <div className="card-modern">
                     <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500">
@@ -411,9 +385,9 @@ function AdminProvinsiDashboard() {
                                             <span className="text-xs text-neutral-500 ml-1 font-medium">({Math.round(percent)}%)</span>
                                         </div>
                                     </div>
-                                    <div className="w-full bg-neutral-100 rounded-full h-3 overflow-hidden relative">
+                                    <div className="w-full bg-neutral-100 rounded-full h-3 overflow-hidden">
                                         <div
-                                            className="bg-gradient-to-r from-primary-500 to-primary-400 h-3 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-primary-500/20"
+                                            className="bg-gradient-to-r from-primary-500 to-primary-400 h-3 rounded-full transition-all duration-1000"
                                             style={{ width: `${percent}%` }}
                                         ></div>
                                     </div>
@@ -427,21 +401,25 @@ function AdminProvinsiDashboard() {
     );
 }
 
-// --- Admin KabKo Dashboard (Mocked for now, but using modern UI) ---
+// --- Admin KabKo Dashboard - For Admin Kabupaten/Kota ---
 function AdminKabKoDashboard({ kabko }: { kabko: string }) {
     return (
         <div className="space-y-6">
+            {/* Header Card */}
             <div className="p-10 bg-gradient-to-br from-indigo-900 to-primary-900 rounded-[2.5rem] shadow-2xl shadow-primary-900/30 text-white relative overflow-hidden group">
-                {/* Abstract Shapes */}
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-500/20 rounded-full blur-3xl -mr-32 -mt-32 mix-blend-overlay group-hover:scale-110 transition-transform duration-1000"></div>
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-secondary-500/20 rounded-full blur-3xl -ml-20 -mb-20 mix-blend-overlay group-hover:scale-110 transition-transform duration-1000"></div>
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-500/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-secondary-500/20 rounded-full blur-3xl -ml-20 -mb-20"></div>
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/10">Wilayah</span>
+                        <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/10">
+                            Admin Wilayah
+                        </span>
                     </div>
                     <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{kabko}</h2>
-                    <p className="text-primary-100 opacity-90 text-xl font-light max-w-xl">Laporan Statistik Wilayah Terkini</p>
+                    <p className="text-primary-100 opacity-90 text-xl font-light max-w-xl">
+                        Kelola data Huffadz dan verifikasi laporan di wilayah Anda
+                    </p>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
                         <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
@@ -449,12 +427,12 @@ function AdminKabKoDashboard({ kabko }: { kabko: string }) {
                             <p className="text-4xl font-extrabold">487</p>
                         </div>
                         <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
-                            <p className="text-emerald-300 text-sm font-medium mb-2 uppercase tracking-wider">Lulus</p>
-                            <p className="text-4xl font-extrabold text-emerald-400">312</p>
+                            <p className="text-primary-200 text-sm font-medium mb-2 uppercase tracking-wider">Lulus Seleksi</p>
+                            <p className="text-4xl font-extrabold text-emerald-400">412</p>
                         </div>
                         <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
-                            <p className="text-amber-300 text-sm font-medium mb-2 uppercase tracking-wider">Pending</p>
-                            <p className="text-4xl font-extrabold text-amber-400">175</p>
+                            <p className="text-primary-200 text-sm font-medium mb-2 uppercase tracking-wider">Laporan Pending</p>
+                            <p className="text-4xl font-extrabold text-amber-400">12</p>
                         </div>
                         <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
                             <p className="text-primary-200 text-sm font-medium mb-2 uppercase tracking-wider">Insentif Aktif</p>
@@ -463,11 +441,48 @@ function AdminKabKoDashboard({ kabko }: { kabko: string }) {
                     </div>
                 </div>
             </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <a href="/dashboard/hafiz" className="card-modern group cursor-pointer hover:shadow-xl transition-all">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg text-white">
+                            <FiUsers size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-neutral-800">Data Hafiz</h3>
+                            <p className="text-neutral-500 text-sm">Kelola data Huffadz wilayah</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="/dashboard/laporan" className="card-modern group cursor-pointer hover:shadow-xl transition-all">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg text-white">
+                            <FiFileText size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-neutral-800">Verifikasi Laporan</h3>
+                            <p className="text-neutral-500 text-sm">12 laporan menunggu</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="/dashboard/kuota" className="card-modern group cursor-pointer hover:shadow-xl transition-all">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg text-white">
+                            <FiPieChart size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-neutral-800">Statistik</h3>
+                            <p className="text-neutral-500 text-sm">Lihat statistik wilayah</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </div>
     );
 }
 
-// --- Hafiz Dashboard (Modern) ---
+// --- Hafiz Dashboard ---
 function HafizDashboard() {
     return (
         <div className="space-y-8">
@@ -477,7 +492,7 @@ function HafizDashboard() {
                 <div className="relative z-10">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
                         <div>
-                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-bold mb-6 border border-emerald-500/30 shadow-lg shadow-emerald-900/10 backdrop-blur-sm uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-bold mb-6 border border-emerald-500/30 backdrop-blur-sm uppercase tracking-wider">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                                 Status: Lulus Seleksi
                             </span>
