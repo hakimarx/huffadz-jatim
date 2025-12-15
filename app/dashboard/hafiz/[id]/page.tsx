@@ -22,11 +22,24 @@ function DetailHafizContent() {
         async function fetchHafiz() {
             try {
                 const supabase = createClient();
-                const { data, error } = await supabase
+
+                // First try to get by id
+                let { data, error } = await supabase
                     .from('hafiz')
                     .select('*')
                     .eq('id', hafizId)
-                    .single();
+                    .maybeSingle();
+
+                // If not found by id, try by nik (hafizId might be NIK)
+                if (!data && !error) {
+                    const nikResult = await supabase
+                        .from('hafiz')
+                        .select('*')
+                        .eq('nik', hafizId)
+                        .maybeSingle();
+                    data = nikResult.data;
+                    error = nikResult.error;
+                }
 
                 if (error) throw error;
 
@@ -55,10 +68,15 @@ function DetailHafizContent() {
         setDeleting(true);
         try {
             const supabase = createClient();
+
+            // Use NIK as identifier if available
+            const identifier = hafizData?.nik || hafizId;
+            const identifierField = hafizData?.nik ? 'nik' : 'id';
+
             const { error } = await supabase
                 .from('hafiz')
                 .delete()
-                .eq('id', hafizId);
+                .eq(identifierField, identifier);
 
             if (error) throw error;
 

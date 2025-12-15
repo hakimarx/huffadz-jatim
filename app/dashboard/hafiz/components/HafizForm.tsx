@@ -134,13 +134,17 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                     router.push('/dashboard/hafiz');
                 }, 1500);
             } else {
-                // Update existing hafiz
+                // Update existing hafiz - use NIK as identifier (fallback if id doesn't exist)
                 console.log('Attempting to update hafiz with data:', hafizData);
+
+                // Try to use nik for update since id column might not exist
+                const identifier = initialData?.nik || hafizId;
+                const identifierField = initialData?.nik ? 'nik' : 'id';
 
                 const { error: updateError } = await supabase
                     .from('hafiz')
                     .update(hafizData)
-                    .eq('id', hafizId);
+                    .eq(identifierField, identifier);
 
                 if (updateError) {
                     console.error('Supabase update error:', updateError);
