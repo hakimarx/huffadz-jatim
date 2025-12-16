@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { FiUpload, FiCamera, FiX, FiLoader, FiCheck, FiAlertCircle, FiEdit2 } from 'react-icons/fi';
 import ImageEditor from './ImageEditor';
 import Tesseract from 'tesseract.js';
+import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
 
 interface KtpData {
     nik: string;
@@ -33,13 +34,38 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
     const [extractedData, setExtractedData] = useState<KtpData | null>(null);
     const [rawText, setRawText] = useState<string>('');
     const [showEditor, setShowEditor] = useState(false);
+    const [compressing, setCompressing] = useState(false);
+    const [compressionInfo, setCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
+            const maxSizeKB = 500;
+            const maxSizeBytes = maxSizeKB * 1024;
+
+            let processedFile = selectedFile;
+            setCompressionInfo(null);
+
+            // Compress if larger than 500KB
+            if (selectedFile.size > maxSizeBytes) {
+                setCompressing(true);
+                try {
+                    processedFile = await compressImage(selectedFile, maxSizeKB);
+                    setCompressionInfo({
+                        original: selectedFile.size,
+                        compressed: processedFile.size
+                    });
+                } catch (compErr) {
+                    console.error('Compression error:', compErr);
+                    // Continue with original file if compression fails
+                } finally {
+                    setCompressing(false);
+                }
+            }
+
+            setFile(processedFile);
+            setPreviewUrl(URL.createObjectURL(processedFile));
             setError(null);
             setExtractedData(null);
             setRawText('');
@@ -253,13 +279,19 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
             <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-dashed border-blue-300">
                 <div className="text-center py-8">
                     <div className="mx-auto w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                        <FiCamera className="text-blue-600" size={32} />
+                        {compressing ? (
+                            <FiLoader className="text-blue-600 animate-spin" size={32} />
+                        ) : (
+                            <FiCamera className="text-blue-600" size={32} />
+                        )}
                     </div>
                     <h3 className="text-xl font-bold text-neutral-800 mb-2">
-                        Upload Foto KTP
+                        {compressing ? 'Mengkompres Foto...' : 'Upload Foto KTP'}
                     </h3>
                     <p className="text-neutral-600 mb-4 max-w-md mx-auto">
-                        Upload foto KTP untuk mengisi data secara otomatis menggunakan teknologi OCR
+                        {compressing
+                            ? 'Mohon tunggu, foto sedang dikompres...'
+                            : 'Upload foto KTP untuk mengisi data secara otomatis menggunakan teknologi OCR'}
                     </p>
 
                     <input
@@ -269,21 +301,37 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
                         capture="environment"
                         onChange={handleFileSelect}
                         className="hidden"
+                        disabled={compressing}
                     />
 
                     <div className="flex flex-wrap gap-3 justify-center">
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="btn btn-primary"
+                            disabled={compressing}
                         >
                             <FiUpload /> Pilih Foto KTP
                         </button>
                         {onSkip && (
-                            <button onClick={onSkip} className="btn btn-secondary">
+                            <button onClick={onSkip} className="btn btn-secondary" disabled={compressing}>
                                 Lewati, Isi Manual
                             </button>
                         )}
                     </div>
+
+                    {/* Compression Info */}
+                    {compressionInfo && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-lg mt-4 max-w-md mx-auto">
+                            <FiCheck />
+                            <span>
+                                Foto dikompres dari {formatFileSize(compressionInfo.original)} → {formatFileSize(compressionInfo.compressed)}
+                            </span>
+                        </div>
+                    )}
+
+                    <p className="text-xs text-neutral-500 mt-4">
+                        Maks 500KB - file lebih besar akan dikompres otomatis
+                    </p>
                 </div>
             </div>
 

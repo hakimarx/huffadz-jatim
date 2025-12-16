@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
+import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
 import {
     FiPlus,
     FiFilter,
@@ -13,7 +14,10 @@ import {
     FiXCircle,
     FiEye,
     FiEdit,
-    FiTrash2
+    FiTrash2,
+    FiLoader,
+    FiImage,
+    FiX
 } from 'react-icons/fi';
 
 // Mock data
@@ -21,10 +25,10 @@ const mockLaporan = [
     {
         id: '1',
         tanggal: '2025-12-10',
+        jam: '08:00',
         jenis_kegiatan: 'mengajar',
         deskripsi: 'Mengajar tahfidz Juz 30 untuk anak-anak di TPQ Al-Ikhlas',
         lokasi: 'TPQ Al-Ikhlas, Surabaya',
-        durasi_menit: 120,
         status_verifikasi: 'disetujui',
         verified_at: '2025-12-10 14:30',
         foto: '/placeholder.jpg'
@@ -32,20 +36,20 @@ const mockLaporan = [
     {
         id: '2',
         tanggal: '2025-12-09',
+        jam: '14:30',
         jenis_kegiatan: 'murojah',
         deskripsi: 'Muroja\'ah Juz 1-5 bersama kelompok tahfidz',
         lokasi: 'Masjid Al-Akbar Surabaya',
-        durasi_menit: 90,
         status_verifikasi: 'pending',
         foto: '/placeholder.jpg'
     },
     {
         id: '3',
         tanggal: '2025-12-08',
+        jam: '19:00',
         jenis_kegiatan: 'khataman',
         deskripsi: 'Khataman Al-Quran 30 Juz dalam acara pengajian rutin',
         lokasi: 'Pondok Pesantren Darul Ulum',
-        durasi_menit: 180,
         status_verifikasi: 'ditolak',
         verified_at: '2025-12-09 10:00',
         catatan_verifikasi: 'Foto kurang jelas, mohon upload ulang'
@@ -372,6 +376,7 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
                                     month: 'long',
                                     day: 'numeric'
                                 })}
+                                {laporan.jam && <span className="ml-2">🕐 {laporan.jam} WIB</span>}
                             </p>
                         </div>
                     </div>
@@ -379,9 +384,6 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
                     <div className="space-y-2 mb-4">
                         <p className="text-neutral-700">
                             <span className="font-semibold">📍 Lokasi:</span> {laporan.lokasi}
-                        </p>
-                        <p className="text-neutral-700">
-                            <span className="font-semibold">⏱️ Durasi:</span> {laporan.durasi_menit} menit
                         </p>
                     </div>
 
@@ -444,14 +446,17 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
 function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: string }) {
     const [formData, setFormData] = useState({
         tanggal: new Date().toISOString().split('T')[0],
+        jam: '',
         jenis_kegiatan: 'mengajar',
         deskripsi: '',
-        lokasi: '',
-        durasi_menit: ''
+        lokasi: ''
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [compressing, setCompressing] = useState(false);
+    const [compressionInfo, setCompressionInfo] = useState<{ original: number; compressed: number } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -498,10 +503,10 @@ function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: 
                 .insert([{
                     hafiz_id: hafizId,
                     tanggal: formData.tanggal,
+                    jam: formData.jam || null,
                     jenis_kegiatan: formData.jenis_kegiatan,
                     deskripsi: formData.deskripsi,
                     lokasi: formData.lokasi,
-                    durasi_menit: parseInt(formData.durasi_menit) || 0,
                     foto_url: foto_url,
                     status_verifikasi: 'pending'
                 }]);
@@ -536,15 +541,28 @@ function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: 
                 )}
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="form-group">
-                        <label className="form-label required">Tanggal</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={formData.tanggal}
-                            onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                            required
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group">
+                            <label className="form-label required">Tanggal</label>
+                            <input
+                                type="date"
+                                className="form-input"
+                                value={formData.tanggal}
+                                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label required">Jam</label>
+                            <input
+                                type="time"
+                                className="form-input"
+                                value={formData.jam}
+                                onChange={(e) => setFormData({ ...formData, jam: e.target.value })}
+                                required
+                            />
+                            <span className="form-help">Jam kegiatan dilakukan</span>
+                        </div>
                     </div>
 
                     <div className="form-group">
@@ -586,26 +604,98 @@ function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: 
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label required">Durasi (menit)</label>
-                        <input
-                            type="number"
-                            className="form-input"
-                            placeholder="120"
-                            value={formData.durasi_menit}
-                            onChange={(e) => setFormData({ ...formData, durasi_menit: e.target.value })}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
                         <label className="form-label">Foto Kegiatan</label>
-                        <input
-                            type="file"
-                            className="form-input"
-                            accept="image/*"
-                            onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                        />
-                        <span className="form-help">Upload foto kegiatan (opsional, max 5MB)</span>
+
+                        {/* Photo Preview */}
+                        {photoPreview && (
+                            <div className="relative bg-neutral-100 rounded-lg overflow-hidden mb-3">
+                                <img
+                                    src={photoPreview}
+                                    alt="Preview"
+                                    className="w-full max-h-48 object-contain"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPhotoFile(null);
+                                        setPhotoPreview(null);
+                                        setCompressionInfo(null);
+                                    }}
+                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                >
+                                    <FiX size={16} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Upload Button */}
+                        {!photoPreview && (
+                            <label className={`w-full border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-400 hover:bg-primary-50 transition-colors cursor-pointer block ${compressing ? 'opacity-50 cursor-wait' : ''}`}>
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    disabled={compressing}
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        const maxSizeKB = 500;
+                                        const maxSizeBytes = maxSizeKB * 1024;
+
+                                        // If file is already under limit, use it directly
+                                        if (file.size <= maxSizeBytes) {
+                                            setPhotoFile(file);
+                                            setPhotoPreview(URL.createObjectURL(file));
+                                            setCompressionInfo(null);
+                                            return;
+                                        }
+
+                                        // Compress the image
+                                        setCompressing(true);
+                                        try {
+                                            const compressedFile = await compressImage(file, maxSizeKB);
+                                            setPhotoFile(compressedFile);
+                                            setPhotoPreview(URL.createObjectURL(compressedFile));
+                                            setCompressionInfo({
+                                                original: file.size,
+                                                compressed: compressedFile.size
+                                            });
+                                        } catch (err) {
+                                            console.error('Compression error:', err);
+                                            alert('Gagal mengkompres gambar. Silakan coba file lain.');
+                                        } finally {
+                                            setCompressing(false);
+                                        }
+                                    }}
+                                />
+                                {compressing ? (
+                                    <div className="flex flex-col items-center gap-2 text-primary-600">
+                                        <FiLoader className="animate-spin" size={32} />
+                                        <span className="text-sm font-medium">Mengkompres gambar...</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-2 text-neutral-500">
+                                        <FiImage size={32} />
+                                        <span className="text-sm font-medium">
+                                            Klik untuk upload foto
+                                        </span>
+                                    </div>
+                                )}
+                            </label>
+                        )}
+
+                        {/* Compression Info */}
+                        {compressionInfo && (
+                            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-lg mt-2">
+                                <FiCheckCircle />
+                                <span>
+                                    Dikompres dari {formatFileSize(compressionInfo.original)} → {formatFileSize(compressionInfo.compressed)}
+                                </span>
+                            </div>
+                        )}
+
+                        <span className="form-help">Upload foto kegiatan (opsional). Maks 500KB - file lebih besar akan dikompres otomatis.</span>
                     </div>
 
                     <div className="flex gap-3 pt-4">

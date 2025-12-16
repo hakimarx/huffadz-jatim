@@ -4,7 +4,8 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
-import { FiCamera, FiSave, FiUpload, FiCheckCircle, FiUser } from 'react-icons/fi';
+import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
+import { FiCamera, FiSave, FiUpload, FiCheckCircle, FiUser, FiLoader } from 'react-icons/fi';
 
 interface UserData {
     id: string;
@@ -127,14 +128,27 @@ function ProfilContent() {
 
         setUploadingPhoto(true);
         try {
+            // Compress image if larger than 500KB
+            let processedFile = file;
+            const maxSizeKB = 500;
+            if (file.size > maxSizeKB * 1024) {
+                try {
+                    processedFile = await compressImage(file, maxSizeKB);
+                    console.log(`Foto dikompres dari ${formatFileSize(file.size)} ke ${formatFileSize(processedFile.size)}`);
+                } catch (compErr) {
+                    console.error('Compression error:', compErr);
+                    // Continue with original file if compression fails
+                }
+            }
+
             // Upload to Supabase Storage
-            const fileExt = file.name.split('.').pop();
+            const fileExt = processedFile.name.split('.').pop();
             const fileName = `${user.id}-${Date.now()}.${fileExt}`;
             const filePath = `profile-photos/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('uploads')
-                .upload(filePath, file, {
+                .upload(filePath, processedFile, {
                     cacheControl: '3600',
                     upsert: true
                 });
