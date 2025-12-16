@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { FiUser, FiArrowLeft, FiEdit, FiTrash2, FiLoader, FiMapPin, FiPhone, FiMail, FiBook, FiCalendar, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiEdit, FiTrash2, FiLoader, FiMapPin, FiPhone, FiMail, FiBook, FiCalendar, FiCheckCircle, FiXCircle, FiShuffle } from 'react-icons/fi';
 import Link from 'next/link';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
+import MutasiModal from '@/components/MutasiModal';
 
 function DetailHafizContent() {
     const params = useParams();
@@ -17,13 +18,28 @@ function DetailHafizContent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [showMutasiModal, setShowMutasiModal] = useState(false);
+    const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
 
     useEffect(() => {
-        async function fetchHafiz() {
+        async function fetchData() {
             try {
                 const supabase = createClient();
 
-                // First try to get by id
+                // Fetch current user
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const { data: userData } = await supabase
+                        .from('users')
+                        .select('id, role')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+                    if (userData) {
+                        setCurrentUser(userData);
+                    }
+                }
+
+                // First try to get hafiz by id
                 let { data, error } = await supabase
                     .from('hafiz')
                     .select('*')
@@ -57,7 +73,7 @@ function DetailHafizContent() {
             }
         }
 
-        fetchHafiz();
+        fetchData();
     }, [hafizId]);
 
     const handleDelete = async () => {
@@ -162,7 +178,7 @@ function DetailHafizContent() {
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-3">
                             <button
                                 onClick={() => router.push(`/dashboard/hafiz/${hafizId}/edit`)}
                                 className="btn btn-primary"
@@ -170,6 +186,17 @@ function DetailHafizContent() {
                                 <FiEdit />
                                 Edit
                             </button>
+                            {/* Tombol Mutasi - hanya untuk admin_provinsi dan admin_kabko */}
+                            {currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
+                                <button
+                                    onClick={() => setShowMutasiModal(true)}
+                                    className="btn btn-warning"
+                                    title="Pindahkan ke Kabupaten/Kota lain"
+                                >
+                                    <FiShuffle />
+                                    Mutasi
+                                </button>
+                            )}
                             <button
                                 onClick={handleDelete}
                                 className="btn btn-error"
@@ -332,6 +359,25 @@ function DetailHafizContent() {
                     </div>
                 </div>
             </main>
+
+            {/* Mutasi Modal */}
+            {showMutasiModal && currentUser && (
+                <MutasiModal
+                    isOpen={showMutasiModal}
+                    onClose={() => setShowMutasiModal(false)}
+                    hafiz={{
+                        id: hafizData.id,
+                        nik: hafizData.nik,
+                        nama: hafizData.nama,
+                        kabupaten_kota: hafizData.kabupaten_kota
+                    }}
+                    currentUserId={currentUser.id}
+                    onSuccess={() => {
+                        // Refresh the page to show updated data
+                        window.location.reload();
+                    }}
+                />
+            )}
         </div>
     );
 }

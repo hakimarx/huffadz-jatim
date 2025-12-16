@@ -12,10 +12,12 @@ import {
     FiTrash2,
     FiSearch,
     FiFilter,
-    FiEye
+    FiEye,
+    FiShuffle
 } from 'react-icons/fi';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
+import MutasiModal from '@/components/MutasiModal';
 
 interface UserData {
     id: string;
@@ -47,6 +49,10 @@ function DataHafizContent() {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({ success: 0, failed: 0, total: 0 });
     const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+
+    // Mutasi states
+    const [showMutasiModal, setShowMutasiModal] = useState(false);
+    const [selectedHafizForMutasi, setSelectedHafizForMutasi] = useState<any>(null);
 
     // Fetch user data from session
     useEffect(() => {
@@ -466,7 +472,7 @@ function DataHafizContent() {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <div className="flex items-center justify-center gap-2">
+                                                    <div className="flex items-center justify-center gap-1">
                                                         <button
                                                             onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}`)}
                                                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -481,6 +487,19 @@ function DataHafizContent() {
                                                         >
                                                             <FiEdit size={16} />
                                                         </button>
+                                                        {/* Tombol Mutasi - untuk admin_provinsi dan admin_kabko */}
+                                                        {user && (user.role === 'admin_provinsi' || user.role === 'admin_kabko') && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedHafizForMutasi(hafiz);
+                                                                    setShowMutasiModal(true);
+                                                                }}
+                                                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                                                title="Mutasi ke Kabupaten/Kota lain"
+                                                            >
+                                                                <FiShuffle size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -633,6 +652,28 @@ function DataHafizContent() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Mutasi Modal */}
+                {showMutasiModal && selectedHafizForMutasi && user && (
+                    <MutasiModal
+                        isOpen={showMutasiModal}
+                        onClose={() => {
+                            setShowMutasiModal(false);
+                            setSelectedHafizForMutasi(null);
+                        }}
+                        hafiz={{
+                            id: selectedHafizForMutasi.id,
+                            nik: selectedHafizForMutasi.nik,
+                            nama: selectedHafizForMutasi.nama,
+                            kabupaten_kota: selectedHafizForMutasi.kabupaten_kota
+                        }}
+                        currentUserId={user.id}
+                        onSuccess={() => {
+                            fetchHafizData();
+                            setSelectedHafizForMutasi(null);
+                        }}
+                    />
                 )}
             </main>
         </div>

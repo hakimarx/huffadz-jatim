@@ -99,15 +99,65 @@ function LaporanHarianContent() {
                     setUser(userData as UserData);
 
                     // If user is hafiz, fetch their hafiz record ID
+                    // Try multiple methods to find the hafiz record
                     if (userData.role === 'hafiz') {
-                        const { data: hafizData } = await supabase
+                        let foundHafizId: string | null = null;
+
+                        // Method 1: Search by user_id
+                        const { data: hafizByUserId } = await supabase
                             .from('hafiz')
                             .select('id')
                             .eq('user_id', session.user.id)
                             .maybeSingle();
 
-                        if (hafizData) {
-                            setHafizId(hafizData.id);
+                        if (hafizByUserId) {
+                            foundHafizId = hafizByUserId.id;
+                        }
+
+                        // Method 2: Search by email
+                        if (!foundHafizId && session.user.email) {
+                            const { data: hafizByEmail } = await supabase
+                                .from('hafiz')
+                                .select('id')
+                                .eq('email', session.user.email)
+                                .maybeSingle();
+
+                            if (hafizByEmail) {
+                                foundHafizId = hafizByEmail.id;
+                                // Update the hafiz record to link user_id
+                                await supabase
+                                    .from('hafiz')
+                                    .update({ user_id: session.user.id })
+                                    .eq('id', hafizByEmail.id);
+                            }
+                        }
+
+                        // Method 3: Search by NIK (extract from email if format is nik@hafiz.jatim.go.id)
+                        if (!foundHafizId && session.user.email) {
+                            const emailParts = session.user.email.split('@');
+                            const potentialNik = emailParts[0];
+
+                            // Check if it looks like an NIK (16 digits) or username-based NIK
+                            if (/^\d{16}$/.test(potentialNik) || emailParts[1] === 'hafiz.jatim.go.id') {
+                                const { data: hafizByNik } = await supabase
+                                    .from('hafiz')
+                                    .select('id')
+                                    .eq('nik', potentialNik)
+                                    .maybeSingle();
+
+                                if (hafizByNik) {
+                                    foundHafizId = hafizByNik.id;
+                                    // Update the hafiz record to link user_id
+                                    await supabase
+                                        .from('hafiz')
+                                        .update({ user_id: session.user.id })
+                                        .eq('id', hafizByNik.id);
+                                }
+                            }
+                        }
+
+                        if (foundHafizId) {
+                            setHafizId(foundHafizId);
                         }
                     }
                 } else {
@@ -406,7 +456,7 @@ function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!hafizId) {
-            setError('Hafiz ID tidak ditemukan. Pastikan profil hafiz sudah lengkap.');
+            setError('Profil Hafiz Anda belum terhubung dengan akun ini. Silakan hubungi Admin Kab/Ko Anda untuk menghubungkan NIK Anda dengan akun login ini, atau pastikan email/NIK yang digunakan saat login sama dengan data di sistem.');
             return;
         }
 

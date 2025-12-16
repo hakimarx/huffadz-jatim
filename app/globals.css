@@ -211,6 +211,29 @@ h6 {
   background-color: #dc2626;
 }
 
+.btn-error {
+  background-color: var(--error);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+}
+
+.btn-error:hover {
+  background-color: #dc2626;
+  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.5);
+}
+
+.btn-warning {
+  background-color: var(--warning);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3);
+}
+
+.btn-warning:hover {
+  background-color: #d97706;
+  box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.5);
+  transform: translateY(-0.25rem);
+}
+
 /* Card Styles */
 .card-modern {
   background-color: white;
