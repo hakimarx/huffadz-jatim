@@ -18,7 +18,8 @@ import {
     FiX,
     FiChevronLeft,
     FiChevronRight,
-    FiLoader
+    FiLoader,
+    FiPrinter
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <FiHome />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Data Hafiz', href: '/dashboard/hafiz', icon: <FiUsers />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Laporan', href: '/dashboard/laporan', icon: <FiFileText />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
+    { label: 'Cetak Laporan', href: '/dashboard/cetak-laporan', icon: <FiPrinter />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Periode', href: '/dashboard/periode-tes', icon: <FiCalendar />, roles: ['admin_provinsi'] },
     { label: 'Statistik', href: '/dashboard/kuota', icon: <FiPieChart />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Penguji', href: '/dashboard/penguji', icon: <FiUserCheck />, roles: ['admin_provinsi'] },
