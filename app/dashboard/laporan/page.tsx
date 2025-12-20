@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
@@ -17,44 +17,13 @@ import {
     FiTrash2,
     FiLoader,
     FiImage,
-    FiX
+    FiX,
+    FiCalendar,
+    FiMapPin,
+    FiBarChart2,
+    FiPieChart,
+    FiRefreshCw
 } from 'react-icons/fi';
-
-// Mock data
-const mockLaporan = [
-    {
-        id: '1',
-        tanggal: '2025-12-10',
-        jam: '08:00',
-        jenis_kegiatan: 'mengajar',
-        deskripsi: 'Mengajar tahfidz Juz 30 untuk anak-anak di TPQ Al-Ikhlas',
-        lokasi: 'TPQ Al-Ikhlas, Surabaya',
-        status_verifikasi: 'disetujui',
-        verified_at: '2025-12-10 14:30',
-        foto: '/placeholder.jpg'
-    },
-    {
-        id: '2',
-        tanggal: '2025-12-09',
-        jam: '14:30',
-        jenis_kegiatan: 'murojah',
-        deskripsi: 'Muroja\'ah Juz 1-5 bersama kelompok tahfidz',
-        lokasi: 'Masjid Al-Akbar Surabaya',
-        status_verifikasi: 'pending',
-        foto: '/placeholder.jpg'
-    },
-    {
-        id: '3',
-        tanggal: '2025-12-08',
-        jam: '19:00',
-        jenis_kegiatan: 'khataman',
-        deskripsi: 'Khataman Al-Quran 30 Juz dalam acara pengajian rutin',
-        lokasi: 'Pondok Pesantren Darul Ulum',
-        status_verifikasi: 'ditolak',
-        verified_at: '2025-12-09 10:00',
-        catatan_verifikasi: 'Foto kurang jelas, mohon upload ulang'
-    }
-];
 
 interface UserData {
     id: string;
@@ -65,123 +34,526 @@ interface UserData {
     foto_profil?: string;
 }
 
+interface LaporanData {
+    id: string;
+    hafiz_id: string;
+    tanggal: string;
+    jam?: string;
+    jenis_kegiatan: string;
+    deskripsi: string;
+    lokasi?: string;
+    foto_url?: string;
+    status_verifikasi: 'pending' | 'disetujui' | 'ditolak';
+    verified_at?: string;
+    catatan_verifikasi?: string;
+    hafiz?: {
+        nama: string;
+        nik: string;
+        kabupaten_kota: string;
+    };
+}
+
+interface KabKoStats {
+    kabupaten_kota: string;
+    total_hafiz: number;
+    hafiz_sudah_lapor: number;
+    total_laporan: number;
+    laporan_disetujui: number;
+    laporan_pending: number;
+    laporan_ditolak: number;
+    persentase_lapor: number;
+}
+
 function LaporanHarianContent() {
     const [user, setUser] = useState<UserData | null>(null);
     const [hafizId, setHafizId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState('semua');
+    const [laporanList, setLaporanList] = useState<LaporanData[]>([]);
+    const [kabKoStats, setKabKoStats] = useState<KabKoStats[]>([]);
+    const [kabKoList, setKabKoList] = useState<string[]>([]);
+    const [selectedKabKo, setSelectedKabKo] = useState<string>('semua');
+    const [selectedTahun, setSelectedTahun] = useState<number>(new Date().getFullYear());
+    const [exporting, setExporting] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [viewMode, setViewMode] = useState<'list' | 'stats'>('stats');
     const supabase = createClient();
 
-    useEffect(() => {
-        async function fetchUserData() {
-            try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Available years for filter
+    const availableYears = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        for (let i = currentYear; i >= 2015; i--) {
+            years.push(i);
+        }
+        return years;
+    }, []);
 
-                if (sessionError || !session) {
-                    console.error('No session found:', sessionError);
-                    window.location.href = '/login';
-                    return;
+    useEffect(() => {
+        fetchUserData();
+    }, []);
+
+    useEffect(() => {
+        if (user) {
+            fetchLaporanData();
+        }
+    }, [user, selectedKabKo, selectedTahun, filter]);
+
+    async function fetchUserData() {
+        try {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !session) {
+                console.error('No session found:', sessionError);
+                window.location.href = '/login';
+                return;
+            }
+
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, nama, role, kabupaten_kota, foto_profil')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+            if (userError) {
+                console.error('Error fetching user data:', userError);
+                setUser({
+                    id: session.user.id,
+                    role: 'hafiz',
+                    nama: session.user.email?.split('@')[0] || 'User',
+                    email: session.user.email || '',
+                    kabupaten_kota: undefined
+                });
+            } else if (userData) {
+                setUser(userData as UserData);
+
+                // Fetch list of kabupaten/kota
+                if (userData.role === 'admin_provinsi') {
+                    const { data: kabKoData } = await supabase
+                        .from('kabupaten_kota')
+                        .select('nama')
+                        .order('nama');
+                    if (kabKoData) {
+                        setKabKoList(kabKoData.map(k => k.nama));
+                    }
                 }
 
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
+                // If user is hafiz, fetch their hafiz record ID
+                if (userData.role === 'hafiz') {
+                    let foundHafizId: string | null = null;
 
-                if (userError) {
-                    console.error('Error fetching user data:', userError);
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                        kabupaten_kota: undefined
-                    });
-                } else if (userData) {
-                    setUser(userData as UserData);
+                    // Method 1: Search by user_id
+                    const { data: hafizByUserId } = await supabase
+                        .from('hafiz')
+                        .select('id')
+                        .eq('user_id', session.user.id)
+                        .maybeSingle();
 
-                    // If user is hafiz, fetch their hafiz record ID
-                    // Try multiple methods to find the hafiz record
-                    if (userData.role === 'hafiz') {
-                        let foundHafizId: string | null = null;
+                    if (hafizByUserId) {
+                        foundHafizId = hafizByUserId.id;
+                    }
 
-                        // Method 1: Search by user_id
-                        const { data: hafizByUserId } = await supabase
+                    // Method 2: Search by email
+                    if (!foundHafizId && session.user.email) {
+                        const { data: hafizByEmail } = await supabase
                             .from('hafiz')
                             .select('id')
-                            .eq('user_id', session.user.id)
+                            .eq('email', session.user.email)
                             .maybeSingle();
 
-                        if (hafizByUserId) {
-                            foundHafizId = hafizByUserId.id;
+                        if (hafizByEmail) {
+                            foundHafizId = hafizByEmail.id;
+                            await supabase
+                                .from('hafiz')
+                                .update({ user_id: session.user.id })
+                                .eq('id', hafizByEmail.id);
                         }
+                    }
 
-                        // Method 2: Search by email
-                        if (!foundHafizId && session.user.email) {
-                            const { data: hafizByEmail } = await supabase
+                    // Method 3: Search by NIK
+                    if (!foundHafizId && session.user.email) {
+                        const emailParts = session.user.email.split('@');
+                        const potentialNik = emailParts[0];
+
+                        if (/^\d{16}$/.test(potentialNik) || emailParts[1] === 'hafiz.jatim.go.id') {
+                            const { data: hafizByNik } = await supabase
                                 .from('hafiz')
                                 .select('id')
-                                .eq('email', session.user.email)
+                                .eq('nik', potentialNik)
                                 .maybeSingle();
 
-                            if (hafizByEmail) {
-                                foundHafizId = hafizByEmail.id;
-                                // Update the hafiz record to link user_id
+                            if (hafizByNik) {
+                                foundHafizId = hafizByNik.id;
                                 await supabase
                                     .from('hafiz')
                                     .update({ user_id: session.user.id })
-                                    .eq('id', hafizByEmail.id);
+                                    .eq('id', hafizByNik.id);
                             }
-                        }
-
-                        // Method 3: Search by NIK (extract from email if format is nik@hafiz.jatim.go.id)
-                        if (!foundHafizId && session.user.email) {
-                            const emailParts = session.user.email.split('@');
-                            const potentialNik = emailParts[0];
-
-                            // Check if it looks like an NIK (16 digits) or username-based NIK
-                            if (/^\d{16}$/.test(potentialNik) || emailParts[1] === 'hafiz.jatim.go.id') {
-                                const { data: hafizByNik } = await supabase
-                                    .from('hafiz')
-                                    .select('id')
-                                    .eq('nik', potentialNik)
-                                    .maybeSingle();
-
-                                if (hafizByNik) {
-                                    foundHafizId = hafizByNik.id;
-                                    // Update the hafiz record to link user_id
-                                    await supabase
-                                        .from('hafiz')
-                                        .update({ user_id: session.user.id })
-                                        .eq('id', hafizByNik.id);
-                                }
-                            }
-                        }
-
-                        if (foundHafizId) {
-                            setHafizId(foundHafizId);
                         }
                     }
-                } else {
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                        kabupaten_kota: undefined
-                    });
-                }
-            } catch (err) {
-                console.error('Unexpected error fetching user:', err);
-            } finally {
-                setLoading(false);
-            }
-        }
 
-        fetchUserData();
-    }, []);
+                    if (foundHafizId) {
+                        setHafizId(foundHafizId);
+                    }
+                }
+            } else {
+                setUser({
+                    id: session.user.id,
+                    role: 'hafiz',
+                    nama: session.user.email?.split('@')[0] || 'User',
+                    email: session.user.email || '',
+                    kabupaten_kota: undefined
+                });
+            }
+        } catch (err) {
+            console.error('Unexpected error fetching user:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function fetchLaporanData() {
+        if (!user) return;
+        setRefreshing(true);
+
+        try {
+            // Build query for laporan_harian with hafiz join
+            let query = supabase
+                .from('laporan_harian')
+                .select(`
+                    id,
+                    hafiz_id,
+                    tanggal,
+                    jam,
+                    jenis_kegiatan,
+                    deskripsi,
+                    lokasi,
+                    foto_url,
+                    status_verifikasi,
+                    verified_at,
+                    catatan_verifikasi,
+                    hafiz:hafiz_id (
+                        nama,
+                        nik,
+                        kabupaten_kota
+                    )
+                `)
+                .order('tanggal', { ascending: false });
+
+            // Filter by year
+            const startDate = `${selectedTahun}-01-01`;
+            const endDate = `${selectedTahun}-12-31`;
+            query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+
+            // Filter by status
+            if (filter !== 'semua') {
+                query = query.eq('status_verifikasi', filter);
+            }
+
+            const { data: laporanData, error: laporanError } = await query;
+
+            if (laporanError) {
+                console.error('Error fetching laporan:', laporanError);
+            } else if (laporanData) {
+                // Map and transform data properly
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const transformedData: LaporanData[] = laporanData.map((item: any) => ({
+                    id: item.id,
+                    hafiz_id: item.hafiz_id,
+                    tanggal: item.tanggal,
+                    jam: item.jam,
+                    jenis_kegiatan: item.jenis_kegiatan,
+                    deskripsi: item.deskripsi,
+                    lokasi: item.lokasi,
+                    foto_url: item.foto_url,
+                    status_verifikasi: item.status_verifikasi,
+                    verified_at: item.verified_at,
+                    catatan_verifikasi: item.catatan_verifikasi,
+                    hafiz: item.hafiz ? {
+                        nama: item.hafiz.nama,
+                        nik: item.hafiz.nik,
+                        kabupaten_kota: item.hafiz.kabupaten_kota
+                    } : undefined
+                }));
+
+                // Filter by kabupaten_kota if selected (for admin provinsi)
+                let filteredData = transformedData;
+
+                if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
+                    filteredData = filteredData.filter(l =>
+                        l.hafiz?.kabupaten_kota === selectedKabKo
+                    );
+                } else if (user.role === 'admin_kabko') {
+                    filteredData = filteredData.filter(l =>
+                        l.hafiz?.kabupaten_kota === user.kabupaten_kota
+                    );
+                } else if (user.role === 'hafiz' && hafizId) {
+                    filteredData = filteredData.filter(l => l.hafiz_id === hafizId);
+                }
+
+                setLaporanList(filteredData);
+            }
+
+            // Fetch stats for admin provinsi
+            if (user.role === 'admin_provinsi') {
+                await fetchKabKoStats();
+            }
+
+        } catch (err) {
+            console.error('Error:', err);
+        } finally {
+            setRefreshing(false);
+        }
+    }
+
+    async function fetchKabKoStats() {
+        try {
+            // Get all hafiz grouped by kabupaten_kota
+            const { data: hafizData } = await supabase
+                .from('hafiz')
+                .select('id, kabupaten_kota');
+
+            // Get all laporan for selected year
+            const startDate = `${selectedTahun}-01-01`;
+            const endDate = `${selectedTahun}-12-31`;
+
+            const { data: laporanData } = await supabase
+                .from('laporan_harian')
+                .select('hafiz_id, status_verifikasi, hafiz:hafiz_id(kabupaten_kota)')
+                .gte('tanggal', startDate)
+                .lte('tanggal', endDate);
+
+            if (hafizData && laporanData) {
+                // Group stats by kabupaten_kota
+                const statsMap: Record<string, KabKoStats> = {};
+
+                // Initialize with all kabupaten_kota
+                kabKoList.forEach(kab => {
+                    statsMap[kab] = {
+                        kabupaten_kota: kab,
+                        total_hafiz: 0,
+                        hafiz_sudah_lapor: 0,
+                        total_laporan: 0,
+                        laporan_disetujui: 0,
+                        laporan_pending: 0,
+                        laporan_ditolak: 0,
+                        persentase_lapor: 0
+                    };
+                });
+
+                // Count total hafiz per kabupaten
+                hafizData.forEach(h => {
+                    if (h.kabupaten_kota && statsMap[h.kabupaten_kota]) {
+                        statsMap[h.kabupaten_kota].total_hafiz++;
+                    }
+                });
+
+                // Count laporan stats
+                const hafizYangLapor = new Set<string>();
+                laporanData.forEach((l: any) => {
+                    const kabKo = l.hafiz?.kabupaten_kota;
+                    if (kabKo && statsMap[kabKo]) {
+                        statsMap[kabKo].total_laporan++;
+                        hafizYangLapor.add(`${l.hafiz_id}-${kabKo}`);
+
+                        if (l.status_verifikasi === 'disetujui') {
+                            statsMap[kabKo].laporan_disetujui++;
+                        } else if (l.status_verifikasi === 'pending') {
+                            statsMap[kabKo].laporan_pending++;
+                        } else if (l.status_verifikasi === 'ditolak') {
+                            statsMap[kabKo].laporan_ditolak++;
+                        }
+                    }
+                });
+
+                // Count unique hafiz yang sudah lapor per kabupaten
+                hafizYangLapor.forEach(key => {
+                    const kabKo = key.split('-').slice(1).join('-');
+                    if (statsMap[kabKo]) {
+                        statsMap[kabKo].hafiz_sudah_lapor++;
+                    }
+                });
+
+                // Calculate percentage
+                Object.values(statsMap).forEach(stat => {
+                    if (stat.total_hafiz > 0) {
+                        stat.persentase_lapor = Math.round((stat.hafiz_sudah_lapor / stat.total_hafiz) * 100);
+                    }
+                });
+
+                // Sort by kabupaten_kota name
+                const statsArray = Object.values(statsMap).sort((a, b) =>
+                    a.kabupaten_kota.localeCompare(b.kabupaten_kota)
+                );
+
+                setKabKoStats(statsArray);
+            }
+        } catch (err) {
+            console.error('Error fetching kabko stats:', err);
+        }
+    }
+
+    async function handleExportExcel() {
+        setExporting(true);
+        try {
+            // Prepare data for export
+            const exportData = laporanList.map(l => ({
+                'Tanggal': l.tanggal,
+                'Jam': l.jam || '-',
+                'Nama Hafiz': l.hafiz?.nama || '-',
+                'NIK': l.hafiz?.nik || '-',
+                'Kab/Kota': l.hafiz?.kabupaten_kota || '-',
+                'Jenis Kegiatan': l.jenis_kegiatan,
+                'Deskripsi': l.deskripsi,
+                'Lokasi': l.lokasi || '-',
+                'Status': l.status_verifikasi,
+                'Diverifikasi': l.verified_at ? new Date(l.verified_at).toLocaleString('id-ID') : '-',
+                'Catatan': l.catatan_verifikasi || '-'
+            }));
+
+            // Generate CSV content
+            if (exportData.length === 0) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+
+            const headers = Object.keys(exportData[0]);
+            const csvContent = [
+                headers.join(','),
+                ...exportData.map(row =>
+                    headers.map(h => {
+                        const value = row[h as keyof typeof row] || '';
+                        // Escape commas and quotes
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    }).join(',')
+                )
+            ].join('\n');
+
+            // Add BOM for Excel UTF-8 compatibility
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            const fileName = `Laporan_Harian_${selectedTahun}${selectedKabKo !== 'semua' ? '_' + selectedKabKo.replace(/\s/g, '_') : ''}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('✅ Export berhasil! File CSV dapat dibuka di Excel.');
+
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('Gagal mengekspor data');
+        } finally {
+            setExporting(false);
+        }
+    }
+
+    async function handleExportStatsExcel() {
+        setExporting(true);
+        try {
+            const exportData = kabKoStats.map(s => ({
+                'Kabupaten/Kota': s.kabupaten_kota,
+                'Total Hafiz': s.total_hafiz,
+                'Hafiz Sudah Lapor': s.hafiz_sudah_lapor,
+                'Persentase Lapor (%)': s.persentase_lapor,
+                'Total Laporan': s.total_laporan,
+                'Disetujui': s.laporan_disetujui,
+                'Pending': s.laporan_pending,
+                'Ditolak': s.laporan_ditolak
+            }));
+
+            if (exportData.length === 0) {
+                alert('Tidak ada data statistik untuk diekspor');
+                return;
+            }
+
+            const headers = Object.keys(exportData[0]);
+            const csvContent = [
+                headers.join(','),
+                ...exportData.map(row =>
+                    headers.map(h => row[h as keyof typeof row] || '').join(',')
+                )
+            ].join('\n');
+
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Statistik_Laporan_Per_KabKo_${selectedTahun}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('✅ Export statistik berhasil!');
+
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('Gagal mengekspor statistik');
+        } finally {
+            setExporting(false);
+        }
+    }
+
+    async function handleApprove(laporanId: string) {
+        if (!confirm('Yakin ingin menyetujui laporan ini?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('laporan_harian')
+                .update({
+                    status_verifikasi: 'disetujui',
+                    verified_by: user?.id,
+                    verified_at: new Date().toISOString()
+                })
+                .eq('id', laporanId);
+
+            if (error) throw error;
+
+            alert('✅ Laporan berhasil disetujui');
+            fetchLaporanData();
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Gagal menyetujui laporan');
+        }
+    }
+
+    async function handleReject(laporanId: string) {
+        const catatan = prompt('Masukkan catatan penolakan:');
+        if (catatan === null) return;
+
+        try {
+            const { error } = await supabase
+                .from('laporan_harian')
+                .update({
+                    status_verifikasi: 'ditolak',
+                    verified_by: user?.id,
+                    verified_at: new Date().toISOString(),
+                    catatan_verifikasi: catatan
+                })
+                .eq('id', laporanId);
+
+            if (error) throw error;
+
+            alert('Laporan berhasil ditolak');
+            fetchLaporanData();
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Gagal menolak laporan');
+        }
+    }
 
     if (loading) {
         return <PageLoader />;
@@ -201,6 +573,14 @@ function LaporanHarianContent() {
     }
 
     const isHafiz = user.role === 'hafiz';
+    const isAdminProvinsi = user.role === 'admin_provinsi';
+    const isAdminKabko = user.role === 'admin_kabko';
+
+    // Calculate summary stats
+    const totalLaporan = laporanList.length;
+    const totalDisetujui = laporanList.filter(l => l.status_verifikasi === 'disetujui').length;
+    const totalPending = laporanList.filter(l => l.status_verifikasi === 'pending').length;
+    const totalDitolak = laporanList.filter(l => l.status_verifikasi === 'ditolak').length;
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
@@ -221,7 +601,7 @@ function LaporanHarianContent() {
                             {isHafiz ? 'Kelola laporan kegiatan harian Anda' : 'Verifikasi laporan kegiatan Huffadz'}
                         </p>
                     </div>
-                    <div className="flex gap-3 mt-4 lg:mt-0">
+                    <div className="flex gap-3 mt-4 lg:mt-0 flex-wrap">
                         {isHafiz && (
                             <button
                                 onClick={() => setShowModal(true)}
@@ -231,76 +611,302 @@ function LaporanHarianContent() {
                                 Tambah Laporan
                             </button>
                         )}
-                        <button className="btn btn-secondary">
-                            <FiDownload />
-                            Export
+                        <button
+                            onClick={handleExportExcel}
+                            className="btn btn-secondary"
+                            disabled={exporting || laporanList.length === 0}
+                        >
+                            {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
+                            Export Excel
+                        </button>
+                        <button
+                            onClick={() => fetchLaporanData()}
+                            className="btn btn-secondary"
+                            disabled={refreshing}
+                        >
+                            <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div className="card mb-6">
-                    <div className="flex flex-wrap gap-4 items-center">
-                        <div className="flex items-center gap-2">
-                            <FiFilter className="text-neutral-500" />
-                            <span className="font-semibold text-neutral-700">Filter:</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setFilter('semua')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'semua'
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                    }`}
-                            >
-                                Semua
-                            </button>
-                            <button
-                                onClick={() => setFilter('pending')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'pending'
-                                    ? 'bg-accent-600 text-white'
-                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                    }`}
-                            >
-                                Pending
-                            </button>
-                            <button
-                                onClick={() => setFilter('disetujui')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'disetujui'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                    }`}
-                            >
-                                Disetujui
-                            </button>
-                            <button
-                                onClick={() => setFilter('ditolak')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'ditolak'
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                    }`}
-                            >
-                                Ditolak
-                            </button>
+                {/* Filters for Admin Provinsi */}
+                {isAdminProvinsi && (
+                    <div className="card mb-6">
+                        <div className="flex flex-wrap gap-4 items-end">
+                            {/* Year Filter */}
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiCalendar className="inline mr-1" /> Tahun
+                                </label>
+                                <select
+                                    value={selectedTahun}
+                                    onChange={(e) => setSelectedTahun(parseInt(e.target.value))}
+                                    className="form-select"
+                                >
+                                    {availableYears.map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Kab/Ko Filter */}
+                            <div className="flex-1 min-w-[250px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiMapPin className="inline mr-1" /> Kabupaten/Kota
+                                </label>
+                                <select
+                                    value={selectedKabKo}
+                                    onChange={(e) => setSelectedKabKo(e.target.value)}
+                                    className="form-select"
+                                >
+                                    <option value="semua">Semua Kabupaten/Kota</option>
+                                    {kabKoList.map(kab => (
+                                        <option key={kab} value={kab}>{kab}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setViewMode('stats')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'stats'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    <FiPieChart /> Statistik
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    <FiBarChart2 /> Daftar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
+
+                {/* Stats Overview for Admin Provinsi */}
+                {isAdminProvinsi && viewMode === 'stats' && (
+                    <>
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                                <div className="text-3xl font-bold">{totalLaporan}</div>
+                                <div className="text-sm opacity-90">Total Laporan</div>
+                            </div>
+                            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
+                                <div className="text-3xl font-bold">{totalDisetujui}</div>
+                                <div className="text-sm opacity-90">Disetujui</div>
+                            </div>
+                            <div className="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+                                <div className="text-3xl font-bold">{totalPending}</div>
+                                <div className="text-sm opacity-90">Pending</div>
+                            </div>
+                            <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white">
+                                <div className="text-3xl font-bold">{totalDitolak}</div>
+                                <div className="text-sm opacity-90">Ditolak</div>
+                            </div>
+                        </div>
+
+                        {/* Statistik per Kab/Ko */}
+                        <div className="card mb-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-neutral-800">
+                                    <FiPieChart className="inline mr-2" />
+                                    Statistik Laporan Harian per Kab/Kota - Tahun {selectedTahun}
+                                </h2>
+                                <button
+                                    onClick={handleExportStatsExcel}
+                                    className="btn btn-secondary text-sm"
+                                    disabled={exporting || kabKoStats.length === 0}
+                                >
+                                    {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
+                                    Export Statistik
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-neutral-100">
+                                            <th className="text-left p-3 rounded-tl-lg">Kabupaten/Kota</th>
+                                            <th className="text-center p-3">Total Hafiz</th>
+                                            <th className="text-center p-3">Sudah Lapor</th>
+                                            <th className="text-center p-3">% Lapor</th>
+                                            <th className="text-center p-3">Total Laporan</th>
+                                            <th className="text-center p-3">Disetujui</th>
+                                            <th className="text-center p-3">Pending</th>
+                                            <th className="text-center p-3 rounded-tr-lg">Ditolak</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {kabKoStats.map((stat, idx) => (
+                                            <tr
+                                                key={stat.kabupaten_kota}
+                                                className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-25'
+                                                    }`}
+                                            >
+                                                <td className="p-3 font-medium">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedKabKo(stat.kabupaten_kota);
+                                                            setViewMode('list');
+                                                        }}
+                                                        className="text-primary-600 hover:text-primary-800 hover:underline text-left"
+                                                    >
+                                                        {stat.kabupaten_kota}
+                                                    </button>
+                                                </td>
+                                                <td className="text-center p-3">{stat.total_hafiz}</td>
+                                                <td className="text-center p-3">{stat.hafiz_sudah_lapor}</td>
+                                                <td className="text-center p-3">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-24 bg-neutral-200 rounded-full h-2.5">
+                                                            <div
+                                                                className={`h-2.5 rounded-full transition-all ${stat.persentase_lapor >= 75 ? 'bg-green-500' :
+                                                                    stat.persentase_lapor >= 50 ? 'bg-yellow-500' :
+                                                                        stat.persentase_lapor >= 25 ? 'bg-orange-500' :
+                                                                            'bg-red-500'
+                                                                    }`}
+                                                                style={{ width: `${stat.persentase_lapor}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="font-semibold min-w-[3rem]">{stat.persentase_lapor}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="text-center p-3 font-semibold">{stat.total_laporan}</td>
+                                                <td className="text-center p-3 text-green-600">{stat.laporan_disetujui}</td>
+                                                <td className="text-center p-3 text-yellow-600">{stat.laporan_pending}</td>
+                                                <td className="text-center p-3 text-red-600">{stat.laporan_ditolak}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr className="bg-neutral-100 font-bold">
+                                            <td className="p-3">TOTAL</td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)}
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0)}
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0) > 0
+                                                    ? Math.round((kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0) /
+                                                        kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)) * 100)
+                                                    : 0}%
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_laporan, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-green-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_disetujui, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-yellow-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_pending, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-red-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_ditolak, 0)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Status Filters */}
+                {(viewMode === 'list' || !isAdminProvinsi) && (
+                    <div className="card mb-6">
+                        <div className="flex flex-wrap gap-4 items-center">
+                            <div className="flex items-center gap-2">
+                                <FiFilter className="text-neutral-500" />
+                                <span className="font-semibold text-neutral-700">Filter Status:</span>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                <button
+                                    onClick={() => setFilter('semua')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'semua'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Semua ({totalLaporan})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('pending')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'pending'
+                                        ? 'bg-accent-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Pending ({totalPending})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('disetujui')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'disetujui'
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Disetujui ({totalDisetujui})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('ditolak')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'ditolak'
+                                        ? 'bg-red-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Ditolak ({totalDitolak})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Laporan List */}
-                <div className="grid gap-6">
-                    {mockLaporan.map((laporan) => (
-                        <LaporanCard
-                            key={laporan.id}
-                            laporan={laporan}
-                            isHafiz={isHafiz}
-                            userRole={user.role}
-                        />
-                    ))}
-                </div>
+                {(viewMode === 'list' || !isAdminProvinsi) && (
+                    <div className="grid gap-6">
+                        {refreshing ? (
+                            <div className="card text-center py-12">
+                                <FiLoader className="animate-spin text-4xl text-primary-600 mx-auto mb-4" />
+                                <p className="text-neutral-600">Memuat data...</p>
+                            </div>
+                        ) : laporanList.length === 0 ? (
+                            <div className="card text-center py-12">
+                                <FiBarChart2 className="text-4xl text-neutral-400 mx-auto mb-4" />
+                                <p className="text-neutral-600">Belum ada data laporan{selectedKabKo !== 'semua' ? ` untuk ${selectedKabKo}` : ''} di tahun {selectedTahun}</p>
+                            </div>
+                        ) : (
+                            laporanList.map((laporan) => (
+                                <LaporanCard
+                                    key={laporan.id}
+                                    laporan={laporan}
+                                    isHafiz={isHafiz}
+                                    userRole={user.role}
+                                    onApprove={handleApprove}
+                                    onReject={handleReject}
+                                />
+                            ))
+                        )}
+                    </div>
+                )}
 
                 {/* Add Laporan Modal */}
                 {showModal && (
-                    <AddLaporanModal onClose={() => setShowModal(false)} hafizId={hafizId || undefined} />
+                    <AddLaporanModal
+                        onClose={() => setShowModal(false)}
+                        hafizId={hafizId || undefined}
+                        onSuccess={() => fetchLaporanData()}
+                    />
                 )}
             </main>
         </div>
@@ -308,7 +914,7 @@ function LaporanHarianContent() {
 }
 
 interface LaporanCardProps {
-    laporan: any;
+    laporan: LaporanData;
     isHafiz: boolean;
     userRole: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
     onApprove?: (id: string) => void;
@@ -348,16 +954,24 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Image */}
                 <div className="lg:w-48 h-48 bg-neutral-200 rounded-lg overflow-hidden flex-shrink-0">
-                    <div className="w-full h-full flex items-center justify-center text-neutral-400">
-                        📷 Foto Kegiatan
-                    </div>
+                    {laporan.foto_url ? (
+                        <img
+                            src={laporan.foto_url}
+                            alt="Foto Kegiatan"
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                            📷 Foto Kegiatan
+                        </div>
+                    )}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
                         <div>
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                                 <span className="badge badge-info">
                                     {jenisKegiatanLabel[laporan.jenis_kegiatan as keyof typeof jenisKegiatanLabel]}
                                 </span>
@@ -366,6 +980,14 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
                                     {status.text}
                                 </span>
                             </div>
+                            {/* Show Hafiz name for admin */}
+                            {(userRole === 'admin_provinsi' || userRole === 'admin_kabko') && laporan.hafiz && (
+                                <div className="text-sm text-neutral-600 mb-1">
+                                    <span className="font-semibold">👤 {laporan.hafiz.nama}</span>
+                                    <span className="mx-2">|</span>
+                                    <span>{laporan.hafiz.kabupaten_kota}</span>
+                                </div>
+                            )}
                             <h3 className="text-xl font-bold text-neutral-800 mb-1">
                                 {laporan.deskripsi}
                             </h3>
@@ -383,7 +1005,7 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
 
                     <div className="space-y-2 mb-4">
                         <p className="text-neutral-700">
-                            <span className="font-semibold">📍 Lokasi:</span> {laporan.lokasi}
+                            <span className="font-semibold">📍 Lokasi:</span> {laporan.lokasi || '-'}
                         </p>
                     </div>
 
@@ -394,7 +1016,7 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <button className="btn btn-secondary text-sm">
                             <FiEye />
                             Detail
@@ -443,7 +1065,7 @@ function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: Lapora
     );
 }
 
-function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: string }) {
+function AddLaporanModal({ onClose, hafizId, onSuccess }: { onClose: () => void, hafizId?: string, onSuccess?: () => void }) {
     const [formData, setFormData] = useState({
         tanggal: new Date().toISOString().split('T')[0],
         jam: '',
@@ -518,6 +1140,7 @@ function AddLaporanModal({ onClose, hafizId }: { onClose: () => void, hafizId?: 
             }
 
             alert('✅ Laporan berhasil disimpan!');
+            onSuccess?.();
             onClose();
         } catch (err: any) {
             console.error('Error:', err);
