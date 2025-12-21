@@ -133,7 +133,7 @@ function ProfilContent() {
             const maxSizeKB = 500;
             if (file.size > maxSizeKB * 1024) {
                 try {
-                    processedFile = await compressImage(file, maxSizeKB);
+                    processedFile = await compressImage(file, { maxSizeKB });
                     console.log(`Foto dikompres dari ${formatFileSize(file.size)} ke ${formatFileSize(processedFile.size)}`);
                 } catch (compErr) {
                     console.error('Compression error:', compErr);

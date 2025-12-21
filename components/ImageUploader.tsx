@@ -62,7 +62,7 @@ export default function ImageUploader({
         // Compress the image
         setCompressing(true);
         try {
-            const compressedFile = await compressImage(selectedFile, maxSizeKB);
+            const compressedFile = await compressImage(selectedFile, { maxSizeKB });
             setFile(compressedFile);
             setPreviewUrl(URL.createObjectURL(compressedFile));
             setCompressionInfo({

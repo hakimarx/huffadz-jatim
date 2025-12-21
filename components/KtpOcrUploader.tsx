@@ -51,7 +51,7 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
             if (selectedFile.size > maxSizeBytes) {
                 setCompressing(true);
                 try {
-                    processedFile = await compressImage(selectedFile, maxSizeKB);
+                    processedFile = await compressImage(selectedFile, { maxSizeKB });
                     setCompressionInfo({
                         original: selectedFile.size,
                         compressed: processedFile.size

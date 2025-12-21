@@ -1277,7 +1277,7 @@ function AddLaporanModal({ onClose, hafizId, onSuccess }: { onClose: () => void,
                                         // Compress the image
                                         setCompressing(true);
                                         try {
-                                            const compressedFile = await compressImage(file, maxSizeKB);
+                                            const compressedFile = await compressImage(file, { maxSizeKB });
                                             setPhotoFile(compressedFile);
                                             setPhotoPreview(URL.createObjectURL(compressedFile));
                                             setCompressionInfo({
