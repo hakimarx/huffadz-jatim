@@ -49,3 +49,29 @@ next-env.d.ts
 # OS
 Thumbs.db
 .DS_Store
+
+# Sensitive files - DO NOT COMMIT
+ADMIN_ACCOUNTS.md
+**/ADMIN_ACCOUNTS.md
+
+# Raw data folders with personal information
+Seleksi Huffadz*/
+**/raw_data.txt
+**/raw_data*.txt
+
+# SQL files that may contain credentials or sensitive data
+database/insert_admin_users.sql
+database/create_demo_users.sql
+database/setup_demo_users.sql
+database/confirm_users.sql
+database/fix_and_seed_users.sql
+
+# Backup and temporary files
+*.backup
+*.bak
+*.tmp
+*.log
+
+# Database dumps
+*.dump
+*.sql.gz

@@ -1,9 +1,48 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sczdpueymqspwnhbuomf.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjemRwdWV5bXFzcHduaGJ1b21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNTQ3MzIsImV4cCI6MjA4MDkzMDczMn0.PAYAg5sHJ873Qfy1bmIYWjQD36Ryb3VIHUYg-QdmPCY';
+// Environment variable validation
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable. Please check your .env.local file.');
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable. Please check your .env.local file.');
+}
+
+// Singleton pattern for client reuse
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+      global: {
+        headers: {
+          'x-application-name': 'huffadz-jatim',
+        },
+      },
+      // Connection pool settings for better performance
+      db: {
+        schema: 'public',
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    });
+  }
+  return supabaseInstance;
+}
+
+export const supabase = getSupabaseClient();
 
 // Database Types
 export type UserRole = 'admin_provinsi' | 'admin_kabko' | 'hafiz';

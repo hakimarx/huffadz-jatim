@@ -1,20 +1,34 @@
 'use client';
 
+export type ImageFormat = 'jpeg' | 'webp' | 'png';
+
+interface CompressionOptions {
+    maxSizeKB?: number;
+    maxWidth?: number;
+    format?: ImageFormat;
+    quality?: number;
+}
+
 /**
- * Compress an image file to meet the maximum size requirement
+ * Compress an image file with format options
  * @param file - The image file to compress
- * @param maxSizeKB - Maximum file size in KB (default: 500KB)
- * @param maxWidth - Maximum width in pixels (default: 1920)
+ * @param options - Compression options
  * @returns Promise<File> - The compressed image file
  */
 export async function compressImage(
     file: File,
-    maxSizeKB: number = 500,
-    maxWidth: number = 1920
+    options: CompressionOptions = {}
 ): Promise<File> {
+    const {
+        maxSizeKB = 500,
+        maxWidth = 1920,
+        format = 'webp', // Default to WebP for better compression
+        quality: initialQuality = 0.85,
+    } = options;
+
     return new Promise((resolve, reject) => {
-        // If file is already under the max size, return it as is
-        if (file.size <= maxSizeKB * 1024) {
+        // If file is already under the max size and same format, return it as is
+        if (file.size <= maxSizeKB * 1024 && file.type === `image/${format}`) {
             resolve(file);
             return;
         }
@@ -46,11 +60,13 @@ export async function compressImage(
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Start with quality of 0.9 and reduce until size is under limit
-            let quality = 0.9;
+            // Start with initial quality and reduce until size is under limit
+            let quality = initialQuality;
             const maxSizeBytes = maxSizeKB * 1024;
             const minQuality = 0.1;
             const step = 0.1;
+            const mimeType = `image/${format}`;
+            const extension = format === 'jpeg' ? 'jpg' : format;
 
             const attemptCompression = () => {
                 canvas.toBlob(
@@ -64,8 +80,8 @@ export async function compressImage(
                         if (blob.size <= maxSizeBytes || quality <= minQuality) {
                             const compressedFile = new File(
                                 [blob],
-                                file.name.replace(/\.[^/.]+$/, '.jpg'),
-                                { type: 'image/jpeg', lastModified: Date.now() }
+                                file.name.replace(/\.[^/.]+$/, `.${extension}`),
+                                { type: mimeType, lastModified: Date.now() }
                             );
                             resolve(compressedFile);
                         } else {
@@ -74,7 +90,7 @@ export async function compressImage(
                             attemptCompression();
                         }
                     },
-                    'image/jpeg',
+                    mimeType,
                     quality
                 );
             };
@@ -88,6 +104,44 @@ export async function compressImage(
 
         img.src = URL.createObjectURL(file);
     });
+}
+
+/**
+ * Batch compress multiple images
+ * @param files - Array of files to compress
+ * @param options - Compression options
+ * @param onProgress - Progress callback (0-100)
+ * @returns Promise<File[]> - Array of compressed files
+ */
+export async function batchCompressImages(
+    files: File[],
+    options: CompressionOptions = {},
+    onProgress?: (progress: number) => void
+): Promise<File[]> {
+    const results: File[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const compressed = await compressImage(files[i], options);
+        results.push(compressed);
+        onProgress?.(((i + 1) / files.length) * 100);
+    }
+
+    return results;
+}
+
+/**
+ * Check if browser supports WebP
+ */
+export function supportsWebP(): boolean {
+    const canvas = document.createElement('canvas');
+    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+}
+
+/**
+ * Get optimal format based on browser support
+ */
+export function getOptimalFormat(): ImageFormat {
+    return supportsWebP() ? 'webp' : 'jpeg';
 }
 
 /**
@@ -111,3 +165,26 @@ export function formatFileSize(bytes: number): string {
 export function isImageFile(file: File): boolean {
     return file.type.startsWith('image/');
 }
+
+/**
+ * Get compression statistics
+ */
+export function getCompressionStats(original: File, compressed: File): {
+    originalSize: string;
+    compressedSize: string;
+    savings: string;
+    percentage: number;
+} {
+    const originalSize = original.size;
+    const compressedSize = compressed.size;
+    const savings = originalSize - compressedSize;
+    const percentage = Math.round((savings / originalSize) * 100);
+
+    return {
+        originalSize: formatFileSize(originalSize),
+        compressedSize: formatFileSize(compressedSize),
+        savings: formatFileSize(savings),
+        percentage,
+    };
+}
+
