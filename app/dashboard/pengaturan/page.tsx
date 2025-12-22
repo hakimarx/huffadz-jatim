@@ -205,6 +205,34 @@ function PengaturanContent() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    // Email validation function
+    const validateEmail = (email: string): boolean => {
+        // RFC 5322 compliant email regex
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+        // Also check minimum length and proper domain format
+        if (!emailRegex.test(email)) return false;
+
+        const parts = email.split('@');
+        if (parts.length !== 2) return false;
+
+        const [localPart, domain] = parts;
+
+        // Local part should be at least 1 character
+        if (localPart.length < 1) return false;
+
+        // Domain should have at least one dot and a valid TLD
+        if (!domain.includes('.')) return false;
+
+        const domainParts = domain.split('.');
+        const tld = domainParts[domainParts.length - 1];
+
+        // TLD should be at least 2 characters
+        if (tld.length < 2) return false;
+
+        return true;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -215,6 +243,11 @@ function PengaturanContent() {
                 // Validate required fields
                 if (!formData.email || !formData.password || !formData.nama) {
                     throw new Error('Email, password, dan nama wajib diisi');
+                }
+
+                // Validate email format
+                if (!validateEmail(formData.email)) {
+                    throw new Error('Format email tidak valid. Pastikan email memiliki format yang benar (contoh: nama@domain.com)');
                 }
 
                 if (user?.role === 'admin_provinsi' && !formData.kabupaten_kota) {
@@ -232,7 +265,22 @@ function PengaturanContent() {
                     }
                 });
 
-                if (authError) throw authError;
+                if (authError) {
+                    // Handle specific Supabase Auth errors with user-friendly messages
+                    if (authError.message.includes('invalid')) {
+                        throw new Error('Email tidak valid. Gunakan alamat email yang benar dan lengkap.');
+                    }
+                    if (authError.message.includes('security purposes') || authError.message.includes('rate limit')) {
+                        // Extract seconds from error message if available
+                        const match = authError.message.match(/(\d+) seconds?/);
+                        const seconds = match ? match[1] : '60';
+                        throw new Error(`Terlalu banyak percobaan. Silakan tunggu ${seconds} detik sebelum mencoba lagi.`);
+                    }
+                    if (authError.message.includes('already registered')) {
+                        throw new Error('Email ini sudah terdaftar. Gunakan email lain.');
+                    }
+                    throw authError;
+                }
 
                 if (authData.user) {
                     // Insert to public.users
@@ -297,7 +345,32 @@ function PengaturanContent() {
             fetchManagedUsers();
         } catch (err: unknown) {
             console.error('Error saving user:', err);
-            const message = err instanceof Error ? err.message : 'Terjadi kesalahan';
+            let message = 'Terjadi kesalahan';
+
+            if (err instanceof Error) {
+                message = err.message;
+            } else if (err && typeof err === 'object') {
+                // Handle Supabase PostgrestError which has code, message, details, hint
+                const pgError = err as { message?: string; code?: string; details?: string; hint?: string };
+                if (pgError.message) {
+                    message = pgError.message;
+                    // Check for RLS violation
+                    if (pgError.code === '42501' || pgError.message.includes('row-level security')) {
+                        message = 'Tidak memiliki izin untuk menambahkan user. Hubungi administrator untuk memperbaiki kebijakan keamanan database.';
+                    }
+                    // Add details if available
+                    if (pgError.details) {
+                        console.error('Error details:', pgError.details);
+                    }
+                    if (pgError.hint) {
+                        console.error('Error hint:', pgError.hint);
+                    }
+                } else {
+                    // Try to stringify the error for debugging
+                    console.error('Unknown error structure:', JSON.stringify(err));
+                }
+            }
+
             setError(message);
         } finally {
             setSaving(false);
@@ -486,8 +559,8 @@ function PengaturanContent() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${managedUser.is_active
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-red-100 text-red-700'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-red-100 text-red-700'
                                                         }`}>
                                                         {managedUser.is_active ? 'Aktif' : 'Nonaktif'}
                                                     </span>

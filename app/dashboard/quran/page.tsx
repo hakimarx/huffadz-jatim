@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FiBook, FiSearch, FiVolume2, FiBookOpen, FiArrowLeft, FiHome } from 'react-icons/fi';
+import { FiBook, FiSearch, FiVolume2, FiBookOpen, FiArrowLeft, FiHome, FiLoader } from 'react-icons/fi';
 import Sidebar from '@/components/Sidebar';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 
 interface Surah {
     number: number;
@@ -22,6 +23,13 @@ interface Ayah {
     audio?: string;
 }
 
+interface UserData {
+    id: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    foto_profil?: string;
+}
+
 export default function QuranPage() {
     const [surahs, setSurahs] = useState<Surah[]>([]);
     const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
@@ -30,6 +38,45 @@ export default function QuranPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
     const [playingAyah, setPlayingAyah] = useState<number | null>(null);
+
+    // User state
+    const [user, setUser] = useState<UserData | null>(null);
+    const [userLoading, setUserLoading] = useState(true);
+    const supabase = createClient();
+
+    // Fetch user data
+    useEffect(() => {
+        async function fetchUserData() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (session) {
+                    const { data: userData } = await supabase
+                        .from('users')
+                        .select('id, nama, role, foto_profil')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+
+                    if (userData) {
+                        setUser(userData as UserData);
+                    } else {
+                        // Fallback for users without profile
+                        setUser({
+                            id: session.user.id,
+                            nama: session.user.email?.split('@')[0] || 'User',
+                            role: 'hafiz'
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching user:', err);
+            } finally {
+                setUserLoading(false);
+            }
+        }
+
+        fetchUserData();
+    }, [supabase]);
 
     // Fetch daftar surah
     useEffect(() => {
@@ -108,10 +155,26 @@ export default function QuranPage() {
             surah.englishNameTranslation.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Show loading while fetching user
+    if (userLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
+                <div className="text-center">
+                    <FiLoader className="animate-spin text-emerald-600 mx-auto mb-4" size={48} />
+                    <p className="text-gray-600">Memuat...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
             {/* Sidebar */}
-            <Sidebar userRole="hafiz" userName="User" />
+            <Sidebar
+                userRole={user?.role || 'hafiz'}
+                userName={user?.nama || 'User'}
+                userPhoto={user?.foto_profil}
+            />
 
             <div className="flex-1 p-6 overflow-auto">
                 {/* Header */}

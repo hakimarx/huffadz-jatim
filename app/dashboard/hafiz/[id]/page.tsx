@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { FiUser, FiArrowLeft, FiEdit, FiTrash2, FiLoader, FiMapPin, FiPhone, FiMail, FiBook, FiCalendar, FiCheckCircle, FiXCircle, FiShuffle } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiEdit, FiTrash2, FiLoader, FiMapPin, FiPhone, FiMail, FiBook, FiCalendar, FiCheckCircle, FiXCircle, FiShuffle, FiPlus } from 'react-icons/fi';
 import Link from 'next/link';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { createClient } from '@/lib/supabase/client';
@@ -303,11 +303,59 @@ function DetailHafizContent() {
 
                 {/* Data Tahfidz */}
                 <div className="card-modern mb-6">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                        <FiBook />
-                        Data Tahfidz & Mengajar
-                    </h3>
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-bold flex items-center gap-2">
+                            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                            <FiBook />
+                            Data Tahfidz & Mengajar
+                        </h3>
+                        {hafizData.mengajar && currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
+                            <button
+                                onClick={() => {
+                                    const newTempat = prompt('Masukkan nama tempat mengajar baru:');
+                                    if (newTempat && newTempat.trim()) {
+                                        const newTmtMulai = prompt('Masukkan tanggal mulai mengajar (format: YYYY-MM-DD):');
+                                        if (newTmtMulai) {
+                                            // Update tempat_mengajar and optionally save to history
+                                            const supabase = createClient();
+                                            const history = hafizData.tempat_mengajar_history || [];
+
+                                            // Save current location to history if exists
+                                            if (hafizData.tempat_mengajar) {
+                                                history.push({
+                                                    tempat: hafizData.tempat_mengajar,
+                                                    tmt_mulai: hafizData.tmt_mengajar || null,
+                                                    tmt_selesai: new Date().toISOString().split('T')[0]
+                                                });
+                                            }
+
+                                            supabase
+                                                .from('hafiz')
+                                                .update({
+                                                    tempat_mengajar: newTempat.trim(),
+                                                    tmt_mengajar: newTmtMulai,
+                                                    tempat_mengajar_history: history
+                                                })
+                                                .eq('id', hafizData.id)
+                                                .then(({ error }) => {
+                                                    if (error) {
+                                                        alert('Gagal menyimpan: ' + error.message);
+                                                    } else {
+                                                        alert('Tempat mengajar baru berhasil ditambahkan!');
+                                                        window.location.reload();
+                                                    }
+                                                });
+                                        }
+                                    }
+                                }}
+                                className="btn btn-primary btn-sm"
+                                title="Tambah tempat mengajar baru"
+                            >
+                                <FiPlus />
+                                Tambah Tempat Mengajar
+                            </button>
+                        )}
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <DetailItem
@@ -321,7 +369,7 @@ function DetailHafizContent() {
                         {hafizData.mengajar && (
                             <>
                                 <DetailItem
-                                    label="Tempat Mengajar"
+                                    label="Tempat Mengajar (Saat Ini)"
                                     value={hafizData.tempat_mengajar || '-'}
                                 />
                                 <DetailItem
@@ -332,6 +380,27 @@ function DetailHafizContent() {
                             </>
                         )}
                     </div>
+
+                    {/* Riwayat Tempat Mengajar */}
+                    {hafizData.tempat_mengajar_history && hafizData.tempat_mengajar_history.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-neutral-200">
+                            <h4 className="font-semibold text-neutral-700 mb-4">Riwayat Tempat Mengajar</h4>
+                            <div className="space-y-3">
+                                {hafizData.tempat_mengajar_history.map((item: any, index: number) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                                        <div>
+                                            <p className="font-medium text-neutral-800">{item.tempat}</p>
+                                            <p className="text-sm text-neutral-500">
+                                                {item.tmt_mulai ? new Date(item.tmt_mulai).toLocaleDateString('id-ID') : '-'}
+                                                {' - '}
+                                                {item.tmt_selesai ? new Date(item.tmt_selesai).toLocaleDateString('id-ID') : 'Sekarang'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Keterangan */}

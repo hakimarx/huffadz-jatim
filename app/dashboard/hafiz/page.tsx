@@ -436,7 +436,8 @@ function DataHafizContent() {
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Nama</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Kabupaten/Kota</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Telepon</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Status</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 uppercase">Aktif</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Status Insentif</th>
                                             <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 uppercase">Aksi</th>
                                         </tr>
                                     </thead>
@@ -463,6 +464,32 @@ function DataHafizContent() {
                                                 <td className="px-4 py-3 text-sm text-neutral-600">
                                                     {hafiz.telepon || '-'}
                                                 </td>
+                                                {/* Aktif Column - Clickable toggle */}
+                                                <td className="px-4 py-3 text-center">
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const newStatus = hafiz.is_aktif === true ? false : true;
+                                                                const { error } = await supabase
+                                                                    .from('hafiz')
+                                                                    .update({ is_aktif: newStatus })
+                                                                    .eq('id', hafiz.id);
+                                                                if (error) throw error;
+                                                                fetchHafizData();
+                                                            } catch (err) {
+                                                                console.error('Error updating aktif status:', err);
+                                                            }
+                                                        }}
+                                                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${hafiz.is_aktif === true
+                                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                                            }`}
+                                                        title="Klik untuk mengubah status"
+                                                    >
+                                                        {hafiz.is_aktif === true ? '✓ Ya' : '✗ Tidak'}
+                                                    </button>
+                                                </td>
+                                                {/* Status Insentif Column */}
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${hafiz.status_insentif === 'aktif'
                                                         ? 'bg-green-100 text-green-800'
