@@ -13,6 +13,8 @@ interface Penguji {
     institusi: string;
     telepon: string;
     email?: string;
+    lokasi_tes?: string;
+    periode_tes?: string;
     is_active: boolean;
 }
 
@@ -38,6 +40,8 @@ function PengujiContent() {
         institusi: '',
         telepon: '',
         email: '',
+        lokasi_tes: '',
+        periode_tes: '',
         is_active: true
     });
     const supabase = createClient();
@@ -82,7 +86,7 @@ function PengujiContent() {
 
     const openAddModal = () => {
         setEditingPenguji(null);
-        setFormData({ nama: '', gelar: '', institusi: '', telepon: '', email: '', is_active: true });
+        setFormData({ nama: '', gelar: '', institusi: '', telepon: '', email: '', lokasi_tes: '', periode_tes: '', is_active: true });
         setShowModal(true);
     };
 
@@ -94,6 +98,8 @@ function PengujiContent() {
             institusi: penguji.institusi || '',
             telepon: penguji.telepon || '',
             email: penguji.email || '',
+            lokasi_tes: penguji.lokasi_tes || '',
+            periode_tes: penguji.periode_tes || '',
             is_active: penguji.is_active
         });
         setShowModal(true);
@@ -114,6 +120,8 @@ function PengujiContent() {
                         institusi: formData.institusi || null,
                         telepon: formData.telepon || null,
                         email: formData.email || null,
+                        lokasi_tes: formData.lokasi_tes || null,
+                        periode_tes: formData.periode_tes || null,
                         is_active: formData.is_active,
                         updated_at: new Date().toISOString()
                     })
@@ -131,6 +139,8 @@ function PengujiContent() {
                         institusi: formData.institusi || null,
                         telepon: formData.telepon || null,
                         email: formData.email || null,
+                        lokasi_tes: formData.lokasi_tes || null,
+                        periode_tes: formData.periode_tes || null,
                         is_active: true
                     }]);
 
@@ -215,6 +225,8 @@ function PengujiContent() {
                                     <th>Gelar</th>
                                     <th>Institusi</th>
                                     <th>Telepon</th>
+                                    <th>Lokasi Tes</th>
+                                    <th>Periode Tes</th>
                                     <th>Status</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -222,7 +234,7 @@ function PengujiContent() {
                             <tbody>
                                 {pengujiList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-8 text-neutral-500">
+                                        <td colSpan={8} className="text-center py-8 text-neutral-500">
                                             Belum ada data penguji. Klik "Tambah Penguji" untuk menambahkan.
                                         </td>
                                     </tr>
@@ -233,6 +245,8 @@ function PengujiContent() {
                                             <td>{penguji.gelar || '-'}</td>
                                             <td>{penguji.institusi || '-'}</td>
                                             <td>{penguji.telepon || '-'}</td>
+                                            <td>{penguji.lokasi_tes || '-'}</td>
+                                            <td>{penguji.periode_tes || '-'}</td>
                                             <td>
                                                 <button
                                                     onClick={() => toggleActive(penguji)}
@@ -332,6 +346,28 @@ function PengujiContent() {
                                         placeholder="email@example.com"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Lokasi Tes</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Gedung Grahadi Surabaya"
+                                        value={formData.lokasi_tes}
+                                        onChange={(e) => setFormData({ ...formData, lokasi_tes: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Periode Tes</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="2024 Semester 1"
+                                        value={formData.periode_tes}
+                                        onChange={(e) => setFormData({ ...formData, periode_tes: e.target.value })}
                                     />
                                 </div>
 

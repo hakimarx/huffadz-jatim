@@ -331,7 +331,7 @@ function DataHafizContent() {
                                 Data Hafiz {user.role === 'admin_kabko' && `- ${user.kabupaten_kota}`}
                             </h1>
                             <p className="text-neutral-600">
-                                Kelola data Huffadz dan status insentif
+                                Kelola data Huffadz Jawa Timur
                             </p>
                             {totalCount > 0 && (
                                 <p className="text-sm text-neutral-500 mt-1">
@@ -436,8 +436,7 @@ function DataHafizContent() {
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Nama</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Kabupaten/Kota</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Telepon</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 uppercase">Aktif</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Status Insentif</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 uppercase">Status</th>
                                             <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 uppercase">Aksi</th>
                                         </tr>
                                     </thead>
@@ -464,39 +463,39 @@ function DataHafizContent() {
                                                 <td className="px-4 py-3 text-sm text-neutral-600">
                                                     {hafiz.telepon || '-'}
                                                 </td>
-                                                {/* Aktif Column - Clickable toggle */}
+                                                {/* Status Column - Clickable toggle for admin */}
                                                 <td className="px-4 py-3 text-center">
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                const newStatus = hafiz.is_aktif === true ? false : true;
-                                                                const { error } = await supabase
-                                                                    .from('hafiz')
-                                                                    .update({ is_aktif: newStatus })
-                                                                    .eq('id', hafiz.id);
-                                                                if (error) throw error;
-                                                                fetchHafizData();
-                                                            } catch (err) {
-                                                                console.error('Error updating aktif status:', err);
-                                                            }
-                                                        }}
-                                                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${hafiz.is_aktif === true
+                                                    {user && (user.role === 'admin_provinsi' || user.role === 'admin_kabko') ? (
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const newStatus = hafiz.is_aktif === true ? false : true;
+                                                                    const { error } = await supabase
+                                                                        .from('hafiz')
+                                                                        .update({ is_aktif: newStatus })
+                                                                        .eq('id', hafiz.id);
+                                                                    if (error) throw error;
+                                                                    fetchHafizData();
+                                                                } catch (err) {
+                                                                    console.error('Error updating aktif status:', err);
+                                                                }
+                                                            }}
+                                                            className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${hafiz.is_aktif === true
                                                                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                                                 : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                                            }`}
-                                                        title="Klik untuk mengubah status"
-                                                    >
-                                                        {hafiz.is_aktif === true ? '✓ Ya' : '✗ Tidak'}
-                                                    </button>
-                                                </td>
-                                                {/* Status Insentif Column */}
-                                                <td className="px-4 py-3">
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${hafiz.status_insentif === 'aktif'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-gray-100 text-gray-800'
-                                                        }`}>
-                                                        {hafiz.status_insentif === 'aktif' ? 'Aktif' : 'Tidak Aktif'}
-                                                    </span>
+                                                                }`}
+                                                            title="Klik untuk mengubah status"
+                                                        >
+                                                            {hafiz.is_aktif === true ? '✓ Aktif' : '✗ Tidak Aktif'}
+                                                        </button>
+                                                    ) : (
+                                                        <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${hafiz.is_aktif === true
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                            }`}>
+                                                            {hafiz.is_aktif === true ? '✓ Aktif' : '✗ Tidak Aktif'}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center justify-center gap-1">
@@ -527,6 +526,30 @@ function DataHafizContent() {
                                                                 <FiShuffle size={16} />
                                                             </button>
                                                         )}
+                                                        {/* Tombol Delete */}
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!confirm(`Apakah Anda yakin ingin menghapus data hafiz "${hafiz.nama}"? Data yang dihapus tidak dapat dikembalikan.`)) {
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const { error } = await supabase
+                                                                        .from('hafiz')
+                                                                        .delete()
+                                                                        .eq('id', hafiz.id);
+                                                                    if (error) throw error;
+                                                                    alert('Data hafiz berhasil dihapus');
+                                                                    fetchHafizData();
+                                                                } catch (err: any) {
+                                                                    console.error('Error deleting hafiz:', err);
+                                                                    alert('Gagal menghapus data: ' + err.message);
+                                                                }
+                                                            }}
+                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Hapus"
+                                                        >
+                                                            <FiTrash2 size={16} />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>

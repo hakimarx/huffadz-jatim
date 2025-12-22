@@ -35,6 +35,7 @@ const hafizSchema = z.object({
     tmt_mengajar: z.string().optional(),
     tahun_tes: z.number().min(2015).max(2030),
     keterangan: z.string().optional(),
+    is_aktif: z.boolean().optional(),
 });
 
 type HafizFormData = z.infer<typeof hafizSchema>;
@@ -64,6 +65,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
             jenis_kelamin: 'L' as const,
             mengajar: false,
             tahun_tes: new Date().getFullYear(),
+            is_aktif: initialData?.is_aktif ?? true,
             ...initialData,
         },
     });
@@ -106,6 +108,8 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
             // Only add updated_at for updates, created_at will be auto-generated
             if (mode === 'edit') {
                 hafizData.updated_at = new Date().toISOString();
+                // Include is_aktif for edit mode
+                hafizData.is_aktif = data.is_aktif ?? initialData?.is_aktif ?? true;
             }
 
             if (mode === 'create') {
@@ -522,6 +526,38 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                             {...register('keterangan')}
                         />
                     </div>
+
+                    {/* Status Aktif - Hanya tampil pada mode edit */}
+                    {mode === 'edit' && (
+                        <div className="form-group md:col-span-2">
+                            <label className="form-label">Status Hafiz</label>
+                            <div className="flex items-center gap-4 mt-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-green-600"
+                                        value="true"
+                                        {...register('is_aktif')}
+                                        checked={watch('is_aktif') === true}
+                                        onChange={() => setValue('is_aktif', true)}
+                                    />
+                                    <span className="font-medium text-green-700">✓ Aktif</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-red-600"
+                                        value="false"
+                                        {...register('is_aktif')}
+                                        checked={watch('is_aktif') === false}
+                                        onChange={() => setValue('is_aktif', false)}
+                                    />
+                                    <span className="font-medium text-red-700">✗ Tidak Aktif</span>
+                                </label>
+                            </div>
+                            <span className="form-help">Hafiz yang tidak aktif tidak akan menerima insentif</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
