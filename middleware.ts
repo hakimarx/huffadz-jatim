@@ -1,47 +1,36 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// For MySQL auth, we check the session cookie directly in middleware
+// The full session validation is done in the API routes
+
 export async function middleware(request: NextRequest) {
-    let response = NextResponse.next({
+    const response = NextResponse.next({
         request: {
             headers: request.headers,
         },
     });
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
-                    );
-                },
-            },
-        }
-    );
+    // Check for session cookie
+    const sessionCookie = request.cookies.get('huffadz_session');
+    const hasSession = sessionCookie && sessionCookie.value;
 
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
+    const isLoginPage = request.nextUrl.pathname === '/login';
+    const isRegisterPage = request.nextUrl.pathname === '/register';
+    const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard');
+    const isApiPage = request.nextUrl.pathname.startsWith('/api');
 
-    // If user is signed in and strictly on login/register page, redirect to dashboard
-    if (session && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
+    // Skip middleware for API routes
+    if (isApiPage) {
+        return response;
+    }
+
+    // If user has session cookie and on login/register page, redirect to dashboard
+    if (hasSession && (isLoginPage || isRegisterPage)) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // If user is NOT signed in and trying to access dashboard, redirect to login
-    if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+    // If user has NO session cookie and trying to access dashboard, redirect to login
+    if (!hasSession && isDashboardPage) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 

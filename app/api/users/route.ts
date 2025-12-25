@@ -1,0 +1,110 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne, insert, execute, DBUser } from '@/lib/db';
+import { requireAuth, hashPassword, registerUser } from '@/lib/auth';
+
+// GET - List users (admin only)
+export async function GET(request: NextRequest) {
+    try {
+        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko']);
+
+        if (!authenticated || !user) {
+            return NextResponse.json({ error }, { status: 401 });
+        }
+
+        const searchParams = request.nextUrl.searchParams;
+        const role = searchParams.get('role') || '';
+
+        let whereClause = 'is_active = 1';
+        const params: unknown[] = [];
+
+        // Admin kabko can only see users in their region
+        if (user.role === 'admin_kabko' && user.kabupaten_kota) {
+            whereClause += ' AND kabupaten_kota = ?';
+            params.push(user.kabupaten_kota);
+        }
+
+        if (role) {
+            whereClause += ' AND role = ?';
+            params.push(role);
+        }
+
+        const users = await query<Omit<DBUser, 'password'>>(
+            `SELECT id, email, role, nama, kabupaten_kota, telepon, is_active, created_at, updated_at 
+       FROM users WHERE ${whereClause} ORDER BY nama ASC`,
+            params
+        );
+
+        return NextResponse.json({ data: users });
+    } catch (error) {
+        console.error('Users GET error:', error);
+        return NextResponse.json(
+            { error: 'Terjadi kesalahan server' },
+            { status: 500 }
+        );
+    }
+}
+
+// POST - Create new user (admin only)
+export async function POST(request: NextRequest) {
+    try {
+        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko']);
+
+        if (!authenticated || !user) {
+            return NextResponse.json({ error }, { status: 401 });
+        }
+
+        const data = await request.json();
+
+        // Validate required fields
+        if (!data.email || !data.password || !data.nama || !data.role) {
+            return NextResponse.json(
+                { error: 'Email, password, nama, dan role wajib diisi' },
+                { status: 400 }
+            );
+        }
+
+        // Validate role permissions
+        if (user.role === 'admin_kabko') {
+            // Admin kabko can only create hafiz users in their region
+            if (data.role !== 'hafiz') {
+                return NextResponse.json(
+                    { error: 'Anda hanya dapat membuat akun hafiz' },
+                    { status: 403 }
+                );
+            }
+            if (data.kabupaten_kota !== user.kabupaten_kota) {
+                return NextResponse.json(
+                    { error: 'Anda hanya dapat membuat akun di wilayah Anda' },
+                    { status: 403 }
+                );
+            }
+        }
+
+        const result = await registerUser(
+            data.email,
+            data.password,
+            data.nama,
+            data.role,
+            data.kabupaten_kota
+        );
+
+        if (!result.success) {
+            return NextResponse.json(
+                { error: result.error },
+                { status: 400 }
+            );
+        }
+
+        return NextResponse.json({
+            success: true,
+            id: result.userId,
+            message: 'User berhasil ditambahkan',
+        });
+    } catch (error) {
+        console.error('Users POST error:', error);
+        return NextResponse.json(
+            { error: 'Terjadi kesalahan server' },
+            { status: 500 }
+        );
+    }
+}
