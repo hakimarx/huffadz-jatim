@@ -15,12 +15,11 @@ import {
     FiEye,
     FiShuffle
 } from 'react-icons/fi';
-import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 import MutasiModal from '@/components/MutasiModal';
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -30,7 +29,6 @@ interface UserData {
 
 function DataHafizContent() {
     const router = useRouter();
-    const supabase = createClient();
 
     const [user, setUser] = useState<UserData | null>(null);
     const [userLoading, setUserLoading] = useState(true);
@@ -54,44 +52,23 @@ function DataHafizContent() {
     const [showMutasiModal, setShowMutasiModal] = useState(false);
     const [selectedHafizForMutasi, setSelectedHafizForMutasi] = useState<any>(null);
 
-    // Fetch user data from session
+    // Fetch user data from MySQL session API
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
 
-                if (sessionError || !session) {
-                    console.error('No session found:', sessionError);
+                if (response.ok && data.user) {
+                    setUser(data.user as UserData);
+                } else {
+                    console.error('No session found:', data);
                     window.location.href = '/login';
                     return;
                 }
-
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                if (userError) {
-                    console.error('Error fetching user data:', userError);
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                    });
-                } else if (userData) {
-                    setUser(userData as UserData);
-                } else {
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                    });
-                }
             } catch (err) {
                 console.error('Unexpected error fetching user:', err);
+                window.location.href = '/login';
             } finally {
                 setUserLoading(false);
             }
@@ -100,46 +77,36 @@ function DataHafizContent() {
         fetchUserData();
     }, []);
 
-    // Fetch data from Supabase
+    // Fetch data from MySQL API
     const fetchHafizData = async () => {
         if (!user) return;
 
         try {
             setLoading(true);
 
-            let query = supabase
-                .from('hafiz')
-                .select('*', { count: 'exact' });
+            // Build query params for MySQL API
+            const params = new URLSearchParams({
+                page: currentPage.toString(),
+                limit: itemsPerPage.toString(),
+            });
 
-            // Filter by kabupaten for admin_kabko
-            if (user.role === 'admin_kabko' && user.kabupaten_kota) {
-                query = query.eq('kabupaten_kota', user.kabupaten_kota);
-            }
-
-            // Search filter
             if (searchQuery) {
-                query = query.or(`nik.ilike.%${searchQuery}%,nama.ilike.%${searchQuery}%,telepon.ilike.%${searchQuery}%`);
+                params.set('search', searchQuery);
             }
 
-            // Status filter
             if (filterStatus !== 'semua') {
-                query = query.eq('status_insentif', filterStatus);
+                params.set('status', filterStatus);
             }
 
-            // Pagination
-            const from = (currentPage - 1) * itemsPerPage;
-            const to = from + itemsPerPage - 1;
-            query = query.range(from, to);
+            const response = await fetch(`/api/hafiz?${params.toString()}`);
+            const result = await response.json();
 
-            // Order by
-            query = query.order('created_at', { ascending: false });
+            if (!response.ok) {
+                throw new Error(result.error || 'Gagal memuat data hafiz');
+            }
 
-            const { data, error: fetchError, count } = await query;
-
-            if (fetchError) throw fetchError;
-
-            setHafizData(data || []);
-            setTotalCount(count || 0);
+            setHafizData(result.data || []);
+            setTotalCount(result.pagination?.total || 0);
             setError('');
         } catch (err: any) {
             console.error('Error fetching hafiz:', err);

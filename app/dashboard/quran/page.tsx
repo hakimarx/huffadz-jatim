@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { FiBook, FiSearch, FiVolume2, FiBookOpen, FiArrowLeft, FiHome, FiLoader, FiInfo, FiX } from 'react-icons/fi';
 import Sidebar from '@/components/Sidebar';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 
 // API Configuration - Using local proxy to avoid CORS
 const API_PROXY_URL = '/api/quran';
@@ -36,7 +35,8 @@ interface TafsirKemenag {
 }
 
 interface UserData {
-    id: string;
+    id: number;
+    email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
     foto_profil?: string;
@@ -61,41 +61,31 @@ export default function QuranPage() {
     // User state
     const [user, setUser] = useState<UserData | null>(null);
     const [userLoading, setUserLoading] = useState(true);
-    const supabase = createClient();
 
-    // Fetch user data
+    // Fetch user data using MySQL session API
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
 
-                if (session) {
-                    const { data: userData } = await supabase
-                        .from('users')
-                        .select('id, nama, role, foto_profil')
-                        .eq('id', session.user.id)
-                        .maybeSingle();
-
-                    if (userData) {
-                        setUser(userData as UserData);
-                    } else {
-                        // Fallback for users without profile
-                        setUser({
-                            id: session.user.id,
-                            nama: session.user.email?.split('@')[0] || 'User',
-                            role: 'hafiz'
-                        });
-                    }
+                if (response.ok && data.user) {
+                    setUser(data.user as UserData);
+                } else {
+                    // Redirect to login if no session
+                    window.location.href = '/login';
+                    return;
                 }
             } catch (err) {
                 console.error('Error fetching user:', err);
+                window.location.href = '/login';
             } finally {
                 setUserLoading(false);
             }
         }
 
         fetchUserData();
-    }, [supabase]);
+    }, []);
 
     // Fetch daftar surah dari API Kemenag via proxy
     useEffect(() => {

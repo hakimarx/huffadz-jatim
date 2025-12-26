@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import {
     FiHome,
     FiUsers,
@@ -53,23 +52,26 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
-    const supabase = createClient();
 
     const filteredNavItems = navItems.filter(item => item.roles.includes(userRole));
 
     const handleLogout = async () => {
         setLoggingOut(true);
         try {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                console.error('Error signing out:', error);
-                alert('Gagal logout: ' + error.message);
-            } else {
+            // Use MySQL logout API instead of Supabase
+            const response = await fetch('/api/auth/logout', { method: 'POST' });
+
+            if (response.ok) {
                 // Redirect to login after successful sign out
                 window.location.href = '/login';
+            } else {
+                const data = await response.json();
+                console.error('Error signing out:', data.error);
+                alert('Gagal logout: ' + (data.error || 'Unknown error'));
             }
         } catch (err) {
             console.error('Unexpected error during logout:', err);
+            alert('Gagal logout. Silakan coba lagi.');
         } finally {
             setLoggingOut(false);
         }
