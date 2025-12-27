@@ -2,12 +2,20 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Sidebar';
 import { FiUser, FiArrowLeft, FiEdit, FiTrash2, FiLoader, FiMapPin, FiPhone, FiMail, FiBook, FiCalendar, FiCheckCircle, FiXCircle, FiShuffle, FiPlus } from 'react-icons/fi';
 import Link from 'next/link';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import MutasiModal from '@/components/MutasiModal';
+
+interface UserData {
+    id: number;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
 
 function DetailHafizContent() {
     const params = useParams();
@@ -19,52 +27,30 @@ function DetailHafizContent() {
     const [error, setError] = useState('');
     const [deleting, setDeleting] = useState(false);
     const [showMutasiModal, setShowMutasiModal] = useState(false);
-    const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+    const [currentUser, setCurrentUser] = useState<UserData | null>(null);
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const supabase = createClient();
+                // Fetch current user via MySQL session API
+                const userResponse = await fetch('/api/auth/me');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    setCurrentUser(userData.user);
+                }
 
-                // Fetch current user
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    const { data: userData } = await supabase
-                        .from('users')
-                        .select('id, role')
-                        .eq('id', session.user.id)
-                        .maybeSingle();
-                    if (userData) {
-                        setCurrentUser(userData);
+                // Fetch hafiz data via MySQL API
+                const response = await fetch(`/api/hafiz/${hafizId}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        setError('Data hafiz tidak ditemukan');
+                        return;
                     }
+                    throw new Error('Gagal memuat data hafiz');
                 }
 
-                // First try to get hafiz by id
-                let { data, error } = await supabase
-                    .from('hafiz')
-                    .select('*')
-                    .eq('id', hafizId)
-                    .maybeSingle();
-
-                // If not found by id, try by nik (hafizId might be NIK)
-                if (!data && !error) {
-                    const nikResult = await supabase
-                        .from('hafiz')
-                        .select('*')
-                        .eq('nik', hafizId)
-                        .maybeSingle();
-                    data = nikResult.data;
-                    error = nikResult.error;
-                }
-
-                if (error) throw error;
-
-                if (!data) {
-                    setError('Data hafiz tidak ditemukan');
-                    return;
-                }
-
-                setHafizData(data);
+                const result = await response.json();
+                setHafizData(result.data);
             } catch (err: any) {
                 console.error('Error fetching hafiz:', err);
                 setError(err.message || 'Gagal memuat data hafiz');
@@ -83,18 +69,14 @@ function DetailHafizContent() {
 
         setDeleting(true);
         try {
-            const supabase = createClient();
+            const response = await fetch(`/api/hafiz/${hafizId}`, {
+                method: 'DELETE'
+            });
 
-            // Use NIK as identifier if available
-            const identifier = hafizData?.nik || hafizId;
-            const identifierField = hafizData?.nik ? 'nik' : 'id';
-
-            const { error } = await supabase
-                .from('hafiz')
-                .delete()
-                .eq(identifierField, identifier);
-
-            if (error) throw error;
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.error || 'Gagal menghapus data');
+            }
 
             alert('Data hafiz berhasil dihapus');
             router.push('/dashboard/hafiz');
@@ -119,19 +101,21 @@ function DetailHafizContent() {
 
     if (error || !hafizData) {
         return (
-            <div className="min-h-screen bg-neutral-50">
-                <Navbar userRole="admin_provinsi" userName="Admin" />
-                <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-                    <div className="alert alert-error">
-                        <p>{error || 'Data tidak ditemukan'}</p>
+            <div className="min-h-screen bg-neutral-50 flex">
+                <Sidebar userRole={currentUser?.role || 'admin_kabko'} userName={currentUser?.nama || 'Admin'} />
+                <main className="flex-1 p-6 lg:ml-64">
+                    <div className="max-w-5xl">
+                        <div className="alert alert-error">
+                            <p>{error || 'Data tidak ditemukan'}</p>
+                        </div>
+                        <button
+                            onClick={() => router.push('/dashboard/hafiz')}
+                            className="btn btn-secondary mt-4"
+                        >
+                            <FiArrowLeft />
+                            Kembali ke Data Hafiz
+                        </button>
                     </div>
-                    <button
-                        onClick={() => router.push('/dashboard/hafiz')}
-                        className="btn btn-secondary mt-4"
-                    >
-                        <FiArrowLeft />
-                        Kembali ke Data Hafiz
-                    </button>
                 </main>
             </div>
         );
@@ -149,281 +133,221 @@ function DetailHafizContent() {
     };
 
     return (
-        <div className="min-h-screen bg-neutral-50">
-            <Navbar userRole="admin_provinsi" userName="Admin" />
+        <div className="min-h-screen bg-neutral-50 flex">
+            <Sidebar userRole={currentUser?.role || 'admin_kabko'} userName={currentUser?.nama || 'Admin'} userPhoto={currentUser?.foto_profil} />
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/dashboard/hafiz"
-                        className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-4 transition-colors"
-                    >
-                        <FiArrowLeft />
-                        <span>Kembali ke Data Hafiz</span>
-                    </Link>
+            <main className="flex-1 p-6 lg:ml-64">
+                <div className="max-w-5xl">
+                    {/* Header */}
+                    <div className="mb-8">
+                        <Link
+                            href="/dashboard/hafiz"
+                            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-4 transition-colors"
+                        >
+                            <FiArrowLeft />
+                            <span>Kembali ke Data Hafiz</span>
+                        </Link>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl text-white shadow-lg">
-                                <FiUser size={28} />
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl text-white shadow-lg">
+                                    <FiUser size={28} />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-bold text-neutral-800">
+                                        {hafizData.nama}
+                                    </h1>
+                                    <p className="text-neutral-600 mt-1">
+                                        NIK: {hafizData.nik}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-3xl font-bold text-neutral-800">
-                                    {hafizData.nama}
-                                </h1>
-                                <p className="text-neutral-600 mt-1">
-                                    NIK: {hafizData.nik}
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => router.push(`/dashboard/hafiz/${hafizId}/edit`)}
-                                className="btn btn-primary"
-                            >
-                                <FiEdit />
-                                Edit
-                            </button>
-                            {/* Tombol Mutasi - hanya untuk admin_provinsi dan admin_kabko */}
-                            {currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
+                            <div className="flex flex-wrap gap-3">
                                 <button
-                                    onClick={() => setShowMutasiModal(true)}
-                                    className="btn btn-warning"
-                                    title="Pindahkan ke Kabupaten/Kota lain"
+                                    onClick={() => router.push(`/dashboard/hafiz/${hafizId}/edit`)}
+                                    className="btn btn-primary"
                                 >
-                                    <FiShuffle />
-                                    Mutasi
+                                    <FiEdit />
+                                    Edit
                                 </button>
-                            )}
-                            <button
-                                onClick={handleDelete}
-                                className="btn btn-error"
-                                disabled={deleting}
-                            >
-                                {deleting ? (
-                                    <>
-                                        <FiLoader className="animate-spin" />
-                                        Menghapus...
-                                    </>
-                                ) : (
-                                    <>
-                                        <FiTrash2 />
-                                        Hapus
-                                    </>
+                                {currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
+                                    <button
+                                        onClick={() => setShowMutasiModal(true)}
+                                        className="btn btn-warning"
+                                        title="Pindahkan ke Kabupaten/Kota lain"
+                                    >
+                                        <FiShuffle />
+                                        Mutasi
+                                    </button>
                                 )}
-                            </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="btn btn-error"
+                                    disabled={deleting}
+                                >
+                                    {deleting ? (
+                                        <>
+                                            <FiLoader className="animate-spin" />
+                                            Menghapus...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FiTrash2 />
+                                            Hapus
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Status Badges */}
-                <div className="flex flex-wrap gap-3 mb-8">
-                    <span className={`badge ${hafizData.status_kelulusan === 'lulus' ? 'badge-success' : 'badge-error'}`}>
-                        {hafizData.status_kelulusan === 'lulus' ? (
-                            <>
-                                <FiCheckCircle />
-                                Lulus
-                            </>
-                        ) : (
-                            <>
-                                <FiXCircle />
-                                Tidak Lulus
-                            </>
-                        )}
-                    </span>
-                    <span className={`badge ${hafizData.status_insentif === 'aktif' ? 'badge-success' : 'badge-warning'}`}>
-                        Insentif: {hafizData.status_insentif === 'aktif' ? 'Aktif' : 'Tidak Aktif'}
-                    </span>
-                    <span className="badge badge-info">
-                        Tahun Tes: {hafizData.tahun_tes}
-                    </span>
-                </div>
-
-                {/* Data Pribadi */}
-                <div className="card-modern mb-6">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                        Data Pribadi
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <DetailItem label="Tempat Lahir" value={hafizData.tempat_lahir} />
-                        <DetailItem
-                            label="Tanggal Lahir"
-                            value={`${new Date(hafizData.tanggal_lahir).toLocaleDateString('id-ID')} (${calculateAge(hafizData.tanggal_lahir)} tahun)`}
-                        />
-                        <DetailItem
-                            label="Jenis Kelamin"
-                            value={hafizData.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
-                        />
-                        <DetailItem label="Tahun Tes" value={hafizData.tahun_tes} />
+                    {/* Status Badges */}
+                    <div className="flex flex-wrap gap-3 mb-8">
+                        <span className={`badge ${hafizData.status_kelulusan === 'lulus' ? 'badge-success' : 'badge-error'}`}>
+                            {hafizData.status_kelulusan === 'lulus' ? (
+                                <>
+                                    <FiCheckCircle />
+                                    Lulus
+                                </>
+                            ) : (
+                                <>
+                                    <FiXCircle />
+                                    Tidak Lulus
+                                </>
+                            )}
+                        </span>
+                        <span className={`badge ${hafizData.status_insentif === 'aktif' ? 'badge-success' : 'badge-warning'}`}>
+                            Insentif: {hafizData.status_insentif === 'aktif' ? 'Aktif' : 'Tidak Aktif'}
+                        </span>
+                        <span className="badge badge-info">
+                            Tahun Tes: {hafizData.tahun_tes}
+                        </span>
                     </div>
-                </div>
 
-                {/* Alamat */}
-                <div className="card-modern mb-6">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                        <FiMapPin />
-                        Alamat
-                    </h3>
+                    {/* Data Pribadi */}
+                    <div className="card-modern mb-6">
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                            Data Pribadi
+                        </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <DetailItem label="Alamat Lengkap" value={hafizData.alamat} className="md:col-span-2" />
-                        <DetailItem label="RT" value={hafizData.rt || '-'} />
-                        <DetailItem label="RW" value={hafizData.rw || '-'} />
-                        <DetailItem label="Desa/Kelurahan" value={hafizData.desa_kelurahan} />
-                        <DetailItem label="Kecamatan" value={hafizData.kecamatan} />
-                        <DetailItem label="Kabupaten/Kota" value={hafizData.kabupaten_kota} className="md:col-span-2" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <DetailItem label="Tempat Lahir" value={hafizData.tempat_lahir} />
+                            <DetailItem
+                                label="Tanggal Lahir"
+                                value={`${new Date(hafizData.tanggal_lahir).toLocaleDateString('id-ID')} (${calculateAge(hafizData.tanggal_lahir)} tahun)`}
+                            />
+                            <DetailItem
+                                label="Jenis Kelamin"
+                                value={hafizData.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
+                            />
+                            <DetailItem label="Tahun Tes" value={hafizData.tahun_tes} />
+                        </div>
                     </div>
-                </div>
 
-                {/* Kontak */}
-                <div className="card-modern mb-6">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                        Kontak
-                    </h3>
+                    {/* Alamat */}
+                    <div className="card-modern mb-6">
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                            <FiMapPin />
+                            Alamat
+                        </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <DetailItem
-                            label="Telepon"
-                            value={hafizData.telepon || '-'}
-                            icon={<FiPhone />}
-                        />
-                        <DetailItem
-                            label="Email"
-                            value={hafizData.email || '-'}
-                            icon={<FiMail />}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <DetailItem label="Alamat Lengkap" value={hafizData.alamat} className="md:col-span-2" />
+                            <DetailItem label="RT" value={hafizData.rt || '-'} />
+                            <DetailItem label="RW" value={hafizData.rw || '-'} />
+                            <DetailItem label="Desa/Kelurahan" value={hafizData.desa_kelurahan} />
+                            <DetailItem label="Kecamatan" value={hafizData.kecamatan} />
+                            <DetailItem label="Kabupaten/Kota" value={hafizData.kabupaten_kota} className="md:col-span-2" />
+                        </div>
                     </div>
-                </div>
 
-                {/* Data Tahfidz */}
-                <div className="card-modern mb-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold flex items-center gap-2">
+                    {/* Kontak */}
+                    <div className="card-modern mb-6">
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                            Kontak
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <DetailItem
+                                label="Telepon"
+                                value={hafizData.telepon || '-'}
+                                icon={<FiPhone />}
+                            />
+                            <DetailItem
+                                label="Email"
+                                value={hafizData.email || '-'}
+                                icon={<FiMail />}
+                            />
+                            <DetailItem
+                                label="Nama Bank"
+                                value={hafizData.nama_bank || '-'}
+                            />
+                            <DetailItem
+                                label="Nomor Rekening"
+                                value={hafizData.nomor_rekening || '-'}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Data Tahfidz */}
+                    <div className="card-modern mb-6">
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                             <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
                             <FiBook />
                             Data Tahfidz & Mengajar
                         </h3>
-                        {hafizData.mengajar && currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
-                            <button
-                                onClick={() => {
-                                    const newTempat = prompt('Masukkan nama tempat mengajar baru:');
-                                    if (newTempat && newTempat.trim()) {
-                                        const newTmtMulai = prompt('Masukkan tanggal mulai mengajar (format: YYYY-MM-DD):');
-                                        if (newTmtMulai) {
-                                            // Update tempat_mengajar and optionally save to history
-                                            const supabase = createClient();
-                                            const history = hafizData.tempat_mengajar_history || [];
 
-                                            // Save current location to history if exists
-                                            if (hafizData.tempat_mengajar) {
-                                                history.push({
-                                                    tempat: hafizData.tempat_mengajar,
-                                                    tmt_mulai: hafizData.tmt_mengajar || null,
-                                                    tmt_selesai: new Date().toISOString().split('T')[0]
-                                                });
-                                            }
-
-                                            supabase
-                                                .from('hafiz')
-                                                .update({
-                                                    tempat_mengajar: newTempat.trim(),
-                                                    tmt_mengajar: newTmtMulai,
-                                                    tempat_mengajar_history: history
-                                                })
-                                                .eq('id', hafizData.id)
-                                                .then(({ error }) => {
-                                                    if (error) {
-                                                        alert('Gagal menyimpan: ' + error.message);
-                                                    } else {
-                                                        alert('Tempat mengajar baru berhasil ditambahkan!');
-                                                        window.location.reload();
-                                                    }
-                                                });
-                                        }
-                                    }
-                                }}
-                                className="btn btn-primary btn-sm"
-                                title="Tambah tempat mengajar baru"
-                            >
-                                <FiPlus />
-                                Tambah Tempat Mengajar
-                            </button>
-                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <DetailItem
+                                label="Sertifikat Tahfidz"
+                                value={hafizData.sertifikat_tahfidz || '-'}
+                            />
+                            <DetailItem
+                                label="Status Mengajar"
+                                value={hafizData.mengajar ? 'Ya' : 'Tidak'}
+                            />
+                            {hafizData.mengajar && (
+                                <>
+                                    <DetailItem
+                                        label="Tempat Mengajar (Saat Ini)"
+                                        value={hafizData.tempat_mengajar || '-'}
+                                    />
+                                    <DetailItem
+                                        label="TMT Mengajar"
+                                        value={hafizData.tmt_mengajar ? new Date(hafizData.tmt_mengajar).toLocaleDateString('id-ID') : '-'}
+                                        icon={<FiCalendar />}
+                                    />
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <DetailItem
-                            label="Sertifikat Tahfidz"
-                            value={hafizData.sertifikat_tahfidz || '-'}
-                        />
-                        <DetailItem
-                            label="Status Mengajar"
-                            value={hafizData.mengajar ? 'Ya' : 'Tidak'}
-                        />
-                        {hafizData.mengajar && (
-                            <>
-                                <DetailItem
-                                    label="Tempat Mengajar (Saat Ini)"
-                                    value={hafizData.tempat_mengajar || '-'}
-                                />
-                                <DetailItem
-                                    label="TMT Mengajar"
-                                    value={hafizData.tmt_mengajar ? new Date(hafizData.tmt_mengajar).toLocaleDateString('id-ID') : '-'}
-                                    icon={<FiCalendar />}
-                                />
-                            </>
-                        )}
-                    </div>
-
-                    {/* Riwayat Tempat Mengajar */}
-                    {hafizData.tempat_mengajar_history && hafizData.tempat_mengajar_history.length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-neutral-200">
-                            <h4 className="font-semibold text-neutral-700 mb-4">Riwayat Tempat Mengajar</h4>
-                            <div className="space-y-3">
-                                {hafizData.tempat_mengajar_history.map((item: any, index: number) => (
-                                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                                        <div>
-                                            <p className="font-medium text-neutral-800">{item.tempat}</p>
-                                            <p className="text-sm text-neutral-500">
-                                                {item.tmt_mulai ? new Date(item.tmt_mulai).toLocaleDateString('id-ID') : '-'}
-                                                {' - '}
-                                                {item.tmt_selesai ? new Date(item.tmt_selesai).toLocaleDateString('id-ID') : 'Sekarang'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* Keterangan */}
+                    {hafizData.keterangan && (
+                        <div className="card-modern">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                                Keterangan
+                            </h3>
+                            <p className="text-neutral-700 whitespace-pre-wrap">{hafizData.keterangan}</p>
                         </div>
                     )}
-                </div>
 
-                {/* Keterangan */}
-                {hafizData.keterangan && (
-                    <div className="card-modern">
-                        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                            Keterangan
-                        </h3>
-                        <p className="text-neutral-700 whitespace-pre-wrap">{hafizData.keterangan}</p>
-                    </div>
-                )}
-
-                {/* Metadata */}
-                <div className="card-modern mt-6 bg-neutral-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-neutral-600">
-                        <div>
-                            <span className="font-semibold">Dibuat:</span>{' '}
-                            {new Date(hafizData.created_at).toLocaleString('id-ID')}
-                        </div>
-                        <div>
-                            <span className="font-semibold">Terakhir Diupdate:</span>{' '}
-                            {new Date(hafizData.updated_at).toLocaleString('id-ID')}
+                    {/* Metadata */}
+                    <div className="card-modern mt-6 bg-neutral-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-neutral-600">
+                            <div>
+                                <span className="font-semibold">Dibuat:</span>{' '}
+                                {hafizData.created_at ? new Date(hafizData.created_at).toLocaleString('id-ID') : '-'}
+                            </div>
+                            <div>
+                                <span className="font-semibold">Terakhir Diupdate:</span>{' '}
+                                {hafizData.updated_at ? new Date(hafizData.updated_at).toLocaleString('id-ID') : '-'}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -440,9 +364,8 @@ function DetailHafizContent() {
                         nama: hafizData.nama,
                         kabupaten_kota: hafizData.kabupaten_kota
                     }}
-                    currentUserId={currentUser.id}
+                    currentUserId={String(currentUser.id)}
                     onSuccess={() => {
-                        // Refresh the page to show updated data
                         window.location.reload();
                     }}
                 />

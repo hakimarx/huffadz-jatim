@@ -3,8 +3,7 @@
 import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
-import { FiUpload, FiDownload, FiFileText, FiFile } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiFileText } from 'react-icons/fi';
 
 const mockDokumen = [
     { id: '1', jenis: 'spj', nama: 'SPJ Periode 2024', file_url: '#', periode: '2024', uploaded_at: '2024-12-01' },
@@ -13,7 +12,7 @@ const mockDokumen = [
 ];
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -25,31 +24,21 @@ function DokumenContent() {
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [showUploadModal, setShowUploadModal] = useState(false);
-    const supabase = createClient();
 
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session) {
+                // Use MySQL session API instead of Supabase
+                const response = await fetch('/api/auth/me');
+                if (!response.ok) {
                     window.location.href = '/login';
                     return;
                 }
-
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                setUser(userData as UserData || {
-                    id: session.user.id,
-                    role: 'hafiz',
-                    nama: session.user.email?.split('@')[0] || 'User',
-                    email: session.user.email || '',
-                });
+                const data = await response.json();
+                setUser(data.user);
             } catch (err) {
                 console.error('Error fetching user:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
@@ -60,7 +49,7 @@ function DokumenContent() {
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            // TODO: Upload to Supabase Storage
+            // TODO: Implement file upload via API
             alert(`Upload file: ${file.name}`);
             setShowUploadModal(false);
         }

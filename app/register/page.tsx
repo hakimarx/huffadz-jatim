@@ -3,12 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import { FiMail, FiLock, FiUser, FiHash, FiPhone, FiMapPin, FiEye, FiEyeOff, FiLoader, FiArrowRight, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiHash, FiPhone, FiMapPin, FiEye, FiEyeOff, FiLoader, FiArrowRight, FiAlertCircle } from 'react-icons/fi';
 
 export default function RegisterPage() {
     const router = useRouter();
-    const supabase = createClient();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -37,55 +35,32 @@ export default function RegisterPage() {
                 throw new Error('NIK harus terdiri dari 16 digit angka.');
             }
 
-            // 1. Sign up with Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.nama,
-                    }
-                }
+            if (formData.password.length < 6) {
+                throw new Error('Password minimal 6 karakter.');
+            }
+
+            // Register via MySQL API
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    nama: formData.nama,
+                    nik: formData.nik,
+                    telepon: formData.telepon,
+                    kabupaten_kota: formData.kabupaten_kota
+                })
             });
 
-            if (authError) throw authError;
+            const result = await response.json();
 
-            if (authData.user) {
-                // 2. Insert into public.users
-                const { error: userError } = await supabase.from('users').insert({
-                    id: authData.user.id,
-                    email: formData.email,
-                    role: 'hafiz',
-                    nama: formData.nama,
-                    telepon: formData.telepon,
-                    kabupaten_kota: formData.kabupaten_kota || null
-                });
-
-                if (userError) throw userError;
-
-                // 3. Insert into public.hafiz (Initial profile)
-                const { error: hafizError } = await supabase.from('hafiz').insert({
-                    user_id: authData.user.id,
-                    nik: formData.nik,
-                    nama: formData.nama,
-                    tempat_lahir: '-', // Placeholder until they update profile
-                    tanggal_lahir: '2000-01-01', // Placeholder
-                    alamat: '-', // Placeholder
-                    desa_kelurahan: '-', // Placeholder
-                    kecamatan: '-', // Placeholder
-                    kabupaten_kota: formData.kabupaten_kota || 'Jawa Timur',
-                    tahun_tes: new Date().getFullYear(),
-                    telepon: formData.telepon
-                });
-
-                if (hafizError) {
-                    console.error('Error creating hafiz profile:', hafizError);
-                    // Don't throw here, allowing user to login and fix profile later if needed
-                }
-
-                alert('Registrasi berhasil! Silakan login.');
-                router.push('/login');
+            if (!response.ok) {
+                throw new Error(result.error || 'Terjadi kesalahan saat registrasi.');
             }
+
+            alert('Registrasi berhasil! Silakan login.');
+            router.push('/login');
         } catch (err: any) {
             console.error('Registration error:', err);
             setError(err.message || 'Terjadi kesalahan saat registrasi.');
@@ -106,7 +81,7 @@ export default function RegisterPage() {
                 <div className="text-center mb-10">
                     <Link href="/" className="inline-block mb-6 group">
                         <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-primary-500/30 mx-auto group-hover:scale-105 transition-transform">
-                            L
+                            H
                         </div>
                     </Link>
                     <h2 className="text-3xl font-display font-bold text-neutral-800 tracking-tight">
@@ -242,13 +217,43 @@ export default function RegisterPage() {
                             >
                                 <option value="">Pilih Kabupaten/Kota...</option>
                                 <option value="Kota Surabaya">Kota Surabaya</option>
+                                <option value="Kota Malang">Kota Malang</option>
+                                <option value="Kota Kediri">Kota Kediri</option>
+                                <option value="Kota Blitar">Kota Blitar</option>
+                                <option value="Kota Mojokerto">Kota Mojokerto</option>
+                                <option value="Kota Madiun">Kota Madiun</option>
+                                <option value="Kota Pasuruan">Kota Pasuruan</option>
+                                <option value="Kota Probolinggo">Kota Probolinggo</option>
+                                <option value="Kota Batu">Kota Batu</option>
                                 <option value="Kabupaten Gresik">Kabupaten Gresik</option>
                                 <option value="Kabupaten Sidoarjo">Kabupaten Sidoarjo</option>
+                                <option value="Kabupaten Mojokerto">Kabupaten Mojokerto</option>
+                                <option value="Kabupaten Jombang">Kabupaten Jombang</option>
+                                <option value="Kabupaten Bojonegoro">Kabupaten Bojonegoro</option>
+                                <option value="Kabupaten Tuban">Kabupaten Tuban</option>
+                                <option value="Kabupaten Lamongan">Kabupaten Lamongan</option>
+                                <option value="Kabupaten Madiun">Kabupaten Madiun</option>
+                                <option value="Kabupaten Magetan">Kabupaten Magetan</option>
+                                <option value="Kabupaten Ngawi">Kabupaten Ngawi</option>
+                                <option value="Kabupaten Ponorogo">Kabupaten Ponorogo</option>
+                                <option value="Kabupaten Pacitan">Kabupaten Pacitan</option>
+                                <option value="Kabupaten Kediri">Kabupaten Kediri</option>
+                                <option value="Kabupaten Nganjuk">Kabupaten Nganjuk</option>
+                                <option value="Kabupaten Blitar">Kabupaten Blitar</option>
+                                <option value="Kabupaten Tulungagung">Kabupaten Tulungagung</option>
+                                <option value="Kabupaten Trenggalek">Kabupaten Trenggalek</option>
                                 <option value="Kabupaten Malang">Kabupaten Malang</option>
-                                <option value="Kota Malang">Kota Malang</option>
-                                <option value="Kabupaten Banyuwangi">Kabupaten Banyuwangi</option>
+                                <option value="Kabupaten Pasuruan">Kabupaten Pasuruan</option>
+                                <option value="Kabupaten Probolinggo">Kabupaten Probolinggo</option>
+                                <option value="Kabupaten Lumajang">Kabupaten Lumajang</option>
                                 <option value="Kabupaten Jember">Kabupaten Jember</option>
-                                {/* Add more areas as needed */}
+                                <option value="Kabupaten Bondowoso">Kabupaten Bondowoso</option>
+                                <option value="Kabupaten Situbondo">Kabupaten Situbondo</option>
+                                <option value="Kabupaten Banyuwangi">Kabupaten Banyuwangi</option>
+                                <option value="Kabupaten Sampang">Kabupaten Sampang</option>
+                                <option value="Kabupaten Pamekasan">Kabupaten Pamekasan</option>
+                                <option value="Kabupaten Sumenep">Kabupaten Sumenep</option>
+                                <option value="Kabupaten Bangkalan">Kabupaten Bangkalan</option>
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
