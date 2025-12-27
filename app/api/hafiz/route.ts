@@ -132,14 +132,15 @@ export async function POST(request: NextRequest) {
         const insertId = await insert(
             `INSERT INTO hafiz (nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin,
         alamat, rt, rw, desa_kelurahan, kecamatan, kabupaten_kota,
-        telepon, email, sertifikat_tahfidz, mengajar, tmt_mengajar,
+        telepon, email, nama_bank, nomor_rekening, sertifikat_tahfidz, mengajar, tmt_mengajar,
         tempat_mengajar, tahun_tes, status_kelulusan, nilai_tahfidz,
         nilai_wawasan, keterangan)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 data.nik, data.nama, data.tempat_lahir, data.tanggal_lahir, data.jenis_kelamin,
                 data.alamat, data.rt || null, data.rw || null, data.desa_kelurahan, data.kecamatan,
                 data.kabupaten_kota, data.telepon || null, data.email || null,
+                data.nama_bank || null, data.nomor_rekening || null,
                 data.sertifikat_tahfidz || null, data.mengajar ? 1 : 0, data.tmt_mengajar || null,
                 data.tempat_mengajar || null, data.tahun_tes, data.status_kelulusan || 'pending',
                 data.nilai_tahfidz || null, data.nilai_wawasan || null, data.keterangan || null

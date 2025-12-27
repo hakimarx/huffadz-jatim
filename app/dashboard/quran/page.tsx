@@ -173,6 +173,7 @@ export default function QuranPage() {
 
     // Fetch ayat dari surah yang dipilih
     const fetchAyahs = async (noSurah: number) => {
+        console.log('fetchAyahs called with surah:', noSurah);
         setLoadingAyahs(true);
         setError(null);
         try {
@@ -184,6 +185,7 @@ export default function QuranPage() {
             }
 
             const result = await response.json();
+            console.log('Ayat API result:', result);
 
             if (result.error) {
                 throw new Error(result.error);
@@ -199,6 +201,8 @@ export default function QuranPage() {
                 throw new Error('Invalid response format');
             }
 
+            console.log('Raw ayat data:', rawData.slice(0, 2));
+
             // Map Kemenag API fields to our interface
             const mappedAyahs: AyatKemenag[] = rawData.map((item: AyatKemenagRaw) => ({
                 id: item.id,
@@ -210,10 +214,12 @@ export default function QuranPage() {
                 no_urut: item.id
             }));
 
+            console.log('Mapped ayahs:', mappedAyahs.slice(0, 2));
             setAyahs(mappedAyahs);
 
             // Find and set selected surah data
             const surahData = surahs.find(s => s.nomor_surah === noSurah);
+            console.log('Selected surah data:', surahData);
             setSelectedSurahData(surahData || null);
             setSelectedSurah(noSurah);
             setLoadingAyahs(false);
