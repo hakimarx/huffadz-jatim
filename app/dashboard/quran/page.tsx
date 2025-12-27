@@ -8,6 +8,18 @@ import Link from 'next/link';
 // API Configuration - Using local proxy to avoid CORS
 const API_PROXY_URL = '/api/quran';
 
+// Kemenag API response structure
+interface SurahKemenagRaw {
+    id: number;
+    nama: string;
+    arabic: string;
+    arti: string;
+    kategori: string;
+    jmlAyat: number;
+    ayat_ar: string;
+}
+
+// Our normalized structure
 interface SurahKemenag {
     id: number;
     nama_surah: string;
@@ -18,6 +30,23 @@ interface SurahKemenag {
     tempat_turun: string;
 }
 
+// Kemenag API ayat response structure
+interface AyatKemenagRaw {
+    id: number;
+    surah: number;
+    ayat: number;
+    juz: number;
+    halaman: number;
+    teks_msi_usmani: string;
+    teks: string;
+    teks_gundul: string;
+    terjemah: string;
+    keterangan: string;
+    no_foot: string;
+    teks_foot: string;
+}
+
+// Our normalized ayat structure
 interface AyatKemenag {
     id: number;
     id_surah: number;
@@ -104,20 +133,36 @@ export default function QuranPage() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.error) {
-                throw new Error(data.error);
+            if (result.error) {
+                throw new Error(result.error);
             }
 
-            if (data && Array.isArray(data)) {
-                setSurahs(data);
-            } else if (data.data && Array.isArray(data.data)) {
-                setSurahs(data.data);
+            // Get the data array from response
+            let rawData: SurahKemenagRaw[] = [];
+            if (result && Array.isArray(result)) {
+                rawData = result;
+            } else if (result.data && Array.isArray(result.data)) {
+                rawData = result.data;
             } else {
                 throw new Error('Invalid response format');
             }
 
+            // Map Kemenag API fields to our interface
+            console.log('Raw data from API:', rawData.slice(0, 2));
+            const mappedSurahs: SurahKemenag[] = rawData.map((item: SurahKemenagRaw, index: number) => ({
+                id: item.id,
+                nomor_surah: item.id, // id is the surah number
+                nama_surah: item.arabic || '',
+                nama_latin: item.nama || '',
+                arti: item.arti || '',
+                jumlah_ayat: item.jmlAyat || 0,
+                tempat_turun: item.kategori || ''
+            }));
+
+            console.log('Mapped surahs:', mappedSurahs.slice(0, 2));
+            setSurahs(mappedSurahs);
             setLoading(false);
         } catch (error: any) {
             console.error('Error fetching surahs:', error);
@@ -138,19 +183,34 @@ export default function QuranPage() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.error) {
-                throw new Error(data.error);
+            if (result.error) {
+                throw new Error(result.error);
             }
 
-            if (data && Array.isArray(data)) {
-                setAyahs(data);
-            } else if (data.data && Array.isArray(data.data)) {
-                setAyahs(data.data);
+            // Get the data array from response
+            let rawData: AyatKemenagRaw[] = [];
+            if (result && Array.isArray(result)) {
+                rawData = result;
+            } else if (result.data && Array.isArray(result.data)) {
+                rawData = result.data;
             } else {
                 throw new Error('Invalid response format');
             }
+
+            // Map Kemenag API fields to our interface
+            const mappedAyahs: AyatKemenag[] = rawData.map((item: AyatKemenagRaw) => ({
+                id: item.id,
+                id_surah: item.surah,
+                nomor_ayat: item.ayat,
+                teks_arab: item.teks_msi_usmani || item.teks || '',
+                teks_latin: '', // Kemenag API doesn't provide latin transliteration
+                terjemahan: item.terjemah || '',
+                no_urut: item.id
+            }));
+
+            setAyahs(mappedAyahs);
 
             // Find and set selected surah data
             const surahData = surahs.find(s => s.nomor_surah === noSurah);

@@ -30,8 +30,8 @@
 6. Catat informasi berikut:
    - **Host**: `gateway01.ap-southeast-1.prod.aws.tidbcloud.com`
    - **Port**: `4000`
-   - **User**: (username yang ditampilkan, biasanya `randomstring.root`)
-   - **Password**: (yang baru di-generate)
+   - **User**: 4K6TwTwqAHa9DAx.root
+   - **Password**: fiJrPakHUDPl7cki
 
 ---
 
@@ -52,8 +52,8 @@ Edit file `.env.local` dengan nilai dari TiDB:
 ```env
 DATABASE_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com
 DATABASE_PORT=4000
-DATABASE_USER=your_username.root
-DATABASE_PASSWORD=your_password
+DATABASE_USER=4K6TwTwqAHa9DAx.root
+DATABASE_PASSWORD=fiJrPakHUDPl7cki
 DATABASE_NAME=huffadz_jatim
 DATABASE_SSL=true
 SESSION_SECRET=huffadz-jatim-super-secret-session-key-2024
