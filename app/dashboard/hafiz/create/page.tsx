@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import Navbar from '@/components/Navbar';
+import { Suspense, useState, useEffect } from 'react';
+import Sidebar from '@/components/Sidebar';
 import HafizForm from '../components/HafizForm';
 import KtpOcrUploader from '@/components/KtpOcrUploader';
 import { FiUserPlus, FiArrowLeft } from 'react-icons/fi';
@@ -22,10 +22,36 @@ interface KtpData {
     kabupaten_kota: string;
 }
 
+interface UserData {
+    id: number;
+    email: string;
+    nama: string;
+    role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
+    kabupaten_kota?: string;
+    foto_profil?: string;
+}
+
 function CreateHafizContent() {
     const [step, setStep] = useState<'upload' | 'form'>('upload');
     const [initialData, setInitialData] = useState<Partial<KtpData>>({});
     const [ktpImageFile, setKtpImageFile] = useState<File | null>(null);
+    const [userData, setUserData] = useState<UserData | null>(null);
+
+    useEffect(() => {
+        fetchUserData();
+    }, []);
+
+    const fetchUserData = async () => {
+        try {
+            const response = await fetch('/api/auth/me');
+            if (response.ok) {
+                const data = await response.json();
+                setUserData(data.user);
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+    };
 
     const handleKtpDataExtracted = (data: KtpData, imageFile: File) => {
         setInitialData(data);
@@ -38,13 +64,14 @@ function CreateHafizContent() {
     };
 
     return (
-        <div className="min-h-screen bg-neutral-50">
-            <Navbar userRole="admin_provinsi" userName="Admin" />
+        <div className="min-h-screen bg-neutral-50 flex">
+            <Sidebar
+                userRole={userData?.role || 'admin_kabko'}
+                userName={userData?.nama || 'Admin'}
+                userPhoto={userData?.foto_profil}
+            />
 
-            {/* Spacer for fixed navbar */}
-            <div className="h-24" />
-
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <main className="flex-1 p-6 lg:ml-64">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
@@ -74,7 +101,7 @@ function CreateHafizContent() {
                 </div>
 
                 {/* Progress Steps */}
-                <div className="flex items-center gap-4 mb-8">
+                <div className="flex items-center gap-4 mb-8 max-w-3xl">
                     <div className={`flex items-center gap-2 ${step === 'upload' ? 'text-primary-600 font-semibold' : 'text-neutral-400'}`}>
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step === 'upload' ? 'bg-primary-600 text-white' : 'bg-neutral-200'}`}>1</span>
                         <span>Upload KTP</span>
@@ -89,7 +116,7 @@ function CreateHafizContent() {
                 </div>
 
                 {step === 'upload' ? (
-                    <>
+                    <div className="max-w-3xl">
                         {/* Info Alert */}
                         <div className="alert alert-info mb-8">
                             <div>
@@ -108,9 +135,9 @@ function CreateHafizContent() {
                             onDataExtracted={handleKtpDataExtracted}
                             onSkip={handleSkip}
                         />
-                    </>
+                    </div>
                 ) : (
-                    <>
+                    <div className="max-w-4xl">
                         {/* Info Alert */}
                         <div className="alert alert-info mb-8">
                             <div>
@@ -154,7 +181,7 @@ function CreateHafizContent() {
                             }}
                             ktpImageFile={ktpImageFile}
                         />
-                    </>
+                    </div>
                 )}
             </main>
         </div>

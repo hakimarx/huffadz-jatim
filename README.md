@@ -15,7 +15,7 @@ Sistem ini memfasilitasi:
 ## 🚀 Teknologi
 
 - **Frontend**: Next.js 16 + React + TypeScript
-- **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Backend**: TiDB Cloud Serverless (MySQL-compatible)
 - **Styling**: TailwindCSS + Custom CSS
 - **Icons**: React Icons
 - **Deployment**: Vercel / Custom Server
@@ -54,7 +54,7 @@ Sistem ini memfasilitasi:
 ### Prasyarat
 - Node.js 18+ 
 - npm atau yarn
-- Akun Supabase (gratis di [supabase.com](https://supabase.com))
+- Akun TiDB Cloud (gratis di [tidbcloud.com](https://tidbcloud.com))
 
 ### Langkah Instalasi
 
@@ -69,24 +69,35 @@ cd huffadz-jatim
 npm install
 ```
 
-3. **Setup Supabase**
-   - Buat project baru di [supabase.com](https://supabase.com)
-   - Buka SQL Editor dan jalankan file `database/schema.sql`
-   - Copy URL dan Anon Key dari Settings > API
+3. **Setup TiDB Cloud**
+   - Buat akun di [tidbcloud.com](https://tidbcloud.com)
+   - Buat cluster baru (pilih "TiDB Serverless" - GRATIS)
+   - Region: **Singapore (ap-southeast-1)** untuk latency terbaik
+   - Setelah cluster aktif, klik **Connect** > **General**
+   - Generate password dan catat credential
 
-4. **Konfigurasi Environment**
-   - Rename `.env.local` dan isi dengan kredensial Supabase:
+4. **Import Database Schema**
+   - Buka **SQL Editor** di TiDB Console
+   - Copy dan jalankan file `database/huffadz_jatim_mysql.sql`
+
+5. **Konfigurasi Environment**
+   - Rename `.env.mysql.example` ke `.env.local` dan isi:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+DATABASE_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+DATABASE_PORT=4000
+DATABASE_USER=your_username.root
+DATABASE_PASSWORD=your_password
+DATABASE_NAME=huffadz_jatim
+DATABASE_SSL=true
+SESSION_SECRET=your-secret-key-here
 ```
 
-5. **Jalankan Development Server**
+6. **Jalankan Development Server**
 ```bash
 npm run dev
 ```
 
-6. **Buka browser**
+7. **Buka browser**
 ```
 http://localhost:3000
 ```

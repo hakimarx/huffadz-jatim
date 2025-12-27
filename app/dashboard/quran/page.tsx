@@ -375,14 +375,14 @@ export default function QuranPage() {
                                                         {surah.nomor_surah}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-lg">{surah.nama_latin}</p>
+                                                        <p className="font-arabic text-xl">{surah.nama_surah}</p>
                                                         <p className={`text-sm ${selectedSurah === surah.nomor_surah ? 'text-emerald-100' : 'text-gray-600'}`}>
-                                                            {surah.arti}
+                                                            {surah.nama_latin}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-arabic text-2xl">{surah.nama_surah}</p>
+                                                    <p className={`text-sm font-medium ${selectedSurah === surah.nomor_surah ? 'text-white' : 'text-gray-700'}`}>{surah.arti}</p>
                                                     <p className={`text-xs ${selectedSurah === surah.nomor_surah ? 'text-emerald-100' : 'text-gray-500'}`}>
                                                         {surah.jumlah_ayat} ayat • {surah.tempat_turun}
                                                     </p>

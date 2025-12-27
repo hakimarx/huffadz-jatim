@@ -107,6 +107,8 @@ export interface DBHafiz {
     kabupaten_kota: string;
     telepon: string | null;
     email: string | null;
+    nama_bank: string | null;
+    nomor_rekening: string | null;
     sertifikat_tahfidz: string | null;
     mengajar: boolean;
     tmt_mengajar: Date | null;

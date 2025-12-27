@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { FiSave, FiX, FiAlertCircle, FiLoader } from 'react-icons/fi';
 
@@ -36,6 +35,8 @@ const hafizSchema = z.object({
     tahun_tes: z.number().min(2015).max(2030),
     keterangan: z.string().optional(),
     is_aktif: z.boolean().optional(),
+    nomor_rekening: z.string().optional(),
+    nama_bank: z.string().optional(),
 });
 
 type HafizFormData = z.infer<typeof hafizSchema>;
@@ -78,8 +79,6 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
         setSuccess(false);
 
         try {
-            const supabase = createClient();
-
             // Prepare data with proper defaults
             const hafizData: any = {
                 nik: data.nik.trim(),
@@ -101,62 +100,43 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 tmt_mengajar: data.mengajar && data.tmt_mengajar ? data.tmt_mengajar : null,
                 tahun_tes: data.tahun_tes,
                 keterangan: data.keterangan?.trim() || null,
-                status_insentif: 'tidak_aktif', // Default status
-                status_kelulusan: 'pending', // Default status
+                nomor_rekening: data.nomor_rekening?.trim() || null,
+                nama_bank: data.nama_bank?.trim() || null,
+                status_kelulusan: 'pending',
             };
 
-            // Only add updated_at for updates, created_at will be auto-generated
-            if (mode === 'edit') {
-                hafizData.updated_at = new Date().toISOString();
-                // Include is_aktif for edit mode
-                hafizData.is_aktif = data.is_aktif ?? initialData?.is_aktif ?? true;
-            }
-
             if (mode === 'create') {
-                // Create new hafiz
-                console.log('Attempting to create hafiz with data:', hafizData);
+                // Create new hafiz via MySQL API
+                const response = await fetch('/api/hafiz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(hafizData),
+                });
 
-                const { data: newHafiz, error: createError } = await supabase
-                    .from('hafiz')
-                    .insert([hafizData])
-                    .select()
-                    .single();
+                const result = await response.json();
 
-                if (createError) {
-                    console.error('Supabase create error:', createError);
-                    console.error('Error details:', JSON.stringify(createError, null, 2));
-                    console.error('Error code:', createError.code);
-                    console.error('Error message:', createError.message);
-                    console.error('Error hint:', createError.hint);
-                    console.error('Error details:', createError.details);
-                    throw createError;
+                if (!response.ok) {
+                    throw new Error(result.error || 'Gagal menyimpan data');
                 }
 
-                console.log('Hafiz created successfully:', newHafiz);
                 setSuccess(true);
                 setTimeout(() => {
                     router.push('/dashboard/hafiz');
                 }, 1500);
             } else {
-                // Update existing hafiz - use NIK as identifier (fallback if id doesn't exist)
-                console.log('Attempting to update hafiz with data:', hafizData);
+                // Update existing hafiz via MySQL API
+                const response = await fetch(`/api/hafiz/${hafizId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...hafizData, is_aktif: data.is_aktif }),
+                });
 
-                // Try to use nik for update since id column might not exist
-                const identifier = initialData?.nik || hafizId;
-                const identifierField = initialData?.nik ? 'nik' : 'id';
+                const result = await response.json();
 
-                const { error: updateError } = await supabase
-                    .from('hafiz')
-                    .update(hafizData)
-                    .eq(identifierField, identifier);
-
-                if (updateError) {
-                    console.error('Supabase update error:', updateError);
-                    console.error('Error details:', JSON.stringify(updateError, null, 2));
-                    throw updateError;
+                if (!response.ok) {
+                    throw new Error(result.error || 'Gagal mengupdate data');
                 }
 
-                console.log('Hafiz updated successfully');
                 setSuccess(true);
                 setTimeout(() => {
                     router.push('/dashboard/hafiz');
@@ -164,33 +144,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
             }
         } catch (err: any) {
             console.error('Form submission error:', err);
-            console.error('Full error object:', JSON.stringify(err, null, 2));
-
-            // Better error handling
-            let errorMessage = 'Terjadi kesalahan saat menyimpan data.';
-
-            if (err.code === '23505') {
-                errorMessage = 'NIK sudah terdaftar dalam sistem';
-            } else if (err.code === '23502') {
-                errorMessage = 'Ada field required yang belum diisi';
-            } else if (err.code === '42P01') {
-                errorMessage = 'Tabel hafiz belum ada di database. Silakan jalankan migration script terlebih dahulu.';
-            } else if (err.code === '42703') {
-                errorMessage = 'Ada kolom yang tidak ditemukan di database. Silakan jalankan migration script.';
-            } else if (err.message) {
-                errorMessage = err.message;
-            } else if (err.hint) {
-                errorMessage = err.hint;
-            } else if (err.details) {
-                errorMessage = err.details;
-            }
-
-            // Add technical details for debugging
-            if (err.code) {
-                errorMessage += ` (Error code: ${err.code})`;
-            }
-
-            setError(errorMessage);
+            setError(err.message || 'Terjadi kesalahan saat menyimpan data.');
         } finally {
             setLoading(false);
         }
@@ -455,6 +409,38 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                         {errors.email && (
                             <span className="form-error">{errors.email.message}</span>
                         )}
+                    </div>
+
+                    {/* Nama Bank */}
+                    <div className="form-group">
+                        <label className="form-label">Nama Bank</label>
+                        <select
+                            className="form-select"
+                            {...register('nama_bank')}
+                        >
+                            <option value="">Pilih Bank</option>
+                            <option value="BRI">BRI</option>
+                            <option value="BNI">BNI</option>
+                            <option value="Mandiri">Mandiri</option>
+                            <option value="BCA">BCA</option>
+                            <option value="CIMB Niaga">CIMB Niaga</option>
+                            <option value="BTN">BTN</option>
+                            <option value="Bank Jatim">Bank Jatim</option>
+                            <option value="Bank Syariah Indonesia">Bank Syariah Indonesia (BSI)</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+
+                    {/* Nomor Rekening */}
+                    <div className="form-group">
+                        <label className="form-label">Nomor Rekening</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="1234567890"
+                            {...register('nomor_rekening')}
+                        />
+                        <span className="form-help">Untuk pencairan insentif</span>
                     </div>
                 </div>
             </div>
