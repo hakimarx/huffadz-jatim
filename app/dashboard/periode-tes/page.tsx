@@ -3,11 +3,10 @@
 import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import { FiPlus, FiEdit, FiTrash2, FiCalendar, FiX } from 'react-icons/fi';
 
 interface PeriodeTes {
-    id: string;
+    id: number;
     tahun: number;
     nama_periode: string;
     tanggal_mulai: string;
@@ -18,7 +17,7 @@ interface PeriodeTes {
 }
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -42,46 +41,50 @@ function PeriodeTesContent() {
         status: 'draft',
         deskripsi: ''
     });
-    const supabase = createClient();
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!session) {
+                // Fetch user from MySQL session API
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
+
+                if (!sessionResponse.ok || !sessionData.user) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
+                setUser(sessionData.user as UserData);
 
-                setUser(userData as UserData || {
-                    id: session.user.id,
-                    role: 'hafiz',
-                    nama: session.user.email?.split('@')[0] || 'User',
-                    email: session.user.email || '',
-                });
+                // Fetch periode list from MySQL API
+                const periodeResponse = await fetch('/api/periode');
+                const periodeData = await periodeResponse.json();
 
-                // Fetch periode list
-                const { data: periodeData } = await supabase
-                    .from('periode_tes')
-                    .select('*')
-                    .order('tahun', { ascending: false });
-
-                if (periodeData) setPeriodeList(periodeData);
+                if (periodeData.data) {
+                    setPeriodeList(periodeData.data);
+                }
 
             } catch (err) {
                 console.error('Error fetching data:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
         }
         fetchData();
     }, []);
+
+    const refreshPeriodeList = async () => {
+        try {
+            const response = await fetch('/api/periode');
+            const data = await response.json();
+            if (data.data) {
+                setPeriodeList(data.data);
+            }
+        } catch (err) {
+            console.error('Error refreshing periode list:', err);
+        }
+    };
 
     const openAddModal = () => {
         setEditingPeriode(null);
@@ -117,45 +120,37 @@ function PeriodeTesContent() {
 
         try {
             if (editingPeriode) {
-                // Update
-                const { error } = await supabase
-                    .from('periode_tes')
-                    .update({
-                        tahun: formData.tahun,
-                        nama_periode: formData.nama_periode,
-                        tanggal_mulai: formData.tanggal_mulai,
-                        tanggal_selesai: formData.tanggal_selesai,
-                        kuota_total: formData.kuota_total,
-                        status: formData.status,
-                        deskripsi: formData.deskripsi || null,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', editingPeriode.id);
+                // Update via MySQL API
+                const response = await fetch(`/api/periode/${editingPeriode.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal mengupdate periode');
+                }
+
                 alert('✅ Periode berhasil diupdate!');
             } else {
-                // Insert
-                const { error } = await supabase
-                    .from('periode_tes')
-                    .insert([{
-                        tahun: formData.tahun,
-                        nama_periode: formData.nama_periode,
-                        tanggal_mulai: formData.tanggal_mulai,
-                        tanggal_selesai: formData.tanggal_selesai,
-                        kuota_total: formData.kuota_total,
-                        status: formData.status,
-                        deskripsi: formData.deskripsi || null
-                    }]);
+                // Insert via MySQL API
+                const response = await fetch('/api/periode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal menambahkan periode');
+                }
+
                 alert('✅ Periode berhasil ditambahkan!');
             }
 
             setShowModal(false);
-            // Refresh list
-            const { data } = await supabase.from('periode_tes').select('*').order('tahun', { ascending: false });
-            if (data) setPeriodeList(data);
+            await refreshPeriodeList();
 
         } catch (err: any) {
             console.error('Error:', err);
@@ -165,12 +160,19 @@ function PeriodeTesContent() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: number) => {
         if (!confirm('Apakah Anda yakin ingin menghapus periode ini?')) return;
 
         try {
-            const { error } = await supabase.from('periode_tes').delete().eq('id', id);
-            if (error) throw error;
+            const response = await fetch(`/api/periode/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Gagal menghapus periode');
+            }
+
             setPeriodeList(periodeList.filter(p => p.id !== id));
             alert('✅ Periode berhasil dihapus!');
         } catch (err: any) {
@@ -221,8 +223,8 @@ function PeriodeTesContent() {
                                         <div className="flex items-center gap-3 mb-2">
                                             <h3 className="text-xl font-bold text-neutral-800">{periode.nama_periode}</h3>
                                             <span className={`badge ${periode.status === 'selesai' ? 'badge-success' :
-                                                    periode.status === 'tes' ? 'badge-info' :
-                                                        periode.status === 'pendaftaran' ? 'badge-warning' : 'badge-neutral'
+                                                periode.status === 'tes' ? 'badge-info' :
+                                                    periode.status === 'pendaftaran' ? 'badge-warning' : 'badge-neutral'
                                                 }`}>
                                                 {periode.status}
                                             </span>

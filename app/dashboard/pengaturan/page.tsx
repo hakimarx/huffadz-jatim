@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import Sidebar from '@/components/Sidebar';
 import {
     FiPlus,
@@ -21,7 +20,7 @@ import {
 } from 'react-icons/fi';
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -30,7 +29,7 @@ interface UserData {
 }
 
 interface ManagedUser {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: string;
@@ -83,63 +82,41 @@ function PengaturanContent() {
         nik: ''
     });
 
-    const supabase = createClient();
-
     const fetchManagedUsers = useCallback(async () => {
         if (!user) return;
 
         setLoadingUsers(true);
         try {
-            let query = supabase
-                .from('users')
-                .select('id, email, nama, role, kabupaten_kota, telepon, is_active, created_at')
-                .order('nama');
+            // Build role param based on current user role
+            const roleParam = user.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
+            const response = await fetch(`/api/users?role=${roleParam}`);
+            const data = await response.json();
 
-            if (user.role === 'admin_provinsi') {
-                // Admin Provinsi manages Admin Kab/Ko
-                query = query.eq('role', 'admin_kabko');
-            } else if (user.role === 'admin_kabko') {
-                // Admin Kab/Ko manages Hafiz in their region
-                query = query
-                    .eq('role', 'hafiz')
-                    .eq('kabupaten_kota', user.kabupaten_kota);
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error('Error fetching users:', error);
+            if (!response.ok) {
+                console.error('Error fetching users:', data.error);
             } else {
-                setManagedUsers(data || []);
+                setManagedUsers(data.data || []);
             }
         } catch (err) {
             console.error('Error:', err);
         } finally {
             setLoadingUsers(false);
         }
-    }, [user, supabase]);
+    }, [user]);
 
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Use MySQL session API
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
 
-                if (sessionError || !session) {
+                if (!sessionResponse.ok || !sessionData.user) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                if (userError || !userData) {
-                    console.error('Error fetching user data:', userError);
-                    window.location.href = '/login';
-                    return;
-                }
+                const userData = sessionData.user as UserData;
 
                 // Only admin_provinsi and admin_kabko can access this page
                 if (userData.role === 'hafiz') {
@@ -147,16 +124,17 @@ function PengaturanContent() {
                     return;
                 }
 
-                setUser(userData as UserData);
+                setUser(userData);
             } catch (err) {
                 console.error('Error:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
         }
 
         fetchUserData();
-    }, [supabase]);
+    }, []);
 
     useEffect(() => {
         if (user) {
@@ -254,89 +232,49 @@ function PengaturanContent() {
                     throw new Error('Kabupaten/Kota wajib dipilih');
                 }
 
-                // Create new user via Supabase Auth
-                const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email: formData.email,
-                    password: formData.password,
-                    options: {
-                        data: {
-                            full_name: formData.nama
-                        }
-                    }
+                // Create new user via MySQL API
+                const newRole = user?.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password,
+                        nama: formData.nama,
+                        role: newRole,
+                        kabupaten_kota: formData.kabupaten_kota || user?.kabupaten_kota,
+                        telepon: formData.telepon,
+                        nik: formData.nik || undefined
+                    })
                 });
 
-                if (authError) {
-                    // Handle specific Supabase Auth errors with user-friendly messages
-                    if (authError.message.includes('invalid')) {
-                        throw new Error('Email tidak valid. Gunakan alamat email yang benar dan lengkap.');
-                    }
-                    if (authError.message.includes('security purposes') || authError.message.includes('rate limit')) {
-                        // Extract seconds from error message if available
-                        const match = authError.message.match(/(\d+) seconds?/);
-                        const seconds = match ? match[1] : '60';
-                        throw new Error(`Terlalu banyak percobaan. Silakan tunggu ${seconds} detik sebelum mencoba lagi.`);
-                    }
-                    if (authError.message.includes('already registered')) {
-                        throw new Error('Email ini sudah terdaftar. Gunakan email lain.');
-                    }
-                    throw authError;
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Gagal menambahkan user');
                 }
 
-                if (authData.user) {
-                    // Insert to public.users
-                    const newRole = user?.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
-                    const { error: insertError } = await supabase
-                        .from('users')
-                        .insert({
-                            id: authData.user.id,
-                            email: formData.email,
-                            role: newRole,
-                            nama: formData.nama,
-                            kabupaten_kota: formData.kabupaten_kota || user?.kabupaten_kota,
-                            telepon: formData.telepon,
-                            is_active: true
-                        });
-
-                    if (insertError) throw insertError;
-
-                    // If creating Hafiz, also create hafiz record if NIK provided
-                    if (newRole === 'hafiz' && formData.nik) {
-                        const { error: hafizError } = await supabase
-                            .from('hafiz')
-                            .insert({
-                                user_id: authData.user.id,
-                                nik: formData.nik,
-                                nama: formData.nama,
-                                kabupaten_kota: formData.kabupaten_kota || user?.kabupaten_kota,
-                                telepon: formData.telepon,
-                                email: formData.email,
-                                tanggal_lahir: new Date('2000-01-01'), // Placeholder
-                                tahun_tes: new Date().getFullYear()
-                            });
-
-                        if (hafizError) {
-                            console.error('Error creating hafiz record:', hafizError);
-                        }
-                    }
-                }
-
-                alert('User berhasil ditambahkan! Email konfirmasi akan dikirim ke alamat email tersebut.');
+                alert('User berhasil ditambahkan!');
             } else {
                 // Edit existing user
                 if (!selectedUser) return;
 
-                const updateData: Record<string, string | boolean> = {
-                    nama: formData.nama,
-                    kabupaten_kota: formData.kabupaten_kota,
-                    telepon: formData.telepon
-                };
+                const response = await fetch('/api/users', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: selectedUser.id,
+                        nama: formData.nama,
+                        kabupaten_kota: formData.kabupaten_kota,
+                        telepon: formData.telepon
+                    })
+                });
 
-                const { error: updateError } = await supabase
-                    .from('users')
-                    .update(updateData)
-                    .eq('id', selectedUser.id);
+                const result = await response.json();
 
-                if (updateError) throw updateError;
+                if (!response.ok) {
+                    throw new Error(result.error || 'Gagal memperbarui user');
+                }
 
                 alert('User berhasil diperbarui!');
             }
@@ -345,32 +283,7 @@ function PengaturanContent() {
             fetchManagedUsers();
         } catch (err: unknown) {
             console.error('Error saving user:', err);
-            let message = 'Terjadi kesalahan';
-
-            if (err instanceof Error) {
-                message = err.message;
-            } else if (err && typeof err === 'object') {
-                // Handle Supabase PostgrestError which has code, message, details, hint
-                const pgError = err as { message?: string; code?: string; details?: string; hint?: string };
-                if (pgError.message) {
-                    message = pgError.message;
-                    // Check for RLS violation
-                    if (pgError.code === '42501' || pgError.message.includes('row-level security')) {
-                        message = 'Tidak memiliki izin untuk menambahkan user. Hubungi administrator untuk memperbaiki kebijakan keamanan database.';
-                    }
-                    // Add details if available
-                    if (pgError.details) {
-                        console.error('Error details:', pgError.details);
-                    }
-                    if (pgError.hint) {
-                        console.error('Error hint:', pgError.hint);
-                    }
-                } else {
-                    // Try to stringify the error for debugging
-                    console.error('Unknown error structure:', JSON.stringify(err));
-                }
-            }
-
+            const message = err instanceof Error ? err.message : 'Terjadi kesalahan';
             setError(message);
         } finally {
             setSaving(false);
@@ -387,13 +300,16 @@ function PengaturanContent() {
 
         setDeleting(true);
         try {
-            // Delete from public.users (this will cascade to related tables)
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', userToDelete.id);
+            // Delete via MySQL API
+            const response = await fetch(`/api/users?id=${userToDelete.id}`, {
+                method: 'DELETE'
+            });
 
-            if (error) throw error;
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Gagal menghapus user');
+            }
 
             alert('User berhasil dihapus!');
             setShowDeleteConfirm(false);

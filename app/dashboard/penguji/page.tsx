@@ -3,11 +3,10 @@
 import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import { FiPlus, FiEdit, FiTrash2, FiX, FiCheck } from 'react-icons/fi';
 
 interface Penguji {
-    id: string;
+    id: number;
     nama: string;
     gelar: string;
     institusi: string;
@@ -19,7 +18,7 @@ interface Penguji {
 }
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -44,34 +43,25 @@ function PengujiContent() {
         periode_tes: '',
         is_active: true
     });
-    const supabase = createClient();
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!session) {
+                // Use MySQL session API
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
+
+                if (!sessionResponse.ok || !sessionData.user) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                setUser(userData as UserData || {
-                    id: session.user.id,
-                    role: 'hafiz',
-                    nama: session.user.email?.split('@')[0] || 'User',
-                    email: session.user.email || '',
-                });
-
+                setUser(sessionData.user as UserData);
                 await refreshPengujiList();
 
             } catch (err) {
                 console.error('Error fetching data:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
@@ -80,8 +70,15 @@ function PengujiContent() {
     }, []);
 
     const refreshPengujiList = async () => {
-        const { data } = await supabase.from('penguji').select('*').order('nama');
-        if (data) setPengujiList(data);
+        try {
+            const response = await fetch('/api/penguji');
+            const data = await response.json();
+            if (data.data) {
+                setPengujiList(data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching penguji:', err);
+        }
     };
 
     const openAddModal = () => {
@@ -111,40 +108,32 @@ function PengujiContent() {
 
         try {
             if (editingPenguji) {
-                // Update
-                const { error } = await supabase
-                    .from('penguji')
-                    .update({
-                        nama: formData.nama,
-                        gelar: formData.gelar || null,
-                        institusi: formData.institusi || null,
-                        telepon: formData.telepon || null,
-                        email: formData.email || null,
-                        lokasi_tes: formData.lokasi_tes || null,
-                        periode_tes: formData.periode_tes || null,
-                        is_active: formData.is_active,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', editingPenguji.id);
+                // Update via MySQL API
+                const response = await fetch('/api/penguji', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...formData, id: editingPenguji.id })
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal mengupdate penguji');
+                }
+
                 alert('✅ Penguji berhasil diupdate!');
             } else {
-                // Insert
-                const { error } = await supabase
-                    .from('penguji')
-                    .insert([{
-                        nama: formData.nama,
-                        gelar: formData.gelar || null,
-                        institusi: formData.institusi || null,
-                        telepon: formData.telepon || null,
-                        email: formData.email || null,
-                        lokasi_tes: formData.lokasi_tes || null,
-                        periode_tes: formData.periode_tes || null,
-                        is_active: true
-                    }]);
+                // Insert via MySQL API
+                const response = await fetch('/api/penguji', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal menambahkan penguji');
+                }
+
                 alert('✅ Penguji berhasil ditambahkan!');
             }
 
@@ -159,12 +148,19 @@ function PengujiContent() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: number) => {
         if (!confirm('Apakah Anda yakin ingin menghapus penguji ini?')) return;
 
         try {
-            const { error } = await supabase.from('penguji').delete().eq('id', id);
-            if (error) throw error;
+            const response = await fetch(`/api/penguji?id=${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Gagal menghapus penguji');
+            }
+
             setPengujiList(pengujiList.filter(p => p.id !== id));
             alert('✅ Penguji berhasil dihapus!');
         } catch (err: any) {
@@ -174,12 +170,27 @@ function PengujiContent() {
 
     const toggleActive = async (penguji: Penguji) => {
         try {
-            const { error } = await supabase
-                .from('penguji')
-                .update({ is_active: !penguji.is_active })
-                .eq('id', penguji.id);
+            const response = await fetch('/api/penguji', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: penguji.id,
+                    nama: penguji.nama,
+                    gelar: penguji.gelar,
+                    institusi: penguji.institusi,
+                    telepon: penguji.telepon,
+                    email: penguji.email,
+                    lokasi_tes: penguji.lokasi_tes,
+                    periode_tes: penguji.periode_tes,
+                    is_active: !penguji.is_active
+                })
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error);
+            }
+
             await refreshPengujiList();
         } catch (err: any) {
             alert('Gagal: ' + err.message);

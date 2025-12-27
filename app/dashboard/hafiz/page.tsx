@@ -216,9 +216,17 @@ function DataHafizContent() {
                                 status_insentif: 'tidak_aktif'
                             };
 
-                            const { error: insertError } = await supabase
-                                .from('hafiz')
-                                .upsert([hafizRecord], { onConflict: 'nik' });
+                            const { error: insertError } = await fetch('/api/hafiz', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(hafizRecord)
+                            }).then(async (res) => {
+                                if (!res.ok) {
+                                    const data = await res.json();
+                                    return { error: { message: data.error || 'Gagal insert' } };
+                                }
+                                return { error: null };
+                            });
 
                             if (insertError) {
                                 errors.push(`Baris ${i + 2}: ${insertError.message}`);
@@ -437,11 +445,12 @@ function DataHafizContent() {
                                                             onClick={async () => {
                                                                 try {
                                                                     const newStatus = hafiz.is_aktif === true ? false : true;
-                                                                    const { error } = await supabase
-                                                                        .from('hafiz')
-                                                                        .update({ is_aktif: newStatus })
-                                                                        .eq('id', hafiz.id);
-                                                                    if (error) throw error;
+                                                                    const response = await fetch(`/api/hafiz/${hafiz.id}`, {
+                                                                        method: 'PUT',
+                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                        body: JSON.stringify({ is_aktif: newStatus })
+                                                                    });
+                                                                    if (!response.ok) throw new Error('Failed to update');
                                                                     fetchHafizData();
                                                                 } catch (err) {
                                                                     console.error('Error updating aktif status:', err);
@@ -500,11 +509,13 @@ function DataHafizContent() {
                                                                     return;
                                                                 }
                                                                 try {
-                                                                    const { error } = await supabase
-                                                                        .from('hafiz')
-                                                                        .delete()
-                                                                        .eq('id', hafiz.id);
-                                                                    if (error) throw error;
+                                                                    const response = await fetch(`/api/hafiz/${hafiz.id}`, {
+                                                                        method: 'DELETE'
+                                                                    });
+                                                                    if (!response.ok) {
+                                                                        const data = await response.json();
+                                                                        throw new Error(data.error || 'Failed to delete');
+                                                                    }
                                                                     alert('Data hafiz berhasil dihapus');
                                                                     fetchHafizData();
                                                                 } catch (err: any) {
@@ -685,7 +696,7 @@ function DataHafizContent() {
                             nama: selectedHafizForMutasi.nama,
                             kabupaten_kota: selectedHafizForMutasi.kabupaten_kota
                         }}
-                        currentUserId={user.id}
+                        currentUserId={String(user.id)}
                         onSuccess={() => {
                             fetchHafizData();
                             setSelectedHafizForMutasi(null);

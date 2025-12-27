@@ -4,7 +4,6 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import StatsCard from '@/components/StatsCard';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import {
     FiUsers,
     FiTrendingUp,
@@ -23,7 +22,7 @@ const mockKuota = [
 ];
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -35,36 +34,23 @@ function KuotaStatistikContent() {
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedYear, setSelectedYear] = useState(2024);
-    const supabase = createClient();
 
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Use MySQL session API instead of Supabase
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
 
-                if (sessionError || !session) {
+                if (!response.ok || !data.user) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                if (userError || !userData) {
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                    });
-                } else {
-                    setUser(userData as UserData);
-                }
+                setUser(data.user as UserData);
             } catch (err) {
                 console.error('Error fetching user:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }

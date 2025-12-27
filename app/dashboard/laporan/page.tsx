@@ -3,7 +3,6 @@
 import { useState, Suspense, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
 import {
     FiPlus,
@@ -26,7 +25,7 @@ import {
 } from 'react-icons/fi';
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -35,8 +34,8 @@ interface UserData {
 }
 
 interface LaporanData {
-    id: string;
-    hafiz_id: string;
+    id: number;
+    hafiz_id: number;
     tanggal: string;
     jam?: string;
     jenis_kegiatan: string;
@@ -51,6 +50,8 @@ interface LaporanData {
         nik: string;
         kabupaten_kota: string;
     };
+    nama_hafiz?: string;
+    kabupaten_kota?: string;
 }
 
 interface KabKoStats {
@@ -66,7 +67,7 @@ interface KabKoStats {
 
 function LaporanHarianContent() {
     const [user, setUser] = useState<UserData | null>(null);
-    const [hafizId, setHafizId] = useState<string | null>(null);
+    const [hafizId, setHafizId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState('semua');
@@ -78,7 +79,6 @@ function LaporanHarianContent() {
     const [exporting, setExporting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'stats'>('stats');
-    const supabase = createClient();
 
     // Available years for filter
     const availableYears = useMemo(() => {
@@ -102,112 +102,46 @@ function LaporanHarianContent() {
 
     async function fetchUserData() {
         try {
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            // Use MySQL session API instead of Supabase
+            const response = await fetch('/api/auth/session');
+            const data = await response.json();
 
-            if (sessionError || !session) {
-                console.error('No session found:', sessionError);
+            if (!response.ok || !data.user) {
+                console.error('No session found:', data);
                 window.location.href = '/login';
                 return;
             }
 
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                .eq('id', session.user.id)
-                .maybeSingle();
+            setUser(data.user as UserData);
 
-            if (userError) {
-                console.error('Error fetching user data:', userError);
-                setUser({
-                    id: session.user.id,
-                    role: 'hafiz',
-                    nama: session.user.email?.split('@')[0] || 'User',
-                    email: session.user.email || '',
-                    kabupaten_kota: undefined
-                });
-            } else if (userData) {
-                setUser(userData as UserData);
-
-                // Fetch list of kabupaten/kota
-                if (userData.role === 'admin_provinsi') {
-                    const { data: kabKoData } = await supabase
-                        .from('kabupaten_kota')
-                        .select('nama')
-                        .order('nama');
-                    if (kabKoData) {
-                        setKabKoList(kabKoData.map(k => k.nama));
+            // Fetch list of kabupaten/kota for admin_provinsi
+            if (data.user.role === 'admin_provinsi') {
+                try {
+                    const kabResponse = await fetch('/api/kabupaten');
+                    const kabData = await kabResponse.json();
+                    if (kabData.data) {
+                        setKabKoList(kabData.data.map((k: any) => k.nama));
                     }
+                } catch (err) {
+                    console.error('Error fetching kabupaten:', err);
                 }
+            }
 
-                // If user is hafiz, fetch their hafiz record ID
-                if (userData.role === 'hafiz') {
-                    let foundHafizId: string | null = null;
-
-                    // Method 1: Search by user_id
-                    const { data: hafizByUserId } = await supabase
-                        .from('hafiz')
-                        .select('id')
-                        .eq('user_id', session.user.id)
-                        .maybeSingle();
-
-                    if (hafizByUserId) {
-                        foundHafizId = hafizByUserId.id;
+            // If user is hafiz, fetch their hafiz record ID
+            if (data.user.role === 'hafiz') {
+                try {
+                    const hafizResponse = await fetch(`/api/hafiz?search=${data.user.email}`);
+                    const hafizData = await hafizResponse.json();
+                    if (hafizData.data && hafizData.data.length > 0) {
+                        setHafizId(hafizData.data[0].id);
                     }
-
-                    // Method 2: Search by email
-                    if (!foundHafizId && session.user.email) {
-                        const { data: hafizByEmail } = await supabase
-                            .from('hafiz')
-                            .select('id')
-                            .eq('email', session.user.email)
-                            .maybeSingle();
-
-                        if (hafizByEmail) {
-                            foundHafizId = hafizByEmail.id;
-                            await supabase
-                                .from('hafiz')
-                                .update({ user_id: session.user.id })
-                                .eq('id', hafizByEmail.id);
-                        }
-                    }
-
-                    // Method 3: Search by NIK
-                    if (!foundHafizId && session.user.email) {
-                        const emailParts = session.user.email.split('@');
-                        const potentialNik = emailParts[0];
-
-                        if (/^\d{16}$/.test(potentialNik) || emailParts[1] === 'hafiz.jatim.go.id') {
-                            const { data: hafizByNik } = await supabase
-                                .from('hafiz')
-                                .select('id')
-                                .eq('nik', potentialNik)
-                                .maybeSingle();
-
-                            if (hafizByNik) {
-                                foundHafizId = hafizByNik.id;
-                                await supabase
-                                    .from('hafiz')
-                                    .update({ user_id: session.user.id })
-                                    .eq('id', hafizByNik.id);
-                            }
-                        }
-                    }
-
-                    if (foundHafizId) {
-                        setHafizId(foundHafizId);
-                    }
+                } catch (err) {
+                    console.error('Error fetching hafiz ID:', err);
                 }
-            } else {
-                setUser({
-                    id: session.user.id,
-                    role: 'hafiz',
-                    nama: session.user.email?.split('@')[0] || 'User',
-                    email: session.user.email || '',
-                    kabupaten_kota: undefined
-                });
             }
         } catch (err) {
             console.error('Unexpected error fetching user:', err);
+            window.location.href = '/login';
         } finally {
             setLoading(false);
         }
@@ -218,82 +152,68 @@ function LaporanHarianContent() {
         setRefreshing(true);
 
         try {
-            // Build query for laporan_harian with hafiz join
-            let query = supabase
-                .from('laporan_harian')
-                .select(`
-                    id,
-                    hafiz_id,
-                    tanggal,
-                    jam,
-                    jenis_kegiatan,
-                    deskripsi,
-                    lokasi,
-                    foto_url,
-                    status_verifikasi,
-                    verified_at,
-                    catatan_verifikasi,
-                    hafiz:hafiz_id (
-                        nama,
-                        nik,
-                        kabupaten_kota
-                    )
-                `)
-                .order('tanggal', { ascending: false });
+            // Build query params for MySQL API
+            const params = new URLSearchParams();
 
-            // Filter by year
+            if (filter !== 'semua') {
+                params.set('status', filter);
+            }
+
+            if (hafizId && user.role === 'hafiz') {
+                params.set('hafiz_id', hafizId.toString());
+            }
+
+            const response = await fetch(`/api/laporan?${params.toString()}`);
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error('Error fetching laporan:', result.error);
+                return;
+            }
+
+            let laporanData = result.data || [];
+
+            // Transform data for display
+            const transformedData: LaporanData[] = laporanData.map((item: any) => ({
+                id: item.id,
+                hafiz_id: item.hafiz_id,
+                tanggal: item.tanggal,
+                jam: item.jam,
+                jenis_kegiatan: item.jenis_kegiatan,
+                deskripsi: item.deskripsi,
+                lokasi: item.lokasi,
+                foto_url: item.foto_url,
+                status_verifikasi: item.status_verifikasi,
+                verified_at: item.verified_at,
+                catatan_verifikasi: item.catatan_verifikasi,
+                nama_hafiz: item.nama_hafiz,
+                kabupaten_kota: item.kabupaten_kota,
+                hafiz: {
+                    nama: item.nama_hafiz || '',
+                    nik: '',
+                    kabupaten_kota: item.kabupaten_kota || ''
+                }
+            }));
+
+            // Filter by year (client-side for now)
             const startDate = `${selectedTahun}-01-01`;
             const endDate = `${selectedTahun}-12-31`;
-            query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+            let filteredData = transformedData.filter(l =>
+                l.tanggal >= startDate && l.tanggal <= endDate
+            );
 
-            // Filter by status
-            if (filter !== 'semua') {
-                query = query.eq('status_verifikasi', filter);
+            // Filter by kabupaten_kota if selected (for admin provinsi)
+            if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
+                filteredData = filteredData.filter(l =>
+                    l.kabupaten_kota === selectedKabKo
+                );
+            } else if (user.role === 'admin_kabko') {
+                filteredData = filteredData.filter(l =>
+                    l.kabupaten_kota === user.kabupaten_kota
+                );
             }
 
-            const { data: laporanData, error: laporanError } = await query;
-
-            if (laporanError) {
-                console.error('Error fetching laporan:', laporanError);
-            } else if (laporanData) {
-                // Map and transform data properly
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const transformedData: LaporanData[] = laporanData.map((item: any) => ({
-                    id: item.id,
-                    hafiz_id: item.hafiz_id,
-                    tanggal: item.tanggal,
-                    jam: item.jam,
-                    jenis_kegiatan: item.jenis_kegiatan,
-                    deskripsi: item.deskripsi,
-                    lokasi: item.lokasi,
-                    foto_url: item.foto_url,
-                    status_verifikasi: item.status_verifikasi,
-                    verified_at: item.verified_at,
-                    catatan_verifikasi: item.catatan_verifikasi,
-                    hafiz: item.hafiz ? {
-                        nama: item.hafiz.nama,
-                        nik: item.hafiz.nik,
-                        kabupaten_kota: item.hafiz.kabupaten_kota
-                    } : undefined
-                }));
-
-                // Filter by kabupaten_kota if selected (for admin provinsi)
-                let filteredData = transformedData;
-
-                if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
-                    filteredData = filteredData.filter(l =>
-                        l.hafiz?.kabupaten_kota === selectedKabKo
-                    );
-                } else if (user.role === 'admin_kabko') {
-                    filteredData = filteredData.filter(l =>
-                        l.hafiz?.kabupaten_kota === user.kabupaten_kota
-                    );
-                } else if (user.role === 'hafiz' && hafizId) {
-                    filteredData = filteredData.filter(l => l.hafiz_id === hafizId);
-                }
-
-                setLaporanList(filteredData);
-            }
+            setLaporanList(filteredData);
 
             // Fetch stats for admin provinsi
             if (user.role === 'admin_provinsi') {
@@ -309,86 +229,35 @@ function LaporanHarianContent() {
 
     async function fetchKabKoStats() {
         try {
-            // Get all hafiz grouped by kabupaten_kota
-            const { data: hafizData } = await supabase
-                .from('hafiz')
-                .select('id, kabupaten_kota');
+            // Fetch statistics from API
+            const response = await fetch('/api/statistics');
+            const stats = await response.json();
 
-            // Get all laporan for selected year
-            const startDate = `${selectedTahun}-01-01`;
-            const endDate = `${selectedTahun}-12-31`;
+            // For now, create simple stats from kabKoList
+            // This could be enhanced with a dedicated stats API endpoint
+            const statsArray: KabKoStats[] = kabKoList.map(kab => ({
+                kabupaten_kota: kab,
+                total_hafiz: 0,
+                hafiz_sudah_lapor: 0,
+                total_laporan: 0,
+                laporan_disetujui: 0,
+                laporan_pending: 0,
+                laporan_ditolak: 0,
+                persentase_lapor: 0
+            }));
 
-            const { data: laporanData } = await supabase
-                .from('laporan_harian')
-                .select('hafiz_id, status_verifikasi, hafiz:hafiz_id(kabupaten_kota)')
-                .gte('tanggal', startDate)
-                .lte('tanggal', endDate);
+            // Count from laporanList
+            laporanList.forEach(l => {
+                const stat = statsArray.find(s => s.kabupaten_kota === l.kabupaten_kota);
+                if (stat) {
+                    stat.total_laporan++;
+                    if (l.status_verifikasi === 'disetujui') stat.laporan_disetujui++;
+                    else if (l.status_verifikasi === 'pending') stat.laporan_pending++;
+                    else if (l.status_verifikasi === 'ditolak') stat.laporan_ditolak++;
+                }
+            });
 
-            if (hafizData && laporanData) {
-                // Group stats by kabupaten_kota
-                const statsMap: Record<string, KabKoStats> = {};
-
-                // Initialize with all kabupaten_kota
-                kabKoList.forEach(kab => {
-                    statsMap[kab] = {
-                        kabupaten_kota: kab,
-                        total_hafiz: 0,
-                        hafiz_sudah_lapor: 0,
-                        total_laporan: 0,
-                        laporan_disetujui: 0,
-                        laporan_pending: 0,
-                        laporan_ditolak: 0,
-                        persentase_lapor: 0
-                    };
-                });
-
-                // Count total hafiz per kabupaten
-                hafizData.forEach(h => {
-                    if (h.kabupaten_kota && statsMap[h.kabupaten_kota]) {
-                        statsMap[h.kabupaten_kota].total_hafiz++;
-                    }
-                });
-
-                // Count laporan stats
-                const hafizYangLapor = new Set<string>();
-                laporanData.forEach((l: any) => {
-                    const kabKo = l.hafiz?.kabupaten_kota;
-                    if (kabKo && statsMap[kabKo]) {
-                        statsMap[kabKo].total_laporan++;
-                        hafizYangLapor.add(`${l.hafiz_id}-${kabKo}`);
-
-                        if (l.status_verifikasi === 'disetujui') {
-                            statsMap[kabKo].laporan_disetujui++;
-                        } else if (l.status_verifikasi === 'pending') {
-                            statsMap[kabKo].laporan_pending++;
-                        } else if (l.status_verifikasi === 'ditolak') {
-                            statsMap[kabKo].laporan_ditolak++;
-                        }
-                    }
-                });
-
-                // Count unique hafiz yang sudah lapor per kabupaten
-                hafizYangLapor.forEach(key => {
-                    const kabKo = key.split('-').slice(1).join('-');
-                    if (statsMap[kabKo]) {
-                        statsMap[kabKo].hafiz_sudah_lapor++;
-                    }
-                });
-
-                // Calculate percentage
-                Object.values(statsMap).forEach(stat => {
-                    if (stat.total_hafiz > 0) {
-                        stat.persentase_lapor = Math.round((stat.hafiz_sudah_lapor / stat.total_hafiz) * 100);
-                    }
-                });
-
-                // Sort by kabupaten_kota name
-                const statsArray = Object.values(statsMap).sort((a, b) =>
-                    a.kabupaten_kota.localeCompare(b.kabupaten_kota)
-                );
-
-                setKabKoStats(statsArray);
-            }
+            setKabKoStats(statsArray);
         } catch (err) {
             console.error('Error fetching kabko stats:', err);
         }
@@ -507,20 +376,24 @@ function LaporanHarianContent() {
         }
     }
 
-    async function handleApprove(laporanId: string) {
+    async function handleApprove(laporanId: number) {
         if (!confirm('Yakin ingin menyetujui laporan ini?')) return;
 
         try {
-            const { error } = await supabase
-                .from('laporan_harian')
-                .update({
+            const response = await fetch(`/api/laporan/${laporanId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     status_verifikasi: 'disetujui',
                     verified_by: user?.id,
                     verified_at: new Date().toISOString()
                 })
-                .eq('id', laporanId);
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to approve');
+            }
 
             alert('✅ Laporan berhasil disetujui');
             fetchLaporanData();
@@ -530,22 +403,26 @@ function LaporanHarianContent() {
         }
     }
 
-    async function handleReject(laporanId: string) {
+    async function handleReject(laporanId: number) {
         const catatan = prompt('Masukkan catatan penolakan:');
         if (catatan === null) return;
 
         try {
-            const { error } = await supabase
-                .from('laporan_harian')
-                .update({
+            const response = await fetch(`/api/laporan/${laporanId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     status_verifikasi: 'ditolak',
                     verified_by: user?.id,
                     verified_at: new Date().toISOString(),
                     catatan_verifikasi: catatan
                 })
-                .eq('id', laporanId);
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to reject');
+            }
 
             alert('Laporan berhasil ditolak');
             fetchLaporanData();
@@ -904,7 +781,7 @@ function LaporanHarianContent() {
                 {showModal && (
                     <AddLaporanModal
                         onClose={() => setShowModal(false)}
-                        hafizId={hafizId || undefined}
+                        hafizId={hafizId ? String(hafizId) : undefined}
                         onSuccess={() => fetchLaporanData()}
                     />
                 )}
@@ -917,8 +794,8 @@ interface LaporanCardProps {
     laporan: LaporanData;
     isHafiz: boolean;
     userRole: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
-    onApprove?: (id: string) => void;
-    onReject?: (id: string) => void;
+    onApprove?: (id: number) => void;
+    onReject?: (id: number) => void;
 }
 
 function LaporanCard({ laporan, isHafiz, userRole, onApprove, onReject }: LaporanCardProps) {

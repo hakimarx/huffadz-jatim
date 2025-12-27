@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 import {
     FiFilter,
@@ -16,7 +15,7 @@ import {
 } from 'react-icons/fi';
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -25,13 +24,15 @@ interface UserData {
 }
 
 interface LaporanData {
-    id: string;
+    id: number;
     tanggal: string;
     jam?: string;
     jenis_kegiatan: string;
     deskripsi: string;
     lokasi: string;
     status_verifikasi: string;
+    hafiz_nama?: string;
+    hafiz_kabupaten_kota?: string;
     hafiz: {
         nama: string;
         kabupaten_kota: string;
@@ -86,8 +87,6 @@ function CetakLaporanContent() {
         ditolak: 0
     });
 
-    const supabase = createClient();
-
     // Generate year list (2020 - current year)
     const tahunList = Array.from(
         { length: new Date().getFullYear() - 2019 },
@@ -97,24 +96,16 @@ function CetakLaporanContent() {
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Use MySQL session API
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
 
-                if (sessionError || !session) {
+                if (!sessionResponse.ok || !sessionData.user) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
-
-                if (userError || !userData) {
-                    console.error('Error fetching user data:', userError);
-                    window.location.href = '/login';
-                    return;
-                }
+                const userData = sessionData.user as UserData;
 
                 // Redirect if not admin
                 if (userData.role === 'hafiz') {
@@ -122,7 +113,7 @@ function CetakLaporanContent() {
                     return;
                 }
 
-                setUser(userData as UserData);
+                setUser(userData);
 
                 // Set default kabko for admin_kabko
                 if (userData.role === 'admin_kabko' && userData.kabupaten_kota) {
@@ -130,6 +121,7 @@ function CetakLaporanContent() {
                 }
             } catch (err) {
                 console.error('Error:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
@@ -147,43 +139,29 @@ function CetakLaporanContent() {
             const startDate = `${selectedTahun}-${String(selectedBulan).padStart(2, '0')}-01`;
             const endDate = new Date(selectedTahun, selectedBulan, 0).toISOString().split('T')[0];
 
-            let query = supabase
-                .from('laporan_harian')
-                .select(`
-                    id,
-                    tanggal,
-                    jam,
-                    jenis_kegiatan,
-                    deskripsi,
-                    lokasi,
-                    status_verifikasi,
-                    hafiz:hafiz_id (
-                        nama,
-                        kabupaten_kota
-                    )
-                `)
-                .gte('tanggal', startDate)
-                .lte('tanggal', endDate)
-                .order('tanggal', { ascending: false });
+            // Build query params
+            const params = new URLSearchParams({
+                startDate,
+                endDate,
+                ...(selectedKabKo ? { kabupaten_kota: selectedKabKo } : {})
+            });
 
-            const { data, error } = await query;
+            const response = await fetch(`/api/laporan?${params}`);
+            const result = await response.json();
 
-            if (error) {
-                console.error('Error fetching laporan:', error);
+            if (!response.ok) {
+                console.error('Error fetching laporan:', result.error);
                 return;
             }
 
-            // Filter by kabupaten_kota if selected
-            let filteredData = (data || []).map((item: any) => ({
+            // Transform data to match expected format
+            const filteredData = (result.data || []).map((item: any) => ({
                 ...item,
-                hafiz: item.hafiz || { nama: 'Unknown', kabupaten_kota: 'Unknown' }
+                hafiz: {
+                    nama: item.hafiz_nama || 'Unknown',
+                    kabupaten_kota: item.hafiz_kabupaten_kota || 'Unknown'
+                }
             }));
-
-            if (selectedKabKo) {
-                filteredData = filteredData.filter(
-                    (item: LaporanData) => item.hafiz.kabupaten_kota === selectedKabKo
-                );
-            }
 
             setLaporanList(filteredData);
 

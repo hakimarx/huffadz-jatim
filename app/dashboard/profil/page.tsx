@@ -3,12 +3,11 @@
 import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { createClient } from '@/lib/supabase/client';
 import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
 import { FiCamera, FiSave, FiUpload, FiCheckCircle, FiUser, FiLoader } from 'react-icons/fi';
 
 interface UserData {
-    id: string;
+    id: number;
     email: string;
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
@@ -23,7 +22,6 @@ function ProfilContent() {
     const [ocrProcessing, setOcrProcessing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-    const supabase = createClient();
 
     const [formData, setFormData] = useState({
         nik: '',
@@ -48,72 +46,54 @@ function ProfilContent() {
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Use MySQL session API
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
 
-                if (sessionError || !session) {
-                    console.error('No session found:', sessionError);
+                if (!sessionResponse.ok || !sessionData.user) {
+                    console.error('No session found');
                     window.location.href = '/login';
                     return;
                 }
 
-                // Fetch user from public.users
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id, email, nama, role, kabupaten_kota, foto_profil')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
+                const userData = sessionData.user as UserData;
+                setUser(userData);
 
-                if (userError) {
-                    console.error('Error fetching user data:', userError);
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                    });
-                } else if (userData) {
-                    setUser(userData as UserData);
+                // For hafiz role, also fetch hafiz profile via API
+                if (userData.role === 'hafiz') {
+                    try {
+                        const hafizResponse = await fetch(`/api/hafiz/${userData.id}`);
+                        const hafizData = await hafizResponse.json();
 
-                    // For hafiz role, also fetch hafiz profile
-                    if (userData.role === 'hafiz') {
-                        const { data: hafizData, error: hafizError } = await supabase
-                            .from('hafiz')
-                            .select('*')
-                            .eq('user_id', session.user.id)
-                            .maybeSingle();
-
-                        if (hafizData && !hafizError) {
+                        if (hafizResponse.ok && hafizData.data) {
+                            const hd = hafizData.data;
                             setFormData({
-                                nik: hafizData.nik || '',
-                                nama: hafizData.nama || '',
-                                tempat_lahir: hafizData.tempat_lahir || '',
-                                tanggal_lahir: hafizData.tanggal_lahir || '',
-                                jenis_kelamin: hafizData.jenis_kelamin || 'L',
-                                alamat: hafizData.alamat || '',
-                                rt: hafizData.rt || '',
-                                rw: hafizData.rw || '',
-                                desa_kelurahan: hafizData.desa_kelurahan || '',
-                                kecamatan: hafizData.kecamatan || '',
-                                kabupaten_kota: hafizData.kabupaten_kota || '',
-                                telepon: hafizData.telepon || '',
-                                email: hafizData.email || '',
-                                sertifikat_tahfidz: hafizData.sertifikat_tahfidz || '',
-                                mengajar: hafizData.mengajar || false,
-                                tmt_mengajar: hafizData.tmt_mengajar || '',
-                                foto_profil: hafizData.foto_profil || ''
+                                nik: hd.nik || '',
+                                nama: hd.nama || '',
+                                tempat_lahir: hd.tempat_lahir || '',
+                                tanggal_lahir: hd.tanggal_lahir || '',
+                                jenis_kelamin: hd.jenis_kelamin || 'L',
+                                alamat: hd.alamat || '',
+                                rt: hd.rt || '',
+                                rw: hd.rw || '',
+                                desa_kelurahan: hd.desa_kelurahan || '',
+                                kecamatan: hd.kecamatan || '',
+                                kabupaten_kota: hd.kabupaten_kota || '',
+                                telepon: hd.telepon || '',
+                                email: hd.email || '',
+                                sertifikat_tahfidz: hd.sertifikat_tahfidz || '',
+                                mengajar: hd.mengajar || false,
+                                tmt_mengajar: hd.tmt_mengajar || '',
+                                foto_profil: hd.foto_profil || ''
                             });
                         }
+                    } catch (err) {
+                        console.error('Error fetching hafiz profile:', err);
                     }
-                } else {
-                    setUser({
-                        id: session.user.id,
-                        role: 'hafiz',
-                        nama: session.user.email?.split('@')[0] || 'User',
-                        email: session.user.email || '',
-                    });
                 }
             } catch (err) {
                 console.error('Unexpected error fetching user:', err);
+                window.location.href = '/login';
             } finally {
                 setLoading(false);
             }
@@ -141,50 +121,16 @@ function ProfilContent() {
                 }
             }
 
-            // Upload to Supabase Storage
-            const fileExt = processedFile.name.split('.').pop();
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-            const filePath = `profile-photos/${fileName}`;
+            // Create FormData for file upload
+            const uploadData = new FormData();
+            uploadData.append('file', processedFile);
+            uploadData.append('type', 'profile-photo');
 
-            const { error: uploadError } = await supabase.storage
-                .from('uploads')
-                .upload(filePath, processedFile, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
+            // Upload via API - For now, show message that this feature needs API implementation
+            // TODO: Implement /api/upload endpoint for file uploads
+            alert('Fitur upload foto sedang dalam pengembangan. Silakan hubungi administrator.');
+            console.log('Photo upload needs /api/upload endpoint implementation');
 
-            if (uploadError) {
-                console.error('Error uploading photo:', uploadError);
-                alert('Gagal upload foto: ' + uploadError.message);
-                return;
-            }
-
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('uploads')
-                .getPublicUrl(filePath);
-
-            // Update user foto_profil in database
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({ foto_profil: publicUrl })
-                .eq('id', user.id);
-
-            if (updateError) {
-                console.error('Error updating profile photo:', updateError);
-                alert('Gagal menyimpan URL foto: ' + updateError.message);
-                return;
-            }
-
-            // Also update hafiz table if applicable
-            await supabase
-                .from('hafiz')
-                .update({ foto_profil: publicUrl })
-                .eq('user_id', user.id);
-
-            setFormData({ ...formData, foto_profil: publicUrl });
-            setUser({ ...user, foto_profil: publicUrl });
-            alert('✅ Foto profil berhasil diperbarui!');
         } catch (err) {
             console.error('Unexpected error uploading photo:', err);
             alert('Terjadi kesalahan saat upload foto');
@@ -225,10 +171,11 @@ function ProfilContent() {
 
         setSaving(true);
         try {
-            // Update hafiz table
-            const { error } = await supabase
-                .from('hafiz')
-                .update({
+            // Update hafiz table via API
+            const response = await fetch(`/api/hafiz/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     nama: formData.nama,
                     tempat_lahir: formData.tempat_lahir,
                     tanggal_lahir: formData.tanggal_lahir,
@@ -243,14 +190,14 @@ function ProfilContent() {
                     email: formData.email,
                     sertifikat_tahfidz: formData.sertifikat_tahfidz,
                     mengajar: formData.mengajar,
-                    tmt_mengajar: formData.tmt_mengajar || null,
-                    updated_at: new Date().toISOString()
+                    tmt_mengajar: formData.tmt_mengajar || null
                 })
-                .eq('user_id', user.id);
+            });
 
-            if (error) {
-                console.error('Error updating profile:', error);
-                alert('Gagal menyimpan profil: ' + error.message);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error updating profile:', errorData);
+                alert('Gagal menyimpan profil: ' + (errorData.error || 'Unknown error'));
                 return;
             }
 
