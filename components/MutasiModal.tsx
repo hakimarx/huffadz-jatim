@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { FiX, FiMapPin, FiLoader, FiAlertTriangle } from 'react-icons/fi';
-import { createClient } from '@/lib/supabase/client';
 
 // Daftar Kabupaten/Kota di Jawa Timur
 export const KABUPATEN_KOTA_JATIM = [
@@ -80,43 +79,29 @@ export default function MutasiModal({ isOpen, onClose, hafiz, currentUserId, onS
         setError('');
 
         try {
-            const supabase = createClient();
-
-            // 1. Insert mutation history
-            const { error: mutasiError } = await supabase
-                .from('mutasi_hafiz')
-                .insert([{
-                    hafiz_id: hafiz.id,
-                    kabupaten_kota_asal: hafiz.kabupaten_kota,
-                    kabupaten_kota_tujuan: kabupatenTujuan,
-                    alasan: alasan || null,
-                    diproses_oleh: currentUserId
-                }]);
-
-            if (mutasiError) {
-                console.error('Mutasi error:', mutasiError);
-                // Continue anyway - table might not exist yet
-            }
-
-            // 2. Update hafiz's kabupaten_kota
-            const { error: updateError } = await supabase
-                .from('hafiz')
-                .update({
+            // Update hafiz's kabupaten_kota using MySQL API
+            const response = await fetch(`/api/hafiz/${hafiz.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     kabupaten_kota: kabupatenTujuan,
                     keterangan: `[MUTASI ${new Date().toLocaleDateString('id-ID')}] Dari ${hafiz.kabupaten_kota} ke ${kabupatenTujuan}. Alasan: ${alasan || '-'}`
-                })
-                .eq('id', hafiz.id);
+                }),
+            });
 
-            if (updateError) {
-                throw updateError;
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Gagal memproses mutasi');
             }
 
             alert(`✅ Mutasi berhasil!\n\n${hafiz.nama} telah dipindahkan dari ${hafiz.kabupaten_kota} ke ${kabupatenTujuan}`);
             onSuccess();
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error processing mutation:', err);
-            setError('Gagal memproses mutasi: ' + (err.message || 'Unknown error'));
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            setError('Gagal memproses mutasi: ' + errorMessage);
         } finally {
             setLoading(false);
         }

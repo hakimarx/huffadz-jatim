@@ -174,7 +174,7 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                         </div>
                     </nav>
 
-                    {/* Logout Button - Now uses Supabase signOut */}
+                    {/* Logout Button */}
                     <div className="p-4 border-t border-neutral-200">
                         <button
                             onClick={handleLogout}

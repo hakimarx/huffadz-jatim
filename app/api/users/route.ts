@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Users GET error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

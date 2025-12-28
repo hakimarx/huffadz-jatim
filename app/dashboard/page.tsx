@@ -235,7 +235,7 @@ function AdminProvinsiDashboard() {
         return (
             <div className="p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 flex items-center gap-3">
                 <FiAlertCircle size={24} />
-                <p>Error: {stats.error}. Pastikan koneksi internet stabil dan konfigurasi Supabase benar.</p>
+                <p>Error: {stats.error}. Pastikan koneksi internet stabil dan konfigurasi database benar.</p>
             </div>
         );
     }

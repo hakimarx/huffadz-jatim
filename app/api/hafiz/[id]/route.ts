@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryOne, execute, DBHafiz } from '@/lib/db';
+import { query, queryOne, execute, DBHafiz } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 
 // GET - Get single hafiz by ID
@@ -20,6 +20,14 @@ export async function GET(
             'SELECT * FROM hafiz WHERE id = ?',
             [id]
         );
+
+        if (hafiz) {
+            const history = await query(
+                'SELECT * FROM riwayat_mengajar WHERE hafiz_id = ? ORDER BY tmt_mulai DESC',
+                [id]
+            );
+            (hafiz as any).riwayat_mengajar = history;
+        }
 
         if (!hafiz) {
             return NextResponse.json({ error: 'Hafiz tidak ditemukan' }, { status: 404 });
@@ -46,7 +54,7 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko']);
+        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
 
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
@@ -67,6 +75,11 @@ export async function PUT(
 
         // Admin kabko can only edit hafiz in their region
         if (user.role === 'admin_kabko' && hafiz.kabupaten_kota !== user.kabupaten_kota) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Hafiz can only edit their own profile
+        if (user.role === 'hafiz' && hafiz.user_id !== user.id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

@@ -968,38 +968,34 @@ function AddLaporanModal({ onClose, hafizId, onSuccess }: { onClose: () => void,
         setError('');
 
         try {
-            const supabase = (await import('@/lib/supabase/client')).createClient();
-
             let foto_url = null;
 
-            // Upload photo if exists
+            // Upload photo if exists using local API
             if (photoFile) {
-                const fileExt = photoFile.name.split('.').pop();
-                const fileName = `${hafizId}-${Date.now()}.${fileExt}`;
-                const filePath = `activity-photos/${fileName}`;
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', photoFile);
+                uploadFormData.append('type', 'activity-photos');
 
-                const { error: uploadError } = await supabase.storage
-                    .from('uploads')
-                    .upload(filePath, photoFile, {
-                        cacheControl: '3600',
-                        upsert: true
-                    });
+                const uploadResponse = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: uploadFormData,
+                });
 
-                if (uploadError) {
-                    console.error('Upload error:', uploadError);
+                const uploadResult = await uploadResponse.json();
+
+                if (!uploadResponse.ok) {
+                    console.error('Upload error:', uploadResult.error);
                     // Continue without photo if upload fails
                 } else {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('uploads')
-                        .getPublicUrl(filePath);
-                    foto_url = publicUrl;
+                    foto_url = uploadResult.url;
                 }
             }
 
-            // Save laporan to database
-            const { error: insertError } = await supabase
-                .from('laporan_harian')
-                .insert([{
+            // Save laporan to database using MySQL API
+            const response = await fetch('/api/laporan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     hafiz_id: hafizId,
                     tanggal: formData.tanggal,
                     jam: formData.jam || null,
@@ -1008,20 +1004,24 @@ function AddLaporanModal({ onClose, hafizId, onSuccess }: { onClose: () => void,
                     lokasi: formData.lokasi,
                     foto_url: foto_url,
                     status_verifikasi: 'pending'
-                }]);
+                }),
+            });
 
-            if (insertError) {
-                console.error('Insert error:', insertError);
-                setError('Gagal menyimpan laporan: ' + insertError.message);
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error('Insert error:', result.error);
+                setError('Gagal menyimpan laporan: ' + result.error);
                 return;
             }
 
             alert('✅ Laporan berhasil disimpan!');
             onSuccess?.();
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error:', err);
-            setError('Terjadi kesalahan: ' + (err.message || 'Unknown error'));
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            setError('Terjadi kesalahan: ' + errorMessage);
         } finally {
             setSaving(false);
         }

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { FiSave, FiX, FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { FiSave, FiX, FiAlertCircle, FiLoader, FiPlus, FiTrash2 } from 'react-icons/fi';
 
 // Validation Schema
 const hafizSchema = z.object({
@@ -547,6 +547,11 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </div>
             </div>
 
+            {/* Riwayat Mengajar Section (Edit Mode Only) */}
+            {mode === 'edit' && hafizId && (
+                <HistorySection hafizId={hafizId} initialHistory={(initialData as any)?.riwayat_mengajar || []} />
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-4 justify-end">
                 <button
@@ -577,5 +582,142 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </button>
             </div>
         </form>
+    );
+}
+
+function HistorySection({ hafizId, initialHistory }: { hafizId: string, initialHistory: any[] }) {
+    const [history, setHistory] = useState<any[]>(initialHistory);
+    const [loading, setLoading] = useState(false);
+    const [newItem, setNewItem] = useState({
+        tempat_mengajar: '',
+        tmt_mulai: '',
+        tmt_selesai: '',
+        keterangan: ''
+    });
+
+    const handleAdd = async () => {
+        if (!newItem.tempat_mengajar) return alert('Tempat mengajar wajib diisi');
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/hafiz/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...newItem, hafiz_id: hafizId })
+            });
+            if (!res.ok) throw new Error('Gagal menambah riwayat');
+
+            // Refresh list or optimistic update? List refresh via router refresh might be better but here we can just update local state if we knew the ID.
+            // But we can just reload the page or fetch again. For simplicity, reload or optimistic add with fake ID then reload on next visit.
+            // Actually API returns ID.
+            const result = await res.json();
+
+            setHistory([{ ...newItem, id: result.id, tmt_mulai: newItem.tmt_mulai || null, tmt_selesai: newItem.tmt_selesai || null }, ...history]);
+            setNewItem({ tempat_mengajar: '', tmt_mulai: '', tmt_selesai: '', keterangan: '' });
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Hapus riwayat ini?')) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/hafiz/history?id=${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Gagal menghapus');
+            setHistory(history.filter(h => h.id !== id));
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="card-modern mt-6">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                Riwayat Mengajar
+            </h3>
+
+            <div className="bg-neutral-50 p-4 rounded-xl mb-6">
+                <h4 className="font-semibold mb-3">Tambah Riwayat Baru</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <input
+                        className="form-input"
+                        placeholder="Tempat Mengajar"
+                        value={newItem.tempat_mengajar}
+                        onChange={e => setNewItem({ ...newItem, tempat_mengajar: e.target.value })}
+                    />
+                    <input
+                        type="date"
+                        className="form-input"
+                        placeholder="TMT Mulai"
+                        data-placeholder="TMT Mulai"
+                        value={newItem.tmt_mulai}
+                        onChange={e => setNewItem({ ...newItem, tmt_mulai: e.target.value })}
+                        title="TMT Mulai"
+                    />
+                    <input
+                        type="date"
+                        className="form-input"
+                        placeholder="TMT Selesai"
+                        value={newItem.tmt_selesai}
+                        onChange={e => setNewItem({ ...newItem, tmt_selesai: e.target.value })}
+                        title="TMT Selesai"
+                    />
+                    <button
+                        type="button"
+                        onClick={handleAdd}
+                        disabled={loading}
+                        className="btn btn-primary"
+                    >
+                        {loading ? <FiLoader className="animate-spin" /> : <FiPlus />} Tambah
+                    </button>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead className="bg-neutral-100">
+                        <tr>
+                            <th className="px-4 py-2 text-left text-sm font-semibold">Tempat Mengajar</th>
+                            <th className="px-4 py-2 text-left text-sm font-semibold">TMT Mulai</th>
+                            <th className="px-4 py-2 text-left text-sm font-semibold">TMT Selesai</th>
+                            <th className="px-4 py-2 text-left text-sm font-semibold">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                        {history.length === 0 ? (
+                            <tr><td colSpan={4} className="p-4 text-center text-neutral-500">Belum ada riwayat</td></tr>
+                        ) : (
+                            history.map(h => (
+                                <tr key={h.id}>
+                                    <td className="px-4 py-2">{h.tempat_mengajar}</td>
+                                    <td className="px-4 py-2">
+                                        {h.tmt_mulai ? new Date(h.tmt_mulai).toLocaleDateString() : '-'}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        {h.tmt_selesai ? new Date(h.tmt_selesai).toLocaleDateString() : 'Sekarang'}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDelete(h.id)}
+                                            className="text-red-500 hover:text-red-700"
+                                            title="Hapus"
+                                        >
+                                            <FiTrash2 />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 }

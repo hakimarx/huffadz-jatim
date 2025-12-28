@@ -293,7 +293,7 @@ function PengujiContent() {
                 {/* Add/Edit Penguji Modal */}
                 {showModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl max-w-lg w-full">
+                        <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
                             <div className="p-6 border-b border-neutral-200 flex justify-between items-center">
                                 <h2 className="text-2xl font-bold text-neutral-800">
                                     {editingPenguji ? 'Edit Penguji' : 'Tambah Penguji'}
