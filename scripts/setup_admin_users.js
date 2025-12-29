@@ -31,18 +31,26 @@ async function main() {
     await connection.execute(`
         DELETE FROM users WHERE email IN (
             'hakimarx@gmail.com',
+            'adminprov@lptqjatim.go.id',
             'adminsby@huffadz.jatim.go.id',
             'hafiz@test.com'
         )
     `);
     console.log('Deleted existing admin users');
 
-    // Insert admin provinsi
+    // Insert admin provinsi (hakimarx)
     await connection.execute(`
         INSERT INTO users (email, password, role, nama, kabupaten_kota, is_active)
         VALUES (?, ?, 'admin_provinsi', 'Admin Provinsi Jawa Timur', NULL, 1)
     `, ['hakimarx@gmail.com', adminPass]);
     console.log('Created: hakimarx@gmail.com (password: g4yung4n)');
+
+    // Insert admin provinsi (LPTQ)
+    await connection.execute(`
+        INSERT INTO users (email, password, role, nama, kabupaten_kota, is_active)
+        VALUES (?, ?, 'admin_provinsi', 'Admin Provinsi LPTQ', NULL, 1)
+    `, ['adminprov@lptqjatim.go.id', testPass]);
+    console.log('Created: adminprov@lptqjatim.go.id (password: 123456)');
 
     // Insert admin kabko
     await connection.execute(`

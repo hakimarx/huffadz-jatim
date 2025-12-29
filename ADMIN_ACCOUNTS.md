@@ -2,18 +2,30 @@
 
 ## Akun yang Telah Dibuat
 
-### 1. Admin Provinsi
+### 1. Admin Provinsi (Hakimarx)
 - **Email**: hakimarx@gmail.com
 - **Password**: g4yung4n
 - **Role**: Admin Provinsi
 - **Akses**: Seluruh data Huffadz di Jawa Timur
 
-### 2. Admin Kabupaten/Kota Surabaya
+### 2. Admin Provinsi (LPTQ)
+- **Email**: adminprov@lptqjatim.go.id
+- **Password**: 123456
+- **Role**: Admin Provinsi
+- **Akses**: Seluruh data Huffadz di Jawa Timur
+
+### 3. Admin Kabupaten/Kota Surabaya
 - **Email**: adminsby@huffadz.jatim.go.id
 - **Password**: 123456
 - **Role**: Admin Kab/Ko
 - **Wilayah**: Kota Surabaya
 - **Akses**: Data Huffadz Kota Surabaya saja
+
+### 4. Hafiz (Test Account)
+- **Email**: hafiz@test.com
+- **Password**: 123456
+- **Role**: Hafiz
+- **Akses**: Kelola profil dan riwayat mengajar sendiri
 
 ## Cara Login
 
@@ -23,76 +35,67 @@
 4. Klik "Masuk"
 5. Anda akan diarahkan ke dashboard sesuai role
 
-## Cara Menambahkan User Admin di Supabase
+## Cara Menambahkan User Admin (TiDB/MySQL)
 
-### Melalui Supabase Dashboard (Recommended)
+### Melalui Script (Recommended)
 
-1. **Buka Supabase Dashboard**
-   - Login ke https://supabase.com
-   - Pilih project Anda
+Jalankan script setup untuk menambahkan admin users:
 
-2. **Buat User di Authentication**
-   - Klik menu "Authentication" > "Users"
-   - Klik tombol "Add User"
-   - Isi:
-     - Email: email admin baru
-     - Password: password admin baru
-   - Klik "Create User"
-   - **Catat UUID** yang muncul (contoh: `550e8400-e29b-41d4-a716-446655440000`)
-
-3. **Tambahkan ke Tabel `users`**
-   - Klik menu "Table Editor" > pilih tabel `users`
-   - Klik "Insert" > "Insert row"
-   - Isi:
-     - `id`: UUID dari step 2
-     - `email`: email yang sama dengan step 2
-     - `nama`: Nama lengkap admin
-     - `role`: pilih `admin_provinsi` atau `admin_kabko`
-     - `kabupaten_kota_id`: (jika admin_kabko) pilih ID kabupaten/kota
-   - Klik "Save"
-
-### Melalui SQL Editor
-
-Jalankan script yang sudah disediakan di:
-```
-database/insert_admin_users.sql
+```bash
+node scripts/setup_admin_users.js
 ```
 
-Atau gunakan query manual:
+### Melalui SQL Query Manual
+
+Koneksi ke database TiDB, lalu jalankan:
 
 ```sql
--- 1. Insert ke auth.users (gunakan Supabase Dashboard lebih mudah)
--- Atau gunakan Supabase Auth API
+-- Generate bcrypt hash untuk password terlebih dahulu menggunakan node
+-- Contoh: const bcrypt = require('bcryptjs'); bcrypt.hash('password123', 12)
 
--- 2. Insert ke public.users
-INSERT INTO public.users (id, email, nama, role, kabupaten_kota_id)
+INSERT INTO users (email, password, role, nama, kabupaten_kota, is_active)
 VALUES (
-  'UUID-DARI-AUTH-USERS',
-  'email@example.com',
+  'newemail@example.com',
+  '$2a$12$xxxxx', -- bcrypt hash dari password
+  'admin_provinsi', -- atau 'admin_kabko' atau 'hafiz'
   'Nama Admin',
-  'admin_provinsi', -- atau 'admin_kabko'
-  NULL -- atau ID kabupaten/kota jika admin_kabko
+  NULL, -- atau nama kabupaten/kota jika admin_kabko
+  1
 );
 ```
+
+### Role yang Tersedia
+
+| Role | Deskripsi |
+|------|-----------|
+| `admin_provinsi` | Admin dengan akses seluruh provinsi |
+| `admin_kabko` | Admin Kabupaten/Kota (harus set `kabupaten_kota`) |
+| `hafiz` | User hafiz biasa |
 
 ## Troubleshooting
 
 ### Lupa Password
-1. Buka Supabase Dashboard
-2. Authentication > Users
-3. Cari user berdasarkan email
-4. Klik "..." > "Reset Password"
-5. Kirim email reset atau set password baru langsung
+1. Koneksi ke database TiDB
+2. Generate bcrypt hash baru untuk password:
+   ```javascript
+   const bcrypt = require('bcryptjs');
+   const hash = await bcrypt.hash('newpassword', 12);
+   console.log(hash);
+   ```
+3. Update password di database:
+   ```sql
+   UPDATE users SET password = '$2a$12$...' WHERE email = 'user@example.com';
+   ```
 
 ### User Tidak Bisa Login
-1. Pastikan user ada di tabel `auth.users`
-2. Pastikan user ada di tabel `public.users` dengan `id` yang sama
+1. Pastikan user ada di tabel `users`
+2. Pastikan `password` sudah di-hash dengan bcrypt
 3. Pastikan `role` sudah diset dengan benar
-4. Cek apakah email sudah diverifikasi (di Supabase Dashboard)
+4. Pastikan `is_active = 1`
 
 ### Error "User not found"
-- Pastikan user sudah dibuat di kedua tabel (`auth.users` dan `public.users`)
-- Pastikan `id` di kedua tabel sama persis (UUID)
+- Pastikan email sudah terdaftar di tabel `users`
+- Cek ejaan email (case-sensitive)
 
 ## Keamanan
 
@@ -100,7 +103,7 @@ VALUES (
 - Ganti password default setelah login pertama kali
 - Jangan share password ke orang lain
 - Gunakan password yang kuat (minimal 8 karakter, kombinasi huruf, angka, simbol)
-- Untuk production, aktifkan 2FA (Two-Factor Authentication) di Supabase
+- Password di-hash menggunakan bcrypt (12 rounds)
 
 ## Kontak Support
 
