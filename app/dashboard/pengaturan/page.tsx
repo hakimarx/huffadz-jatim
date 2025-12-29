@@ -80,9 +80,11 @@ function PengaturanContent() {
 
         setLoadingUsers(true);
         try {
-            // Build role param based on current user role
-            const roleParam = user.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
-            const response = await fetch(`/api/users?role=${roleParam}`);
+            // For admin_provinsi, fetch all users (no role filter to get all managed users)
+            // For admin_kabko, only fetch hafiz
+            const roleParam = user.role === 'admin_kabko' ? 'hafiz' : '';
+            const url = roleParam ? `/api/users?role=${roleParam}` : '/api/users';
+            const response = await fetch(url);
             const data = await response.json();
 
             if (!response.ok) {
@@ -693,15 +695,15 @@ function PengaturanContent() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {saving ? (
                                         <>
                                             <FiLoader className="animate-spin" />
-                                            <span>Menyimpan...</span>
+                                            <span className="text-white">Menyimpan...</span>
                                         </>
                                     ) : (
-                                        <span>{modalMode === 'add' ? 'Tambah' : 'Simpan'}</span>
+                                        <span className="text-white font-semibold">{modalMode === 'add' ? 'Tambah' : 'Simpan'}</span>
                                     )}
                                 </button>
                             </div>

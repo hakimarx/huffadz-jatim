@@ -3,6 +3,9 @@
 -- =====================================================
 -- Jalankan script ini di TiDB Cloud Console
 
+-- Pilih database terlebih dahulu
+USE huffadz_jatim;
+
 -- Tambahkan kolom lokasi_tes dan periode_tes pada tabel penguji
 ALTER TABLE penguji 
 ADD COLUMN IF NOT EXISTS lokasi_tes VARCHAR(255) DEFAULT NULL;
