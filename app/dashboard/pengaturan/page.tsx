@@ -19,6 +19,9 @@ import {
     FiAlertCircle
 } from 'react-icons/fi';
 
+// Import data dari file JSON eksternal
+import kabupatenKotaData from '@/data/kabupaten-kota.json';
+
 interface UserData {
     id: number;
     email: string;
@@ -39,19 +42,8 @@ interface ManagedUser {
     created_at: string;
 }
 
-// Daftar Kabupaten/Kota Jawa Timur
-const KABUPATEN_KOTA = [
-    'Kota Surabaya', 'Kota Malang', 'Kota Kediri', 'Kota Blitar', 'Kota Mojokerto',
-    'Kota Madiun', 'Kota Pasuruan', 'Kota Probolinggo', 'Kota Batu',
-    'Kabupaten Gresik', 'Kabupaten Sidoarjo', 'Kabupaten Mojokerto', 'Kabupaten Jombang',
-    'Kabupaten Bojonegoro', 'Kabupaten Tuban', 'Kabupaten Lamongan', 'Kabupaten Madiun',
-    'Kabupaten Magetan', 'Kabupaten Ngawi', 'Kabupaten Ponorogo', 'Kabupaten Pacitan',
-    'Kabupaten Kediri', 'Kabupaten Nganjuk', 'Kabupaten Blitar', 'Kabupaten Tulungagung',
-    'Kabupaten Trenggalek', 'Kabupaten Malang', 'Kabupaten Pasuruan', 'Kabupaten Probolinggo',
-    'Kabupaten Lumajang', 'Kabupaten Jember', 'Kabupaten Bondowoso', 'Kabupaten Situbondo',
-    'Kabupaten Banyuwangi', 'Kabupaten Sampang', 'Kabupaten Pamekasan', 'Kabupaten Sumenep',
-    'Kabupaten Bangkalan'
-];
+// Daftar Kabupaten/Kota Jawa Timur (dari file JSON)
+const KABUPATEN_KOTA: string[] = kabupatenKotaData;
 
 function PengaturanContent() {
     const [user, setUser] = useState<UserData | null>(null);
@@ -77,6 +69,7 @@ function PengaturanContent() {
         email: '',
         password: '',
         nama: '',
+        role: 'admin_kabko' as 'admin_provinsi' | 'admin_kabko' | 'hafiz',
         kabupaten_kota: '',
         telepon: '',
         nik: ''
@@ -87,9 +80,11 @@ function PengaturanContent() {
 
         setLoadingUsers(true);
         try {
-            // Build role param based on current user role
-            const roleParam = user.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
-            const response = await fetch(`/api/users?role=${roleParam}`);
+            // For admin_provinsi, fetch all users (no role filter to get all managed users)
+            // For admin_kabko, only fetch hafiz
+            const roleParam = user.role === 'admin_kabko' ? 'hafiz' : '';
+            const url = roleParam ? `/api/users?role=${roleParam}` : '/api/users';
+            const response = await fetch(url);
             const data = await response.json();
 
             if (!response.ok) {
@@ -147,6 +142,7 @@ function PengaturanContent() {
             email: '',
             password: '',
             nama: '',
+            role: user?.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz',
             kabupaten_kota: user?.role === 'admin_kabko' ? (user.kabupaten_kota || '') : '',
             telepon: '',
             nik: ''
@@ -162,6 +158,7 @@ function PengaturanContent() {
             email: managedUser.email,
             password: '',
             nama: managedUser.nama,
+            role: (managedUser.role as 'admin_provinsi' | 'admin_kabko' | 'hafiz') || 'hafiz',
             kabupaten_kota: managedUser.kabupaten_kota || '',
             telepon: managedUser.telepon || '',
             nik: ''
@@ -228,12 +225,13 @@ function PengaturanContent() {
                     throw new Error('Format email tidak valid. Pastikan email memiliki format yang benar (contoh: nama@domain.com)');
                 }
 
-                if (user?.role === 'admin_provinsi' && !formData.kabupaten_kota) {
-                    throw new Error('Kabupaten/Kota wajib dipilih');
+                // Validate kabupaten_kota only if role is admin_kabko
+                if (user?.role === 'admin_provinsi' && formData.role === 'admin_kabko' && !formData.kabupaten_kota) {
+                    throw new Error('Kabupaten/Kota wajib dipilih untuk Admin Kab/Ko');
                 }
 
                 // Create new user via MySQL API
-                const newRole = user?.role === 'admin_provinsi' ? 'admin_kabko' : 'hafiz';
+                const newRole = user?.role === 'admin_provinsi' ? formData.role : 'hafiz';
                 const response = await fetch('/api/users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -620,8 +618,31 @@ function PengaturanContent() {
                                 </div>
                             )}
 
+                            {/* Role/Hak Akses (for Admin Provinsi) */}
+                            {user?.role === 'admin_provinsi' && modalMode === 'add' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                                        Role / Hak Akses <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        <select
+                                            name="role"
+                                            value={formData.role}
+                                            onChange={handleFormChange}
+                                            required
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
+                                        >
+                                            <option value="admin_provinsi">Admin Provinsi</option>
+                                            <option value="admin_kabko">Admin Kab/Ko</option>
+                                            <option value="hafiz">Hafiz</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Kabupaten/Kota (for Admin Provinsi adding Admin Kab/Ko) */}
-                            {user?.role === 'admin_provinsi' && (
+                            {user?.role === 'admin_provinsi' && formData.role === 'admin_kabko' && (
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                                         Kabupaten/Kota <span className="text-red-500">*</span>
@@ -674,15 +695,15 @@ function PengaturanContent() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {saving ? (
                                         <>
                                             <FiLoader className="animate-spin" />
-                                            <span>Menyimpan...</span>
+                                            <span className="text-white">Menyimpan...</span>
                                         </>
                                     ) : (
-                                        <span>{modalMode === 'add' ? 'Tambah' : 'Simpan'}</span>
+                                        <span className="text-white font-semibold">{modalMode === 'add' ? 'Tambah' : 'Simpan'}</span>
                                     )}
                                 </button>
                             </div>

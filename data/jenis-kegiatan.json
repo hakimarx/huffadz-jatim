@@ -1,0 +1,22 @@
+[
+    {
+        "value": "mengajar",
+        "label": "👨‍🏫 Mengajar",
+        "emoji": "👨‍🏫"
+    },
+    {
+        "value": "murojah",
+        "label": "📖 Muroja'ah",
+        "emoji": "📖"
+    },
+    {
+        "value": "khataman",
+        "label": "🎓 Khataman",
+        "emoji": "🎓"
+    },
+    {
+        "value": "lainnya",
+        "label": "📝 Lainnya",
+        "emoji": "📝"
+    }
+]

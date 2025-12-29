@@ -8,7 +8,6 @@ interface DBPenguji {
     gelar?: string;
     institusi?: string;
     telepon?: string;
-    email?: string;
     lokasi_tes?: string;
     periode_tes?: string;
     is_active: boolean;
@@ -59,14 +58,13 @@ export async function POST(request: NextRequest) {
         }
 
         const insertId = await insert(
-            `INSERT INTO penguji (nama, gelar, institusi, telepon, email, lokasi_tes, periode_tes, is_active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO penguji (nama, gelar, institusi, telepon, lokasi_tes, periode_tes, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 data.nama,
                 data.gelar || null,
                 data.institusi || null,
                 data.telepon || null,
-                data.email || null,
                 data.lokasi_tes || null,
                 data.periode_tes || null,
                 data.is_active !== false ? 1 : 0
@@ -111,7 +109,6 @@ export async function PUT(request: NextRequest) {
                 gelar = ?,
                 institusi = ?,
                 telepon = ?,
-                email = ?,
                 lokasi_tes = ?,
                 periode_tes = ?,
                 is_active = ?,
@@ -122,7 +119,6 @@ export async function PUT(request: NextRequest) {
                 data.gelar || null,
                 data.institusi || null,
                 data.telepon || null,
-                data.email || null,
                 data.lokasi_tes || null,
                 data.periode_tes || null,
                 data.is_active ? 1 : 0,

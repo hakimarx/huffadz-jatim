@@ -14,6 +14,10 @@ import {
     FiSearch
 } from 'react-icons/fi';
 
+// Import data dari file JSON eksternal
+import kabupatenKotaData from '@/data/kabupaten-kota.json';
+import bulanData from '@/data/bulan.json';
+
 interface UserData {
     id: number;
     email: string;
@@ -39,34 +43,11 @@ interface LaporanData {
     };
 }
 
-// List daftar Kabupaten/Kota di Jawa Timur
-const KABUPATEN_KOTA_LIST = [
-    'Kota Surabaya', 'Kota Malang', 'Kota Kediri', 'Kota Blitar', 'Kota Mojokerto',
-    'Kota Madiun', 'Kota Pasuruan', 'Kota Probolinggo', 'Kota Batu',
-    'Kabupaten Gresik', 'Kabupaten Sidoarjo', 'Kabupaten Mojokerto', 'Kabupaten Jombang',
-    'Kabupaten Bojonegoro', 'Kabupaten Tuban', 'Kabupaten Lamongan', 'Kabupaten Madiun',
-    'Kabupaten Magetan', 'Kabupaten Ngawi', 'Kabupaten Ponorogo', 'Kabupaten Pacitan',
-    'Kabupaten Kediri', 'Kabupaten Nganjuk', 'Kabupaten Blitar', 'Kabupaten Tulungagung',
-    'Kabupaten Trenggalek', 'Kabupaten Malang', 'Kabupaten Pasuruan', 'Kabupaten Probolinggo',
-    'Kabupaten Lumajang', 'Kabupaten Jember', 'Kabupaten Bondowoso', 'Kabupaten Situbondo',
-    'Kabupaten Banyuwangi', 'Kabupaten Sampang', 'Kabupaten Pamekasan', 'Kabupaten Sumenep',
-    'Kabupaten Bangkalan'
-];
+// List daftar Kabupaten/Kota di Jawa Timur (dari file JSON)
+const KABUPATEN_KOTA_LIST: string[] = kabupatenKotaData;
 
-const BULAN_LIST = [
-    { value: 1, label: 'Januari' },
-    { value: 2, label: 'Februari' },
-    { value: 3, label: 'Maret' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'Mei' },
-    { value: 6, label: 'Juni' },
-    { value: 7, label: 'Juli' },
-    { value: 8, label: 'Agustus' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'Oktober' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'Desember' }
-];
+// Daftar bulan (dari file JSON)
+const BULAN_LIST: { value: number; label: string }[] = bulanData;
 
 function CetakLaporanContent() {
     const [user, setUser] = useState<UserData | null>(null);
