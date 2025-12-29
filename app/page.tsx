@@ -28,12 +28,12 @@ export default function Home() {
 
           {/* Main Heading */}
           <h1 className="font-display text-5xl lg:text-7xl font-bold mb-8 animate-fade-in tracking-tight leading-[1.1]" style={{ animationDelay: '0.1s' }}>
-            Pusat Data & Pembinaan <br className="hidden lg:block" />
+            Pusat Data <br className="hidden lg:block" />
             <span className="gradient-text">Huffadz Jawa Timur</span>
           </h1>
 
           <p className="text-xl text-neutral-500 mb-10 max-w-3xl mx-auto animate-fade-in leading-relaxed font-light" style={{ animationDelay: '0.2s' }}>
-            Platform digital terintegrasi untuk pendataan, pembinaan, seleksi, dan pelaporan kegiatan Huffadz penerima insentif Gubernur Jawa Timur.
+            Platform digital terintegrasi untuk pendataan dan pelaporan kegiatan Huffadz penerima insentif Gubernur Jawa Timur.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center mb-16 animate-fade-in" style={{ animationDelay: '0.3s' }}>
