@@ -3,47 +3,11 @@
 import { useState } from 'react';
 import { FiX, FiMapPin, FiLoader, FiAlertTriangle } from 'react-icons/fi';
 
-// Daftar Kabupaten/Kota di Jawa Timur
-export const KABUPATEN_KOTA_JATIM = [
-    'Kota Surabaya',
-    'Kota Malang',
-    'Kota Kediri',
-    'Kota Blitar',
-    'Kota Mojokerto',
-    'Kota Madiun',
-    'Kota Pasuruan',
-    'Kota Probolinggo',
-    'Kota Batu',
-    'Kabupaten Gresik',
-    'Kabupaten Sidoarjo',
-    'Kabupaten Mojokerto',
-    'Kabupaten Jombang',
-    'Kabupaten Bojonegoro',
-    'Kabupaten Tuban',
-    'Kabupaten Lamongan',
-    'Kabupaten Madiun',
-    'Kabupaten Magetan',
-    'Kabupaten Ngawi',
-    'Kabupaten Ponorogo',
-    'Kabupaten Pacitan',
-    'Kabupaten Kediri',
-    'Kabupaten Nganjuk',
-    'Kabupaten Blitar',
-    'Kabupaten Tulungagung',
-    'Kabupaten Trenggalek',
-    'Kabupaten Malang',
-    'Kabupaten Pasuruan',
-    'Kabupaten Probolinggo',
-    'Kabupaten Lumajang',
-    'Kabupaten Jember',
-    'Kabupaten Bondowoso',
-    'Kabupaten Situbondo',
-    'Kabupaten Banyuwangi',
-    'Kabupaten Sampang',
-    'Kabupaten Pamekasan',
-    'Kabupaten Sumenep',
-    'Kabupaten Bangkalan'
-];
+// Import data dari file JSON eksternal
+import kabupatenKotaData from '@/data/kabupaten-kota.json';
+
+// Export untuk digunakan komponen lain
+export const KABUPATEN_KOTA_JATIM: string[] = kabupatenKotaData;
 
 interface MutasiModalProps {
     isOpen: boolean;

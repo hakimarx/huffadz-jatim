@@ -1,0 +1,18 @@
+[
+    {
+        "value": "spj",
+        "label": "SPJ"
+    },
+    {
+        "value": "berita_acara",
+        "label": "Berita Acara"
+    },
+    {
+        "value": "piagam",
+        "label": "Piagam"
+    },
+    {
+        "value": "lainnya",
+        "label": "Lainnya"
+    }
+]
