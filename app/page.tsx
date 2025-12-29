@@ -213,7 +213,7 @@ export default function Home() {
             <div>
               <h4 className="font-bold text-neutral-800 mb-6">Kontak</h4>
               <ul className="space-y-3 text-neutral-500 text-sm">
-                <li>Jl. Raya Wisma Pagebangan, Surabaya</li>
+                <li>Jl. Dukuh Kupang, No. 122 - 124, Dukuh Pakis, Surabaya, Jawa Timur 60225</li>
                 <li>info@lptq.jatimprov.go.id</li>
                 <li>(031) 8292233</li>
               </ul>
