@@ -11,7 +11,6 @@ interface Penguji {
     gelar: string;
     institusi: string;
     telepon: string;
-    email?: string;
     lokasi_tes?: string;
     periode_tes?: string;
     is_active: boolean;
@@ -38,7 +37,6 @@ function PengujiContent() {
         gelar: '',
         institusi: '',
         telepon: '',
-        email: '',
         lokasi_tes: '',
         periode_tes: '',
         is_active: true
@@ -83,7 +81,7 @@ function PengujiContent() {
 
     const openAddModal = () => {
         setEditingPenguji(null);
-        setFormData({ nama: '', gelar: '', institusi: '', telepon: '', email: '', lokasi_tes: '', periode_tes: '', is_active: true });
+        setFormData({ nama: '', gelar: '', institusi: '', telepon: '', lokasi_tes: '', periode_tes: '', is_active: true });
         setShowModal(true);
     };
 
@@ -94,7 +92,6 @@ function PengujiContent() {
             gelar: penguji.gelar || '',
             institusi: penguji.institusi || '',
             telepon: penguji.telepon || '',
-            email: penguji.email || '',
             lokasi_tes: penguji.lokasi_tes || '',
             periode_tes: penguji.periode_tes || '',
             is_active: penguji.is_active
@@ -179,7 +176,6 @@ function PengujiContent() {
                     gelar: penguji.gelar,
                     institusi: penguji.institusi,
                     telepon: penguji.telepon,
-                    email: penguji.email,
                     lokasi_tes: penguji.lokasi_tes,
                     periode_tes: penguji.periode_tes,
                     is_active: !penguji.is_active
@@ -346,17 +342,6 @@ function PengujiContent() {
                                         placeholder="081234567890"
                                         value={formData.telepon}
                                         onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label">Email</label>
-                                    <input
-                                        type="email"
-                                        className="form-input"
-                                        placeholder="email@example.com"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     />
                                 </div>
 
