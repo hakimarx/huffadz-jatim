@@ -225,9 +225,9 @@ function PengaturanContent() {
                     throw new Error('Format email tidak valid. Pastikan email memiliki format yang benar (contoh: nama@domain.com)');
                 }
 
-                // Validate kabupaten_kota only if role is admin_kabko
-                if (user?.role === 'admin_provinsi' && formData.role === 'admin_kabko' && !formData.kabupaten_kota) {
-                    throw new Error('Kabupaten/Kota wajib dipilih untuk Admin Kab/Ko');
+                // Validate kabupaten_kota only if role is admin_kabko or hafiz
+                if (user?.role === 'admin_provinsi' && formData.role !== 'admin_provinsi' && !formData.kabupaten_kota) {
+                    throw new Error('Kabupaten/Kota wajib dipilih');
                 }
 
                 // Create new user via MySQL API
@@ -598,7 +598,7 @@ function PengaturanContent() {
                             </div>
 
                             {/* NIK (only for Hafiz) */}
-                            {user?.role === 'admin_kabko' && modalMode === 'add' && (
+                            {(user?.role === 'admin_kabko' || (user?.role === 'admin_provinsi' && formData.role === 'hafiz')) && modalMode === 'add' && (
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                                         NIK
@@ -641,8 +641,8 @@ function PengaturanContent() {
                                 </div>
                             )}
 
-                            {/* Kabupaten/Kota (for Admin Provinsi adding Admin Kab/Ko) */}
-                            {user?.role === 'admin_provinsi' && formData.role === 'admin_kabko' && (
+                            {/* Kabupaten/Kota (for Admin Provinsi adding Admin Kab/Ko or Hafiz) */}
+                            {user?.role === 'admin_provinsi' && formData.role !== 'admin_provinsi' && (
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                                         Kabupaten/Kota <span className="text-red-500">*</span>
