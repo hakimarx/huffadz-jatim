@@ -1,4 +1,9 @@
 import mysql from 'mysql2/promise';
+import path from 'path';
+import dotenv from 'dotenv';
+
+// Explicitly load .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // Database configuration - uses TiDB Serverless or local MySQL
 const dbConfig = {
@@ -30,9 +35,22 @@ export async function query<T = unknown>(
     sql: string,
     params?: unknown[]
 ): Promise<T[]> {
-    const connection = getPool();
-    const [rows] = await connection.execute(sql, params);
-    return rows as T[];
+    try {
+        const connection = getPool();
+        const [rows] = await connection.execute(sql, params);
+        return rows as T[];
+    } catch (error: any) {
+        console.error('Database Query Error:', {
+            sql,
+            params,
+            message: error.message,
+            code: error.code,
+            errno: error.errno,
+            sqlState: error.sqlState,
+            stack: error.stack
+        });
+        throw error;
+    }
 }
 
 // Helper for single row queries

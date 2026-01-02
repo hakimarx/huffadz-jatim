@@ -88,9 +88,12 @@ export async function loginUser(email: string, password: string): Promise<{
         // Return user without password
         const { password: _, ...userWithoutPassword } = user;
         return { success: true, user: userWithoutPassword };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login error:', error);
-        return { success: false, error: 'Terjadi kesalahan saat login' };
+        return {
+            success: false,
+            error: `Terjadi kesalahan saat login: ${error.message || 'Unknown error'}`
+        };
     }
 }
 
