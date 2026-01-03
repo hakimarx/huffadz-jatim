@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS hafiz (
   kabupaten_kota VARCHAR(100) NOT NULL,
   telepon VARCHAR(20) DEFAULT NULL,
   email VARCHAR(255) DEFAULT NULL,
+  nama_bank VARCHAR(100) DEFAULT NULL,
+  nomor_rekening VARCHAR(50) DEFAULT NULL,
   sertifikat_tahfidz VARCHAR(255) DEFAULT NULL,
   mengajar TINYINT(1) DEFAULT 0,
   tmt_mengajar DATE DEFAULT NULL,
@@ -184,8 +186,11 @@ CREATE TABLE IF NOT EXISTS penguji (
   institusi VARCHAR(255) DEFAULT NULL,
   telepon VARCHAR(20) DEFAULT NULL,
   email VARCHAR(255) DEFAULT NULL,
+  lokasi_tes VARCHAR(255) DEFAULT NULL,
+  periode_tes VARCHAR(100) DEFAULT NULL,
   is_active TINYINT(1) DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- =====================================================
