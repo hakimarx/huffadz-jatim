@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, insert } from '@/lib/db';
-import { getServerSession } from 'next-auth';
+// import { getServerSession } from 'next-auth';
 
 // Use a simplified session check or adjust based on your actual auth implementation
 // Assuming you have a way to check user session, e.g., via a helper or direct DB check if using custom auth
