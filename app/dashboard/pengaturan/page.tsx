@@ -328,6 +328,72 @@ function PengaturanContent() {
         (u.kabupaten_kota && u.kabupaten_kota.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    const [activeTab, setActiveTab] = useState<'users' | 'app'>('users');
+    const [appSettings, setAppSettings] = useState({
+        app_name: '',
+        app_address: '',
+        app_logo: ''
+    });
+    const [savingSettings, setSavingSettings] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'app' && user?.role === 'admin_provinsi') {
+            fetchAppSettings();
+        }
+    }, [activeTab, user]);
+
+    const fetchAppSettings = async () => {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            if (data.data) {
+                setAppSettings({
+                    app_name: data.data.app_name || '',
+                    app_address: data.data.app_address || '',
+                    app_logo: data.data.app_logo || ''
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching settings:', err);
+        }
+    };
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 500 * 1024) { // 500KB limit
+            alert('Ukuran file logo maksimal 500KB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setAppSettings(prev => ({ ...prev, app_logo: base64 }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const saveAppSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSavingSettings(true);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appSettings)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            alert('Pengaturan aplikasi berhasil disimpan');
+        } catch (err: any) {
+            alert('Gagal menyimpan: ' + err.message);
+        } finally {
+            setSavingSettings(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -366,149 +432,231 @@ function PengaturanContent() {
                                     Pengaturan
                                 </h1>
                                 <p className="text-neutral-500">
-                                    Kelola User {targetRole}
+                                    Kelola Pengaturan & User
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Bar */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 mb-6">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            {/* Search */}
-                            <div className="relative flex-1 max-w-md">
-                                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                <input
-                                    type="text"
-                                    placeholder={`Cari ${targetRole}...`}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                />
-                            </div>
-
-                            {/* Add Button */}
+                    {/* Tabs */}
+                    {user.role === 'admin_provinsi' && (
+                        <div className="flex gap-4 border-b border-neutral-200 mb-6">
                             <button
-                                onClick={handleOpenAddModal}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
+                                onClick={() => setActiveTab('users')}
+                                className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'users'
+                                        ? 'border-primary-500 text-primary-600'
+                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
                             >
-                                <FiPlus />
-                                <span>Tambah {targetRole}</span>
+                                User Management
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('app')}
+                                className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'app'
+                                        ? 'border-primary-500 text-primary-600'
+                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
+                            >
+                                Aplikasi & Logo
                             </button>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Users Table */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
-                        {loadingUsers ? (
-                            <div className="p-12 text-center">
-                                <FiLoader className="animate-spin text-3xl text-primary-500 mx-auto mb-3" />
-                                <p className="text-neutral-500">Memuat data user...</p>
-                            </div>
-                        ) : filteredUsers.length === 0 ? (
-                            <div className="p-12 text-center">
-                                <FiUsers className="text-5xl text-neutral-300 mx-auto mb-4" />
-                                <p className="text-neutral-500 mb-2">
-                                    {searchTerm ? 'Tidak ada hasil pencarian' : `Belum ada ${targetRole}`}
-                                </p>
-                                {!searchTerm && (
+                    {activeTab === 'users' ? (
+                        <>
+                            {/* Action Bar */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 mb-6">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    {/* Search */}
+                                    <div className="relative flex-1 max-w-md">
+                                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        <input
+                                            type="text"
+                                            placeholder={`Cari ${targetRole}...`}
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    {/* Add Button */}
                                     <button
                                         onClick={handleOpenAddModal}
-                                        className="text-primary-500 hover:text-primary-600 font-medium"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
                                     >
-                                        + Tambah {targetRole} pertama
+                                        <FiPlus />
+                                        <span>Tambah {targetRole}</span>
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Users Table */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
+                                {loadingUsers ? (
+                                    <div className="p-12 text-center">
+                                        <FiLoader className="animate-spin text-3xl text-primary-500 mx-auto mb-3" />
+                                        <p className="text-neutral-500">Memuat data user...</p>
+                                    </div>
+                                ) : filteredUsers.length === 0 ? (
+                                    <div className="p-12 text-center">
+                                        <FiUsers className="text-5xl text-neutral-300 mx-auto mb-4" />
+                                        <p className="text-neutral-500 mb-2">
+                                            {searchTerm ? 'Tidak ada hasil pencarian' : `Belum ada ${targetRole}`}
+                                        </p>
+                                        {!searchTerm && (
+                                            <button
+                                                onClick={handleOpenAddModal}
+                                                className="text-primary-500 hover:text-primary-600 font-medium"
+                                            >
+                                                + Tambah {targetRole} pertama
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-neutral-50 border-b border-neutral-200">
+                                                <tr>
+                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Nama
+                                                    </th>
+                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Email
+                                                    </th>
+                                                    {user.role === 'admin_provinsi' && (
+                                                        <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                            Kabupaten/Kota
+                                                        </th>
+                                                    )}
+                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Telepon
+                                                    </th>
+                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Status
+                                                    </th>
+                                                    <th className="text-right px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Aksi
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-neutral-100">
+                                                {filteredUsers.map((managedUser) => (
+                                                    <tr key={managedUser.id} className="hover:bg-neutral-50 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold">
+                                                                    {managedUser.nama.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <span className="font-medium text-neutral-800">
+                                                                    {managedUser.nama}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-neutral-600">
+                                                            {managedUser.email}
+                                                        </td>
+                                                        {user.role === 'admin_provinsi' && (
+                                                            <td className="px-6 py-4 text-neutral-600">
+                                                                {managedUser.kabupaten_kota || '-'}
+                                                            </td>
+                                                        )}
+                                                        <td className="px-6 py-4 text-neutral-600">
+                                                            {managedUser.telepon || '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${managedUser.is_active
+                                                                ? 'bg-green-100 text-green-700'
+                                                                : 'bg-red-100 text-red-700'
+                                                                }`}>
+                                                                {managedUser.is_active ? 'Aktif' : 'Nonaktif'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => handleOpenEditModal(managedUser)}
+                                                                    className="p-2 text-neutral-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    <FiEdit2 size={18} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(managedUser)}
+                                                                    className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                    title="Hapus"
+                                                                >
+                                                                    <FiTrash2 size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-neutral-50 border-b border-neutral-200">
-                                        <tr>
-                                            <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                Nama
-                                            </th>
-                                            <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                Email
-                                            </th>
-                                            {user.role === 'admin_provinsi' && (
-                                                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                    Kabupaten/Kota
-                                                </th>
-                                            )}
-                                            <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                Telepon
-                                            </th>
-                                            <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                Status
-                                            </th>
-                                            <th className="text-right px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                Aksi
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-neutral-100">
-                                        {filteredUsers.map((managedUser) => (
-                                            <tr key={managedUser.id} className="hover:bg-neutral-50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold">
-                                                            {managedUser.nama.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="font-medium text-neutral-800">
-                                                            {managedUser.nama}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-neutral-600">
-                                                    {managedUser.email}
-                                                </td>
-                                                {user.role === 'admin_provinsi' && (
-                                                    <td className="px-6 py-4 text-neutral-600">
-                                                        {managedUser.kabupaten_kota || '-'}
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4 text-neutral-600">
-                                                    {managedUser.telepon || '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${managedUser.is_active
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {managedUser.is_active ? 'Aktif' : 'Nonaktif'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={() => handleOpenEditModal(managedUser)}
-                                                            className="p-2 text-neutral-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <FiEdit2 size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteClick(managedUser)}
-                                                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Hapus"
-                                                        >
-                                                            <FiTrash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                        </>
+                    ) : (
+                        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 max-w-2xl">
+                            <h2 className="text-xl font-bold text-neutral-800 mb-6">Pengaturan Aplikasi</h2>
+                            <form onSubmit={saveAppSettings} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-700 mb-2">Nama Aplikasi</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={appSettings.app_name}
+                                        onChange={(e) => setAppSettings(prev => ({ ...prev, app_name: e.target.value }))}
+                                        placeholder="LPTQ Jawa Timur"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-700 mb-2">Alamat Instansi</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={appSettings.app_address}
+                                        onChange={(e) => setAppSettings(prev => ({ ...prev, app_address: e.target.value }))}
+                                        placeholder="Jl. Pahlawan No. 110"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-700 mb-2">Logo Aplikasi</label>
+                                    <div className="flex items-center gap-4">
+                                        {appSettings.app_logo && (
+                                            <div className="w-16 h-16 rounded-lg border border-neutral-200 p-1">
+                                                <img src={appSettings.app_logo} alt="Logo" className="w-full h-full object-contain" />
+                                            </div>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleLogoUpload}
+                                            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-neutral-500 mt-1">Maksimal 500KB. Format PNG/JPG.</p>
+                                </div>
+                                <div className="pt-4">
+                                    <button
+                                        type="submit"
+                                        disabled={savingSettings}
+                                        className="btn btn-primary"
+                                    >
+                                        {savingSettings ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
 
                     {/* Stats */}
-                    <div className="mt-4 text-sm text-neutral-500">
-                        Total: {filteredUsers.length} {targetRole}
-                    </div>
+                    {activeTab === 'users' && (
+                        <div className="mt-4 text-sm text-neutral-500">
+                            Total: {filteredUsers.length} {targetRole}
+                        </div>
+                    )}
                 </div>
             </main>
 

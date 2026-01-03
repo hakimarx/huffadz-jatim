@@ -32,7 +32,7 @@ export async function GET() {
     } catch (error) {
         console.error('Penguji GET error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Terjadi kesalahan server' },
             { status: 500 }
         );
     }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('Penguji POST error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Terjadi kesalahan server' },
             { status: 500 }
         );
     }
@@ -111,8 +111,7 @@ export async function PUT(request: NextRequest) {
                 telepon = ?,
                 lokasi_tes = ?,
                 periode_tes = ?,
-                is_active = ?,
-                updated_at = NOW()
+                is_active = ?
             WHERE id = ?`,
             [
                 data.nama,
@@ -133,7 +132,7 @@ export async function PUT(request: NextRequest) {
     } catch (error) {
         console.error('Penguji PUT error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Terjadi kesalahan server' },
             { status: 500 }
         );
     }
@@ -167,7 +166,7 @@ export async function DELETE(request: NextRequest) {
     } catch (error) {
         console.error('Penguji DELETE error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Terjadi kesalahan server' },
             { status: 500 }
         );
     }
