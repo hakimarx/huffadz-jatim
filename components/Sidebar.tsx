@@ -166,9 +166,9 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                                         `}
                                         title={collapsed ? item.label : ''}
                                     >
-                                        <span className={`text-xl flex-shrink-0 ${isActive ? 'text-primary-500' : 'text-neutral-400'}`}>
+                                        <div className={`text-xl flex-shrink-0 flex items-center justify-center w-6 h-6 ${isActive ? 'text-primary-500' : 'text-neutral-500'}`}>
                                             {item.icon}
-                                        </span>
+                                        </div>
                                         {!collapsed && <span>{item.label}</span>}
                                     </Link>
                                 );

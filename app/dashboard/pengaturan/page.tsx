@@ -440,12 +440,12 @@ function PengaturanContent() {
 
                     {/* Tabs */}
                     {user.role === 'admin_provinsi' && (
-                        <div className="flex gap-4 border-b border-neutral-200 mb-6">
+                        <div className="flex gap-4 border-b border-neutral-300 mb-6">
                             <button
                                 onClick={() => setActiveTab('users')}
                                 className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'users'
-                                        ? 'border-primary-500 text-primary-600'
-                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    ? 'border-primary-500 text-primary-600'
+                                    : 'border-transparent text-neutral-500 hover:text-neutral-700'
                                     }`}
                             >
                                 User Management
@@ -453,8 +453,8 @@ function PengaturanContent() {
                             <button
                                 onClick={() => setActiveTab('app')}
                                 className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'app'
-                                        ? 'border-primary-500 text-primary-600'
-                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    ? 'border-primary-500 text-primary-600'
+                                    : 'border-transparent text-neutral-500 hover:text-neutral-700'
                                     }`}
                             >
                                 Aplikasi & Logo
@@ -465,7 +465,7 @@ function PengaturanContent() {
                     {activeTab === 'users' ? (
                         <>
                             {/* Action Bar */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 mb-6">
+                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-300 p-4 mb-6">
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                     {/* Search */}
                                     <div className="relative flex-1 max-w-md">
@@ -475,7 +475,7 @@ function PengaturanContent() {
                                             placeholder={`Cari ${targetRole}...`}
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         />
                                     </div>
 
@@ -491,7 +491,7 @@ function PengaturanContent() {
                             </div>
 
                             {/* Users Table */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
+                            <div className="bg-white rounded-2xl shadow-sm border border-neutral-300 overflow-hidden">
                                 {loadingUsers ? (
                                     <div className="p-12 text-center">
                                         <FiLoader className="animate-spin text-3xl text-primary-500 mx-auto mb-3" />
@@ -515,7 +515,7 @@ function PengaturanContent() {
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full">
-                                            <thead className="bg-neutral-50 border-b border-neutral-200">
+                                            <thead className="bg-neutral-50 border-b border-neutral-300">
                                                 <tr>
                                                     <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                                                         Nama
@@ -598,7 +598,7 @@ function PengaturanContent() {
                             </div>
                         </>
                     ) : (
-                        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 max-w-2xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-neutral-300 p-6 max-w-2xl">
                             <h2 className="text-xl font-bold text-neutral-800 mb-6">Pengaturan Aplikasi</h2>
                             <form onSubmit={saveAppSettings} className="space-y-6">
                                 <div>
@@ -625,7 +625,7 @@ function PengaturanContent() {
                                     <label className="block text-sm font-medium text-neutral-700 mb-2">Logo Aplikasi</label>
                                     <div className="flex items-center gap-4">
                                         {appSettings.app_logo && (
-                                            <div className="w-16 h-16 rounded-lg border border-neutral-200 p-1">
+                                            <div className="w-16 h-16 rounded-lg border border-neutral-300 p-1">
                                                 <img src={appSettings.app_logo} alt="Logo" className="w-full h-full object-contain" />
                                             </div>
                                         )}
@@ -664,7 +664,7 @@ function PengaturanContent() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-                        <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+                        <div className="flex items-center justify-between p-6 border-b border-neutral-300">
                             <h2 className="text-xl font-bold text-neutral-800">
                                 {modalMode === 'add' ? `Tambah ${targetRole}` : `Edit ${targetRole}`}
                             </h2>
@@ -698,7 +698,7 @@ function PengaturanContent() {
                                         onChange={handleFormChange}
                                         disabled={modalMode === 'edit'}
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                                         placeholder="email@example.com"
                                     />
                                 </div>
@@ -719,7 +719,7 @@ function PengaturanContent() {
                                             onChange={handleFormChange}
                                             required
                                             minLength={6}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                             placeholder="Minimal 6 karakter"
                                         />
                                     </div>
@@ -739,7 +739,7 @@ function PengaturanContent() {
                                         value={formData.nama}
                                         onChange={handleFormChange}
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         placeholder="Nama lengkap"
                                     />
                                 </div>
@@ -759,7 +759,7 @@ function PengaturanContent() {
                                             value={formData.nik}
                                             onChange={handleFormChange}
                                             maxLength={16}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                             placeholder="16 digit NIK (opsional)"
                                         />
                                     </div>
@@ -779,7 +779,7 @@ function PengaturanContent() {
                                             value={formData.role}
                                             onChange={handleFormChange}
                                             required
-                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
                                         >
                                             <option value="admin_provinsi">Admin Provinsi</option>
                                             <option value="admin_kabko">Admin Kab/Ko</option>
@@ -802,7 +802,7 @@ function PengaturanContent() {
                                             value={formData.kabupaten_kota}
                                             onChange={handleFormChange}
                                             required
-                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
                                         >
                                             <option value="">Pilih Kabupaten/Kota</option>
                                             {KABUPATEN_KOTA.map(kk => (
@@ -825,7 +825,7 @@ function PengaturanContent() {
                                         name="telepon"
                                         value={formData.telepon}
                                         onChange={handleFormChange}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         placeholder="08xxxxxxxxxx"
                                     />
                                 </div>
