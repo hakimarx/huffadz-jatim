@@ -1,3 +1,4 @@
+// @ts-ignore
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -34,12 +35,12 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
             );
 
             scanner.render(
-                (decodedText) => {
+                (decodedText: string) => {
                     onScan(decodedText);
                     // Optional: Pause or clear after success if needed
                     // scanner.clear(); 
                 },
-                (errorMessage) => {
+                (errorMessage: string) => {
                     // Ignore parse errors, they happen frequently when no QR is in view
                     if (onError) onError(errorMessage);
                 }

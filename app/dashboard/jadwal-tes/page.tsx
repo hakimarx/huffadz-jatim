@@ -89,10 +89,10 @@ function JadwalTesContent() {
                     // Default select active periode if any
                     const active = periodeData.data.find((p: any) => p.status === 'tes' || p.status === 'pendaftaran');
                     if (active) setSelectedPeriode(String(active.id));
-                }
 
-                // Fetch Jadwal
-                fetchJadwal(active ? String(active.id) : '');
+                    // Fetch Jadwal
+                    fetchJadwal(active ? String(active.id) : '');
+                }
 
             } catch (err) {
                 console.error('Init error:', err);

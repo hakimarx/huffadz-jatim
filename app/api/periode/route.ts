@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('Periode POST error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Terjadi kesalahan server' },
             { status: 500 }
         );
     }

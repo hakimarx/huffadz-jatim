@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FiUpload, FiCamera, FiX, FiLoader, FiCheck, FiAlertCircle, FiEdit2 } from 'react-icons/fi';
 import ImageEditor from './ImageEditor';
 import Tesseract from 'tesseract.js';
@@ -119,7 +119,7 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
             // Check if any useful data was extracted
             const hasData = parsedData.nik || parsedData.nama;
             if (!hasData) {
-                setError('Tidak dapat membaca data dari foto. Coba foto yang lebih jelas atau isi data secara manual.');
+                setError('Data kurang jelas terbaca. Mohon pastikan foto KTP terang dan fokus, atau isi manual.');
             }
 
         } catch (err: any) {
@@ -131,28 +131,48 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
     };
 
     const parseKtpText = (text: string): KtpData => {
-        // Normalize text
-        const normalizedText = text
+        // Normalize text: remove special chars that are unlikely to be in fields (keep alphanumeric, space, punctuation)
+        let normalizedText = text
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
             .toUpperCase();
 
+        // Fix common OCR substitutions
+        normalizedText = normalizedText
+            .replace(/\|/g, 'I') // Pipe to I
+            .replace(/1/g, 'I')  // 1 to I (context dependent generally, but useful for text)
+            .replace(/0/g, 'O'); // 0 to O (will revert for numbers)
+
         const lines = normalizedText.split('\n').map(l => l.trim()).filter(l => l);
+
+        // Helper to correct numbers (O->0, I->1, B->8, S->5 usually for NIK/Dates)
+        const correctNumbers = (str: string) => {
+            return str
+                .replace(/O/g, '0')
+                .replace(/D/g, '0')
+                .replace(/I/g, '1')
+                .replace(/L/g, '1')
+                .replace(/B/g, '8')
+                .replace(/S/g, '5')
+                .replace(/\?/g, '7') // Common questionable 7
+                .replace(/Z/g, '2');
+        };
 
         // Extract NIK (16 digits)
         let nik = '';
         const nikPatterns = [
-            /\b(\d{16})\b/,  // Plain 16 digits
-            /NIK\s*[:\s]\s*(\d{16})/i,
-            /NIK\s*(\d{16})/i,
-            /(\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4})/  // Formatted NIK
+            /(?:NIK|N1K)\s*[:]?\s*([0-9\sOIlLBDSZ?]{16,20})\b/i, // Relaxed matching
+            /\b(\d{16})\b/,
         ];
 
         for (const pattern of nikPatterns) {
-            const match = normalizedText.match(pattern);
+            const match = text.toUpperCase().match(pattern); // Use original text for initial NIK search to avoid over-correction
             if (match) {
-                nik = match[1].replace(/[\s.-]/g, '');
-                if (nik.length === 16) break;
+                let candidate = correctNumbers(match[1]).replace(/\D/g, ''); // Remove non-digits
+                if (candidate.length >= 16) {
+                    nik = candidate.substring(0, 16);
+                    break;
+                }
             }
         }
 
@@ -163,7 +183,8 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
                     const regex = new RegExp(pattern + '\\s*[:\\s]\\s*(.+)', 'i');
                     const match = line.match(regex);
                     if (match && match[1]) {
-                        return match[1].trim();
+                        // Cleanup value
+                        return match[1].replace(/[:]/g, '').trim();
                     }
                 }
             }
@@ -173,39 +194,47 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         // Extract name
         let nama = findValue(['NAMA']);
         if (!nama) {
-            // Try to find line after NIK or before TEMPAT
+            // Fallback: Line after NIK line, or line containing typical name structure if not found
+            // Simple heuristic: Look for a line with only letters that is fully uppercase
             for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes('NAMA') && lines[i + 1]) {
-                    nama = lines[i + 1].replace(/[^A-Z\s']/g, '').trim();
-                    break;
+                if ((lines[i].includes('NAMA') || lines[i].includes('Nama')) && lines[i + 1]) {
+                    nama = lines[i + 1].replace(/[^A-Z\s.,']/g, '').trim();
                 }
             }
         }
 
         // Extract tempat/tanggal lahir
-        let tempatTanggal = findValue(['TEMPAT', 'TTL', 'LAHIR']);
+        let tempatTanggal = findValue(['TEMPAT', 'TTL', 'LAHIR', 'TGI']);
         let tempat_lahir = '';
         let tanggal_lahir = '';
 
         if (tempatTanggal) {
-            // Format: "SURABAYA, 01-01-1990" or "SURABAYA 01-01-1990"
-            const ttlMatch = tempatTanggal.match(/([A-Z\s]+)[,\s]+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
-            if (ttlMatch) {
-                tempat_lahir = ttlMatch[1].trim();
-                tanggal_lahir = ttlMatch[2];
+            // Try to split by date pattern
+            const dateMatch = tempatTanggal.match(/(\d{2}[-\s/]\d{2}[-\s/]\d{4})/);
+            if (dateMatch) {
+                tanggal_lahir = correctNumbers(dateMatch[1]).replace(/[\s]/g, '-').replace(/\//g, '-');
+                // Place is everything before the date
+                const placePart = tempatTanggal.substring(0, dateMatch.index).replace(/[^A-Z\s]/g, '').trim();
+                tempat_lahir = placePart;
             } else {
-                // Just city name
-                tempat_lahir = tempatTanggal.replace(/[\d\-\/]/g, '').trim();
+                // Heuristic: Last word is year?
+                tempat_lahir = tempatTanggal.replace(/[:]/g, '').trim();
+            }
+        }
+
+        // Re-format date to YYYY-MM-DD for input[type=date]
+        if (tanggal_lahir) {
+            const parts = tanggal_lahir.split('-');
+            if (parts.length === 3) {
+                // Assuming DD-MM-YYYY
+                tanggal_lahir = `${parts[2]}-${parts[1]}-${parts[0]}`;
             }
         }
 
         // Extract jenis kelamin
         let jenis_kelamin = '';
-        if (normalizedText.includes('PEREMPUAN') || normalizedText.includes('WANITA')) {
-            jenis_kelamin = 'P';
-        } else if (normalizedText.includes('LAKI-LAKI') || normalizedText.includes('LAKI')) {
-            jenis_kelamin = 'L';
-        }
+        if (normalizedText.includes('LAKI') || normalizedText.includes('LAK1')) jenis_kelamin = 'L';
+        else if (normalizedText.includes('PEREMPUAN') || normalizedText.includes('WANITA')) jenis_kelamin = 'P';
 
         // Extract alamat
         let alamat = findValue(['ALAMAT']);
@@ -213,38 +242,40 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         // Extract RT/RW
         let rt = '';
         let rw = '';
-        const rtRwMatch = normalizedText.match(/RT\s*[\/:]?\s*(\d+)\s*[\/:]?\s*RW\s*[\/:]?\s*(\d+)/i);
-        if (rtRwMatch) {
-            rt = rtRwMatch[1];
-            rw = rtRwMatch[2];
+        const rtLine = lines.find(l => l.includes('RT') || l.includes('RW'));
+        if (rtLine) {
+            const rtRwNums = correctNumbers(rtLine).match(/\d+/g);
+            if (rtRwNums && rtRwNums.length >= 2) {
+                rt = rtRwNums[0].padStart(3, '0');
+                rw = rtRwNums[1].padStart(3, '0');
+            }
         }
 
         // Extract Kel/Desa
-        let desa_kelurahan = findValue(['KEL', 'DESA', 'KELURAHAN']);
+        let desa_kelurahan = findValue(['KEL', 'DESA']);
 
         // Extract Kecamatan
         let kecamatan = findValue(['KEC', 'KECAMATAN']);
 
-        // Extract Kabupaten/Kota from province line
+        // Extract Kabupaten/Kota
         let kabupaten_kota = '';
         for (const line of lines) {
-            if (line.includes('PROVINSI') || line.includes('JAWA TIMUR') ||
-                line.includes('KABUPATEN') || line.includes('KOTA')) {
-                // Extract city/regency name
-                const kotaMatch = line.match(/(KOTA|KABUPATEN)\s+([A-Z\s]+)/);
-                if (kotaMatch) {
-                    kabupaten_kota = kotaMatch[0].trim();
+            if (line.includes('KOTA') || line.includes('KABUPATEN')) {
+                const cityMatch = line.match(/(?:KOTA|KABUPATEN)\s+([A-Z\s]+)/);
+                if (cityMatch) {
+                    kabupaten_kota = (line.includes('KOTA') ? 'Kota ' : 'Kabupaten ') + cityMatch[1].trim();
                 }
+                break; // Prioritize the header
             }
         }
 
         return {
             nik,
-            nama: nama.replace(/[^A-Z\s']/g, '').trim(),
+            nama: nama.replace(/[^A-Z\s.,']/g, '').trim(),
             tempat_lahir,
             tanggal_lahir,
             jenis_kelamin,
-            alamat,
+            alamat: alamat.replace(/[:]/g, '').trim(),
             rt,
             rw,
             desa_kelurahan: desa_kelurahan.replace(/[^A-Z\s]/g, '').trim(),

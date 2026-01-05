@@ -1,12 +1,13 @@
 import mysql from 'mysql2/promise';
 import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 // Explicitly load .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // Database configuration - uses TiDB Serverless or local MySQL
-const dbConfig = {
+const dbConfig: mysql.PoolOptions = {
     host: process.env.DATABASE_HOST || 'localhost',
     port: parseInt(process.env.DATABASE_PORT || '3306'),
     user: process.env.DATABASE_USER || 'root',
@@ -14,10 +15,15 @@ const dbConfig = {
     database: process.env.DATABASE_NAME || 'huffadz_jatim',
     ssl: process.env.DATABASE_SSL === 'true' ? {
         rejectUnauthorized: true,
+        // TiDB Serverless requires standard CA, which is usually present in system
+        // If specific CA is needed, it can be loaded here:
+        // ca: fs.readFileSync(path.join(process.cwd(), 'certs/ca.pem'))
     } : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
 };
 
 // Connection pool for better performance
@@ -47,7 +53,7 @@ export async function query<T = unknown>(
             code: error.code,
             errno: error.errno,
             sqlState: error.sqlState,
-            stack: error.stack
+            // stack: error.stack // Too verbose for production logs
         });
         throw error;
     }
@@ -103,7 +109,6 @@ export interface DBUser {
     role: UserRole;
     nama: string;
     kabupaten_kota: string | null;
-    telepon: string | null;
     is_active: boolean;
     created_at: Date;
     updated_at: Date;

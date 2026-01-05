@@ -134,34 +134,50 @@ export default function QuranPage() {
             }
 
             const result = await response.json();
+            console.log('API Response (full):', result);
+            console.log('API Response type:', typeof result);
 
             if (result.error) {
                 throw new Error(result.error);
             }
 
-            // Get the data array from response
+            // Get the data array from response - try multiple paths
             let rawData: SurahKemenagRaw[] = [];
             if (result && Array.isArray(result)) {
                 rawData = result;
+                console.log('Data is root array');
             } else if (result.data && Array.isArray(result.data)) {
                 rawData = result.data;
+                console.log('Data is in result.data');
+            } else if (result.res === 'success' && result.data && Array.isArray(result.data)) {
+                rawData = result.data;
+                console.log('Kemenag format: res=success, data array');
             } else {
+                console.error('Unexpected response format:', JSON.stringify(result).slice(0, 500));
                 throw new Error('Invalid response format');
             }
 
-            // Map Kemenag API fields to our interface
-            console.log('Raw data from API:', rawData.slice(0, 2));
-            const mappedSurahs: SurahKemenag[] = rawData.map((item: SurahKemenagRaw, index: number) => ({
-                id: item.id,
-                nomor_surah: item.id, // id is the surah number
-                nama_surah: item.arabic || '',
-                nama_latin: item.nama || '',
-                arti: item.arti || '',
-                jumlah_ayat: item.jmlAyat || 0,
-                tempat_turun: item.kategori || ''
-            }));
+            // Log first item to understand structure
+            console.log('First raw item:', rawData[0]);
+            console.log('Raw data length:', rawData.length);
 
-            console.log('Mapped surahs:', mappedSurahs.slice(0, 2));
+            // Map Kemenag API fields to our interface
+            const mappedSurahs: SurahKemenag[] = rawData.map((item: SurahKemenagRaw) => {
+                const mapped = {
+                    id: item.id,
+                    nomor_surah: item.id,
+                    nama_surah: item.arabic || item.nama || '',
+                    nama_latin: item.nama || '',
+                    arti: item.arti || '',
+                    jumlah_ayat: item.jmlAyat || 0,
+                    tempat_turun: item.kategori || ''
+                };
+                return mapped;
+            });
+
+            console.log('Mapped surah example:', mappedSurahs[0]);
+            console.log('Total mapped surahs:', mappedSurahs.length);
+
             setSurahs(mappedSurahs);
             setLoading(false);
         } catch (error: any) {
