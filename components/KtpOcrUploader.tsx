@@ -5,6 +5,7 @@ import { FiUpload, FiCamera, FiX, FiLoader, FiCheck, FiAlertCircle, FiEdit2 } fr
 import ImageEditor from './ImageEditor';
 import Tesseract from 'tesseract.js';
 import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
+import { preprocessImageForOCR } from '@/lib/utils/ocrPreprocessing';
 
 interface KtpData {
     nik: string;
@@ -78,7 +79,6 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         setPreviewUrl(URL.createObjectURL(editedFile));
         setShowEditor(false);
     };
-
     const processKtp = async () => {
         if (!file) {
             setError('Pilih file KTP terlebih dahulu');
@@ -90,16 +90,22 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         setProgress(0);
 
         try {
+            // Preprocess image for better OCR results
+            const preprocessedBlob = await preprocessImageForOCR(file);
+            const preprocessedFile = new File([preprocessedBlob], 'processed.jpg', { type: 'image/jpeg' });
+
             // Use Tesseract.js for OCR
             const result = await Tesseract.recognize(
-                file,
-                'ind+eng', // Indonesian + English language pack
+                preprocessedFile,
+                'ind', // Focus on Indonesian only for better accuracy on KTP
                 {
                     logger: (m) => {
                         if (m.status === 'recognizing text') {
                             setProgress(Math.round(m.progress * 100));
                         }
-                    }
+                    },
+                    // Add whitelist for common KTP characters to reduce noise
+                    // tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/-:., ' 
                 }
             );
 

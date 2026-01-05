@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
             success: true,
             user: result.user,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login API error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: `Terjadi kesalahan server: ${error.message}` },
             { status: 500 }
         );
     }
