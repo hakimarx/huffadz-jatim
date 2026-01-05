@@ -4,7 +4,8 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
 import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
-import { FiCamera, FiSave, FiUpload, FiCheckCircle, FiUser, FiLoader } from 'react-icons/fi';
+import { FiSave, FiUpload, FiCheckCircle, FiUser, FiLoader } from 'react-icons/fi';
+import KtpOcrUploader from '@/components/KtpOcrUploader';
 
 interface UserData {
     id: number;
@@ -15,13 +16,33 @@ interface UserData {
     foto_profil?: string;
 }
 
+interface HafizData {
+    id: number;
+    nik: string;
+    nama: string;
+    tempat_lahir: string;
+    tanggal_lahir: string;
+    jenis_kelamin: string;
+    alamat: string;
+    rt: string;
+    rw: string;
+    desa_kelurahan: string;
+    kecamatan: string;
+    kabupaten_kota: string;
+    telepon: string;
+    email: string;
+    sertifikat_tahfidz: string;
+    mengajar: boolean;
+    tmt_mengajar: string;
+    foto_profil: string;
+}
+
 function ProfilContent() {
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
-    const [ocrProcessing, setOcrProcessing] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [hafizId, setHafizId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         nik: '',
@@ -59,17 +80,27 @@ function ProfilContent() {
                 const userData = sessionData.user as UserData;
                 setUser(userData);
 
-                // For hafiz role, also fetch hafiz profile via API
+                // Initialize form with user data
+                setFormData(prev => ({
+                    ...prev,
+                    nama: userData.nama,
+                    email: userData.email,
+                    kabupaten_kota: userData.kabupaten_kota || ''
+                }));
+
+                // For hafiz role, fetch hafiz profile
                 if (userData.role === 'hafiz') {
                     try {
-                        const hafizResponse = await fetch(`/api/hafiz/${userData.id}`);
-                        const hafizData = await hafizResponse.json();
+                        // GET /api/hafiz filters by user_id for hafiz role automatically
+                        const hafizResponse = await fetch('/api/hafiz?limit=1');
+                        const hafizResult = await hafizResponse.json();
 
-                        if (hafizResponse.ok && hafizData.data) {
-                            const hd = hafizData.data;
+                        if (hafizResponse.ok && hafizResult.data && hafizResult.data.length > 0) {
+                            const hd = hafizResult.data[0];
+                            setHafizId(hd.id);
                             setFormData({
                                 nik: hd.nik || '',
-                                nama: hd.nama || '',
+                                nama: hd.nama || userData.nama,
                                 tempat_lahir: hd.tempat_lahir || '',
                                 tanggal_lahir: hd.tanggal_lahir || '',
                                 jenis_kelamin: hd.jenis_kelamin || 'L',
@@ -78,14 +109,17 @@ function ProfilContent() {
                                 rw: hd.rw || '',
                                 desa_kelurahan: hd.desa_kelurahan || '',
                                 kecamatan: hd.kecamatan || '',
-                                kabupaten_kota: hd.kabupaten_kota || '',
+                                kabupaten_kota: hd.kabupaten_kota || userData.kabupaten_kota || '',
                                 telepon: hd.telepon || '',
-                                email: hd.email || '',
+                                email: hd.email || userData.email,
                                 sertifikat_tahfidz: hd.sertifikat_tahfidz || '',
-                                mengajar: hd.mengajar || false,
-                                tmt_mengajar: hd.tmt_mengajar || '',
+                                mengajar: !!hd.mengajar,
+                                tmt_mengajar: hd.tmt_mengajar ? new Date(hd.tmt_mengajar).toISOString().split('T')[0] : '',
                                 foto_profil: hd.foto_profil || ''
                             });
+                        } else {
+                            // No profile yet, open edit mode to force completion
+                            setIsEditing(true);
                         }
                     } catch (err) {
                         console.error('Error fetching hafiz profile:', err);
@@ -102,67 +136,21 @@ function ProfilContent() {
         fetchUserData();
     }, []);
 
-    const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !user) return;
-
-        setUploadingPhoto(true);
-        try {
-            // Compress image if larger than 500KB
-            let processedFile = file;
-            const maxSizeKB = 500;
-            if (file.size > maxSizeKB * 1024) {
-                try {
-                    processedFile = await compressImage(file, { maxSizeKB });
-                    console.log(`Foto dikompres dari ${formatFileSize(file.size)} ke ${formatFileSize(processedFile.size)}`);
-                } catch (compErr) {
-                    console.error('Compression error:', compErr);
-                    // Continue with original file if compression fails
-                }
-            }
-
-            // Create FormData for file upload
-            const uploadData = new FormData();
-            uploadData.append('file', processedFile);
-            uploadData.append('type', 'profile-photo');
-
-            // Upload via API - For now, show message that this feature needs API implementation
-            // TODO: Implement /api/upload endpoint for file uploads
-            alert('Fitur upload foto sedang dalam pengembangan. Silakan hubungi administrator.');
-            console.log('Photo upload needs /api/upload endpoint implementation');
-
-        } catch (err) {
-            console.error('Unexpected error uploading photo:', err);
-            alert('Terjadi kesalahan saat upload foto');
-        } finally {
-            setUploadingPhoto(false);
-        }
-    };
-
-    const handleKTPUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setOcrProcessing(true);
-
-        // Simulasi OCR processing - dalam implementasi nyata, gunakan API OCR
-        setTimeout(() => {
-            setFormData({
-                ...formData,
-                nik: '3578012345670001',
-                nama: 'MUHAMMAD AHMAD',
-                tempat_lahir: 'SURABAYA',
-                tanggal_lahir: '1995-05-15',
-                alamat: 'JL. RAYA DARMO NO. 123',
-                rt: '001',
-                rw: '002',
-                desa_kelurahan: 'DARMO',
-                kecamatan: 'WONOKROMO',
-                kabupaten_kota: 'KOTA SURABAYA'
-            });
-            setOcrProcessing(false);
-            alert('✅ Data KTP berhasil dibaca! Silakan periksa dan lengkapi data yang masih kosong.');
-        }, 2000);
+    const handleKtpDataExtracted = (data: any, file: File) => {
+        setFormData(prev => ({
+            ...prev,
+            nik: data.nik || prev.nik,
+            nama: data.nama || prev.nama,
+            tempat_lahir: data.tempat_lahir || prev.tempat_lahir,
+            tanggal_lahir: data.tanggal_lahir || prev.tanggal_lahir,
+            jenis_kelamin: data.jenis_kelamin || prev.jenis_kelamin,
+            alamat: data.alamat || prev.alamat,
+            rt: data.rt || prev.rt,
+            rw: data.rw || prev.rw,
+            desa_kelurahan: data.desa_kelurahan || prev.desa_kelurahan,
+            kecamatan: data.kecamatan || prev.kecamatan,
+            kabupaten_kota: data.kabupaten_kota || prev.kabupaten_kota
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -171,41 +159,39 @@ function ProfilContent() {
 
         setSaving(true);
         try {
-            // Update hafiz table via API
-            const response = await fetch(`/api/hafiz/${user.id}`, {
-                method: 'PUT',
+            const url = hafizId ? `/api/hafiz/${hafizId}` : '/api/hafiz';
+            const method = hafizId ? 'PUT' : 'POST';
+
+            const payload = {
+                ...formData,
+                tahun_tes: new Date().getFullYear(), // Default to current year for new profiles
+                mengajar: formData.mengajar ? 1 : 0
+            };
+
+            const response = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nama: formData.nama,
-                    tempat_lahir: formData.tempat_lahir,
-                    tanggal_lahir: formData.tanggal_lahir,
-                    jenis_kelamin: formData.jenis_kelamin,
-                    alamat: formData.alamat,
-                    rt: formData.rt,
-                    rw: formData.rw,
-                    desa_kelurahan: formData.desa_kelurahan,
-                    kecamatan: formData.kecamatan,
-                    kabupaten_kota: formData.kabupaten_kota,
-                    telepon: formData.telepon,
-                    email: formData.email,
-                    sertifikat_tahfidz: formData.sertifikat_tahfidz,
-                    mengajar: formData.mengajar,
-                    tmt_mengajar: formData.tmt_mengajar || null
-                })
+                body: JSON.stringify(payload)
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Error updating profile:', errorData);
-                alert('Gagal menyimpan profil: ' + (errorData.error || 'Unknown error'));
-                return;
+                throw new Error(result.error || 'Gagal menyimpan profil');
+            }
+
+            if (!hafizId && result.id) {
+                setHafizId(result.id);
             }
 
             setIsEditing(false);
             alert('✅ Profil berhasil diperbarui!');
-        } catch (err) {
-            console.error('Unexpected error saving profile:', err);
-            alert('Terjadi kesalahan saat menyimpan profil');
+
+            // Reload page to refresh data/state properly
+            window.location.reload();
+        } catch (err: any) {
+            console.error('Error saving profile:', err);
+            alert('Gagal menyimpan profil: ' + err.message);
         } finally {
             setSaving(false);
         }
@@ -216,16 +202,7 @@ function ProfilContent() {
     }
 
     if (!user) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
-                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
-                        Kembali ke Login
-                    </button>
-                </div>
-            </div>
-        );
+        return null;
     }
 
     return (
@@ -258,39 +235,12 @@ function ProfilContent() {
                         )}
                     </div>
 
-                    {/* Upload KTP Section */}
-                    {user.role === 'hafiz' && (
-                        <div className="card mb-6 bg-gradient-to-r from-primary-50 to-accent-50 border-2 border-primary-200">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center text-white text-xl flex-shrink-0">
-                                    <FiCamera />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-lg text-neutral-800 mb-2">
-                                        Upload KTP untuk Auto-Fill Data
-                                    </h3>
-                                    <p className="text-sm text-neutral-600 mb-4">
-                                        Upload foto KTP Anda, sistem akan otomatis membaca dan mengisi data profil
-                                    </p>
-                                    <label className="btn btn-accent cursor-pointer">
-                                        <FiUpload />
-                                        {ocrProcessing ? 'Memproses OCR...' : 'Upload Foto KTP'}
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleKTPUpload}
-                                            disabled={ocrProcessing}
-                                        />
-                                    </label>
-                                    {ocrProcessing && (
-                                        <div className="mt-3 flex items-center gap-2 text-sm text-accent-700">
-                                            <div className="spinner w-4 h-4 border-2"></div>
-                                            <span>Membaca data KTP dengan OCR...</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                    {/* OCR Section */}
+                    {user.role === 'hafiz' && isEditing && (
+                        <div className="mb-8">
+                            <KtpOcrUploader
+                                onDataExtracted={handleKtpDataExtracted}
+                            />
                         </div>
                     )}
 
@@ -384,11 +334,11 @@ function ProfilContent() {
                                     <label className="form-label">Email</label>
                                     <input
                                         type="email"
-                                        className="form-input"
+                                        className="form-input bg-neutral-100"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        disabled={!isEditing}
+                                        disabled={true} // Always disabled as it comes from account
                                     />
+                                    <p className="text-xs text-neutral-500 mt-1">Email diambil dari akun pengguna</p>
                                 </div>
 
                                 {/* Alamat */}
@@ -462,10 +412,10 @@ function ProfilContent() {
                                 <div className="form-group md:col-span-2">
                                     <label className="form-label required">Kabupaten/Kota</label>
                                     <select
-                                        className="form-select"
+                                        className={`form-select ${user.kabupaten_kota ? 'bg-neutral-100' : ''}`}
                                         value={formData.kabupaten_kota}
                                         onChange={(e) => setFormData({ ...formData, kabupaten_kota: e.target.value })}
-                                        disabled={!isEditing}
+                                        disabled={!isEditing || !!user.kabupaten_kota} // Disable if set by admin
                                         required
                                     >
                                         <option value="">Pilih Kabupaten/Kota</option>
@@ -475,6 +425,9 @@ function ProfilContent() {
                                         <option value="Kabupaten Gresik">Kabupaten Gresik</option>
                                         {/* Add all 38 kab/ko */}
                                     </select>
+                                    {user.kabupaten_kota && (
+                                        <p className="text-xs text-neutral-500 mt-1">Wilayah ditentukan oleh Admin</p>
+                                    )}
                                 </div>
 
                                 {/* Sertifikat Tahfidz */}
@@ -536,14 +489,26 @@ function ProfilContent() {
                             {/* Action Buttons */}
                             {isEditing && (
                                 <div className="flex gap-3 mt-6 pt-6 border-t border-neutral-200">
-                                    <button type="submit" className="btn btn-primary">
-                                        <FiSave />
-                                        Simpan Perubahan
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={saving}
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <FiLoader className="animate-spin" /> Menyimpan...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiSave /> Simpan Perubahan
+                                            </>
+                                        )}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setIsEditing(false)}
                                         className="btn btn-secondary"
+                                        disabled={saving}
                                     >
                                         Batal
                                     </button>

@@ -482,10 +482,10 @@ function PengaturanContent() {
                                     {/* Add Button */}
                                     <button
                                         onClick={handleOpenAddModal}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
                                     >
-                                        <FiPlus />
-                                        <span>Tambah {targetRole}</span>
+                                        <FiPlus className="text-white" />
+                                        <span className="text-white">Tambah {targetRole}</span>
                                     </button>
                                 </div>
                             </div>
@@ -623,9 +623,9 @@ function PengaturanContent() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-700 mb-2">Logo Aplikasi</label>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 p-4 border border-neutral-300 rounded-xl bg-neutral-50">
                                         {appSettings.app_logo && (
-                                            <div className="w-16 h-16 rounded-lg border border-neutral-300 p-1">
+                                            <div className="w-16 h-16 rounded-lg border border-neutral-300 p-1 bg-white">
                                                 <img src={appSettings.app_logo} alt="Logo" className="w-full h-full object-contain" />
                                             </div>
                                         )}
@@ -633,7 +633,7 @@ function PengaturanContent() {
                                             type="file"
                                             accept="image/*"
                                             onChange={handleLogoUpload}
-                                            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                                            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600 cursor-pointer"
                                         />
                                     </div>
                                     <p className="text-xs text-neutral-500 mt-1">Maksimal 500KB. Format PNG/JPG.</p>
