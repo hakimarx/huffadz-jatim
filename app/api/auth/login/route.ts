@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('Login API error:', error);
         return NextResponse.json(
-            { error: `Terjadi kesalahan server: ${error.message}` },
+            { error: error.message || 'Terjadi kesalahan server saat login' },
             { status: 500 }
         );
     }

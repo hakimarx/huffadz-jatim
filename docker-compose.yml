@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: huffadz_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: huffadz_jatim
+      MYSQL_ROOT_PASSWORD: ''
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Mount initialization scripts if needed
+      # - ./database:/docker-entrypoint-initdb.d
+
+volumes:
+  mysql_data:
