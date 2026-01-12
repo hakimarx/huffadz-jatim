@@ -52,25 +52,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['react-icons', 'date-fns'],
   },
-
-
-  // Webpack configuration for development with ngrok/localtunnel
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Disable host check for ngrok/localtunnel
-      config.devServer = {
-        ...config.devServer,
-        allowedHosts: 'all',
-      };
-
-      // Better HMR over tunnels
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
 };
 
 export default nextConfig;
