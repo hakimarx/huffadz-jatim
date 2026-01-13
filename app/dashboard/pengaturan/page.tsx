@@ -409,7 +409,7 @@ function PengaturanContent() {
         return null;
     }
 
-    const targetRole = user.role === 'admin_provinsi' ? 'Admin Kab/Ko' : 'Hafiz';
+    const targetRole = user.role === 'admin_provinsi' ? 'User' : 'Hafiz';
 
     return (
         <div className="min-h-screen bg-neutral-50">
@@ -482,10 +482,10 @@ function PengaturanContent() {
                                     {/* Add Button */}
                                     <button
                                         onClick={handleOpenAddModal}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-neutral-900 rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-sm"
                                     >
-                                        <FiPlus className="text-white" />
-                                        <span className="text-white">Tambah {targetRole}</span>
+                                        <FiPlus className="text-neutral-900" />
+                                        <span className="text-neutral-900">Tambah {targetRole}</span>
                                     </button>
                                 </div>
                             </div>
@@ -523,6 +523,9 @@ function PengaturanContent() {
                                                     <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                                                         Email
                                                     </th>
+                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                                                        Role
+                                                    </th>
                                                     {user.role === 'admin_provinsi' && (
                                                         <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                                                             Kabupaten/Kota
@@ -554,6 +557,9 @@ function PengaturanContent() {
                                                         </td>
                                                         <td className="px-6 py-4 text-neutral-600">
                                                             {managedUser.email}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-neutral-600 capitalize">
+                                                            {managedUser.role.replace('_', ' ')}
                                                         </td>
                                                         {user.role === 'admin_provinsi' && (
                                                             <td className="px-6 py-4 text-neutral-600">
@@ -633,7 +639,7 @@ function PengaturanContent() {
                                             type="file"
                                             accept="image/*"
                                             onChange={handleLogoUpload}
-                                            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600 cursor-pointer"
+                                            className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-neutral-900 hover:file:bg-primary-600 cursor-pointer"
                                         />
                                     </div>
                                     <p className="text-xs text-neutral-500 mt-1">Maksimal 500KB. Format PNG/JPG.</p>
