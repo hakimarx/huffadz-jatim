@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 
         const offset = (page - 1) * limit;
 
-        // Build query with filters
-        let whereClause = '1=1';
+        // Build query with filters (default: only active hafiz)
+        let whereClause = 'is_aktif = 1';
         const params: unknown[] = [];
 
         // Filter by role

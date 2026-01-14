@@ -69,6 +69,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Validate NIK for hafiz role
+        if (data.role === 'hafiz' && !data.nik) {
+            return NextResponse.json(
+                { error: 'NIK wajib diisi untuk akun hafiz' },
+                { status: 400 }
+            );
+        }
+
         // Validate role permissions
         if (user.role === 'admin_kabko') {
             // Admin kabko can only create hafiz users in their region
@@ -91,7 +99,9 @@ export async function POST(request: NextRequest) {
             data.password,
             data.nama,
             data.role,
-            data.kabupaten_kota
+            data.kabupaten_kota,
+            data.nik,
+            data.telepon
         );
 
         if (!result.success) {

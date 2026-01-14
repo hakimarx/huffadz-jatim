@@ -149,7 +149,9 @@ export async function registerUser(
     password: string,
     nama: string,
     role: UserRole,
-    kabupaten_kota?: string
+    kabupaten_kota?: string,
+    nik?: string,
+    telepon?: string
 ): Promise<{ success: boolean; error?: string; userId?: number }> {
     try {
         // Check if email already exists
@@ -162,14 +164,35 @@ export async function registerUser(
             return { success: false, error: 'Email sudah terdaftar' };
         }
 
+        // If role is hafiz, validate NIK
+        if (role === 'hafiz') {
+            if (!nik) {
+                return { success: false, error: 'NIK wajib diisi untuk akun hafiz' };
+            }
+
+            if (nik.length !== 16) {
+                return { success: false, error: 'NIK harus 16 digit' };
+            }
+
+            // Check if NIK already exists in hafiz table
+            const existingHafiz = await queryOne(
+                'SELECT id FROM hafiz WHERE nik = ?',
+                [nik]
+            );
+
+            if (existingHafiz) {
+                return { success: false, error: 'NIK sudah terdaftar' };
+            }
+        }
+
         // Hash password
         const hashedPassword = await hashPassword(password);
 
         // Insert user
         const result = await query<{ insertId: number }>(
-            `INSERT INTO users (email, password, nama, role, kabupaten_kota, is_active)
-       VALUES (?, ?, ?, ?, ?, 1)`,
-            [email, hashedPassword, nama, role, kabupaten_kota || null]
+            `INSERT INTO users (email, password, nama, role, kabupaten_kota, telepon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+            [email, hashedPassword, nama, role, kabupaten_kota || null, telepon || null]
         );
 
         // Get inserted ID
@@ -178,7 +201,19 @@ export async function registerUser(
             [email]
         );
 
-        return { success: true, userId: insertedUser?.id };
+        const userId = insertedUser?.id;
+
+        // If role is hafiz, create hafiz record
+        if (role === 'hafiz' && userId && nik) {
+            await query(
+                `INSERT INTO hafiz (user_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat,
+                 desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan)
+                 VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending')`,
+                [userId, nik, nama, kabupaten_kota || 'Jawa Timur', telepon || null, new Date().getFullYear()]
+            );
+        }
+
+        return { success: true, userId };
     } catch (error) {
         console.error('Register error:', error);
         return { success: false, error: 'Terjadi kesalahan saat registrasi' };

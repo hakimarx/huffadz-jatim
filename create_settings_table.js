@@ -30,8 +30,23 @@ async function createSettingsTable() {
 
         console.log('\n📋 Creating settings table...');
 
-        // Execute the SQL
-        await connection.execute(sqlContent);
+        // Split SQL commands and execute them separately
+        const commands = sqlContent
+            .split(';')
+            .map(cmd => cmd.trim())
+            .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
+
+        for (const command of commands) {
+            if (command.toUpperCase().includes('CREATE TABLE')) {
+                console.log('   Creating table...');
+                await connection.execute(command);
+                console.log('   ✓ Table created');
+            } else if (command.toUpperCase().includes('INSERT')) {
+                console.log('   Inserting default data...');
+                await connection.execute(command);
+                console.log('   ✓ Default data inserted');
+            }
+        }
 
         console.log('✓ Settings table created successfully!');
 
