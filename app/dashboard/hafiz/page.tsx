@@ -13,7 +13,8 @@ import {
     FiSearch,
     FiFilter,
     FiEye,
-    FiShuffle
+    FiShuffle,
+    FiLink
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import MutasiModal from '@/components/MutasiModal';
@@ -51,6 +52,13 @@ function DataHafizContent() {
     // Mutasi states
     const [showMutasiModal, setShowMutasiModal] = useState(false);
     const [selectedHafizForMutasi, setSelectedHafizForMutasi] = useState<any>(null);
+
+    // Link akun states
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [selectedHafizForLink, setSelectedHafizForLink] = useState<any>(null);
+    const [userSearch, setUserSearch] = useState('');
+    const [userResults, setUserResults] = useState<any[]>([]);
+    const [linking, setLinking] = useState(false);
 
     // Fetch user data from MySQL session API
     useEffect(() => {
@@ -528,6 +536,20 @@ function DataHafizContent() {
                                                         >
                                                             <FiTrash2 size={16} />
                                                         </button>
+
+                                                        {/* Tombol Link Akun (hanya untuk admin dan ketika belum terhubung) */}
+                                                        {user && (user.role === 'admin_provinsi' || user.role === 'admin_kabko') && (!hafiz.user_id || hafiz.user_id === 0) && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedHafizForLink(hafiz);
+                                                                    setShowLinkModal(true);
+                                                                }}
+                                                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                                title="Tautkan Akun"
+                                                            >
+                                                                <FiLink size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -702,6 +724,87 @@ function DataHafizContent() {
                             setSelectedHafizForMutasi(null);
                         }}
                     />
+                )}
+
+                {/* Link Akun Modal */}
+                {showLinkModal && selectedHafizForLink && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl max-w-lg w-full">
+                            <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-neutral-800">Tautkan Akun untuk {selectedHafizForLink.nama}</h2>
+                                <button className="btn btn-ghost" onClick={() => { setShowLinkModal(false); setSelectedHafizForLink(null); }}>Tutup</button>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div className="form-group">
+                                    <label className="form-label">Cari user (email atau nama)</label>
+                                    <div className="flex gap-2">
+                                        <input className="form-input" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="cari email atau nama" />
+                                        <button className="btn btn-primary" onClick={async () => {
+                                            try {
+                                                const q = userSearch.trim();
+                                                if (!q) return;
+                                                const resp = await fetch(`/api/users?role=hafiz&search=${encodeURIComponent(q)}`);
+                                                const data = await resp.json();
+                                                if (!resp.ok) throw new Error(data.error || 'Gagal mencari user');
+                                                setUserResults(data.data || []);
+                                            } catch (err: any) {
+                                                alert('Gagal mencari user: ' + err.message);
+                                                setUserResults([]);
+                                            }
+                                        }}>Cari</button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    {userResults.length === 0 ? (
+                                        <p className="text-sm text-neutral-500">Hasil pencarian kosong</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {userResults.map((u) => (
+                                                <div key={u.id} className="flex items-center justify-between p-2 border rounded">
+                                                    <div>
+                                                        <div className="font-semibold">{u.nama}</div>
+                                                        <div className="text-xs text-neutral-600">{u.email}</div>
+                                                    </div>
+                                                    <div>
+                                                        <button className="btn btn-primary btn-sm" onClick={async () => {
+                                                            if (!confirm(`Tautkan profil "${selectedHafizForLink.nama}" ke akun "${u.email}"?`)) return;
+                                                            try {
+                                                                setLinking(true);
+                                                                const resp = await fetch('/api/hafiz/link', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ hafiz_id: selectedHafizForLink.id, user_id: u.id })
+                                                                });
+                                                                const res = await resp.json();
+                                                                if (!resp.ok) throw new Error(res.error || 'Gagal menautkan');
+                                                                alert('Berhasil menautkan');
+                                                                setShowLinkModal(false);
+                                                                setSelectedHafizForLink(null);
+                                                                setUserResults([]);
+                                                                setUserSearch('');
+                                                                fetchHafizData();
+                                                            } catch (err: any) {
+                                                                alert('Gagal menautkan: ' + err.message);
+                                                            } finally {
+                                                                setLinking(false);
+                                                            }
+                                                        }}>Tautkan</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="pt-4">
+                                    <button className="btn btn-secondary" onClick={() => { setShowLinkModal(false); setSelectedHafizForLink(null); }}>Batal</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 )}
             </main>
         </div>

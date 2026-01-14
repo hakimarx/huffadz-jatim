@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
 
         // Search filter
         if (search) {
-            whereClause += ' AND (nama LIKE ? OR nik LIKE ?)';
-            params.push(`%${search}%`, `%${search}%`);
+            whereClause += ' AND (nama LIKE ? OR nik LIKE ? OR email LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         // Year filter
@@ -63,10 +63,22 @@ export async function GET(request: NextRequest) {
         const total = countResult?.total || 0;
 
         // Get hafiz list
-        const hafizList = await query<DBHafiz>(
+        let hafizList = await query<DBHafiz>(
             `SELECT * FROM hafiz WHERE ${whereClause} ORDER BY nama ASC LIMIT ${limit} OFFSET ${offset}`,
             params
         );
+
+        // If user is hafiz and no profile returned, try to auto-link by exact email match
+        if (user.role === 'hafiz' && hafizList.length === 0) {
+            const fallback = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE email = ? LIMIT 1', [user.email]);
+            if (fallback) {
+                if (!fallback.user_id) {
+                    await execute('UPDATE hafiz SET user_id = ? WHERE id = ?', [user.id, fallback.id]);
+                    fallback.user_id = user.id;
+                }
+                hafizList = [fallback];
+            }
+        }
 
         return NextResponse.json({
             data: hafizList,

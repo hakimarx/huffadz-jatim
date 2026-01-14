@@ -127,10 +127,10 @@ function LaporanHarianContent() {
                 }
             }
 
-            // If user is hafiz, fetch their hafiz record ID
+            // If user is hafiz, fetch their hafiz record ID (use limit=1 so server filters by user_id)
             if (data.user.role === 'hafiz') {
                 try {
-                    const hafizResponse = await fetch(`/api/hafiz?search=${data.user.email}`);
+                    const hafizResponse = await fetch(`/api/hafiz?limit=1`);
                     const hafizData = await hafizResponse.json();
                     if (hafizData.data && hafizData.data.length > 0) {
                         setHafizId(hafizData.data[0].id);

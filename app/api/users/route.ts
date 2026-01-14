@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
 
         const searchParams = request.nextUrl.searchParams;
         const role = searchParams.get('role') || '';
+        const search = searchParams.get('search') || '';
 
         let whereClause = 'is_active = 1';
         const params: unknown[] = [];
@@ -26,6 +27,11 @@ export async function GET(request: NextRequest) {
         if (role) {
             whereClause += ' AND role = ?';
             params.push(role);
+        }
+
+        if (search) {
+            whereClause += ' AND (email LIKE ? OR nama LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`);
         }
 
         const users = await query<Omit<DBUser, 'password'>>(
@@ -202,11 +208,14 @@ export async function DELETE(request: NextRequest) {
             }
         }
 
-        await execute('DELETE FROM users WHERE id = ?', [id]);
+        // Soft-delete user to avoid accidental data loss and to keep referential integrity.
+        // Also unlink any hafiz profiles attached to this user.
+        await execute('UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ?', [id]);
+        await execute('UPDATE hafiz SET user_id = NULL WHERE user_id = ?', [id]);
 
         return NextResponse.json({
             success: true,
-            message: 'User berhasil dihapus'
+            message: 'User berhasil dinonaktifkan dan profil hafiz terlepas'
         });
     } catch (error) {
         console.error('Users DELETE error:', error);

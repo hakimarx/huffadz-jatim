@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check cache first
-    const cacheKey = getCacheKey(user.kabupaten_kota);
+    const cacheKey = getCacheKey(user.kabupaten_kota ?? undefined);
     const cached = statsCache.get(cacheKey);
     
     if (cached && isCacheValid(cached.timestamp)) {
