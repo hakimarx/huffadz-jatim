@@ -53,8 +53,12 @@ export async function query<T = unknown>(
             code: error.code,
             errno: error.errno,
             sqlState: error.sqlState,
-            // stack: error.stack // Too verbose for production logs
         });
+
+        if (error.code === 'ECONNREFUSED') {
+            throw new Error('Gagal terhubung ke database. Pastikan MySQL (XAMPP) sudah berjalan.');
+        }
+
         throw error;
     }
 }

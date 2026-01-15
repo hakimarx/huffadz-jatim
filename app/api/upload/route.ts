@@ -7,6 +7,10 @@ export const config = {
     api: {
         bodyParser: false,
     },
+    'signatures': {
+        maxSize: 1 * 1024 * 1024, // 1MB
+        allowedTypes: ['image/png'],
+    },
 };
 
 export async function POST(request: NextRequest) {

@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiMail, FiLock, FiUser, FiHash, FiPhone, FiMapPin, FiEye, FiEyeOff, FiLoader, FiArrowRight, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiHash, FiPhone, FiMapPin, FiEye, FiEyeOff, FiLoader, FiArrowRight, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 export default function RegisterPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -59,8 +60,7 @@ export default function RegisterPage() {
                 throw new Error(result.error || 'Terjadi kesalahan saat registrasi.');
             }
 
-            alert('Registrasi berhasil! Silakan login.');
-            router.push('/login');
+            setSuccess(true);
         } catch (err: any) {
             console.error('Registration error:', err);
             setError(err.message || 'Terjadi kesalahan saat registrasi.');
@@ -68,6 +68,26 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    if (success) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-6">
+                <div className="max-w-md w-full glass p-10 rounded-[2.5rem] shadow-2xl text-center animate-fade-in">
+                    <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8">
+                        <FiCheckCircle />
+                    </div>
+                    <h2 className="text-3xl font-bold text-neutral-800 mb-4">Registrasi Berhasil!</h2>
+                    <p className="text-neutral-500 mb-8 leading-relaxed">
+                        Terima kasih telah mendaftar. Kami telah mengirimkan email verifikasi ke <strong>{formData.email}</strong>.
+                        Silakan cek kotak masuk atau folder spam Anda.
+                    </p>
+                    <Link href="/login" className="btn btn-primary w-full py-4 rounded-2xl flex items-center justify-center gap-2 group">
+                        Kembali ke Login <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden font-sans py-12 px-4 sm:px-6 lg:px-8 bg-neutral-50">

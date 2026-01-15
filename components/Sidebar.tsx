@@ -19,7 +19,8 @@ import {
     FiChevronRight,
     FiLoader,
     FiPrinter,
-    FiClock
+    FiClock,
+    FiMessageSquare
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -37,8 +38,8 @@ const navItems: NavItem[] = [
     { label: 'Periode', href: '/dashboard/periode-tes', icon: <FiCalendar />, roles: ['admin_provinsi'] },
     { label: 'Statistik', href: '/dashboard/kuota', icon: <FiPieChart />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Penguji', href: '/dashboard/penguji', icon: <FiUserCheck />, roles: ['admin_provinsi'] },
-    { label: 'Absensi', href: '/dashboard/absensi', icon: <FiClock />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Al-Quran', href: '/dashboard/quran', icon: <FiBook />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
+    { label: 'Saran dan Masukan', href: '/dashboard/saran', icon: <FiMessageSquare />, roles: ['hafiz'] },
     { label: 'Pengaturan', href: '/dashboard/pengaturan', icon: <FiSettings />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Profil', href: '/dashboard/profil', icon: <FiSettings />, roles: ['hafiz'] }
 ];
@@ -110,8 +111,8 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                     {/* Logo & Brand */}
                     <div className="p-6 border-b border-neutral-200">
                         <Link href="/dashboard" className="flex items-center gap-3 group">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform flex-shrink-0">
-                                L
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/10 group-hover:scale-105 transition-transform flex-shrink-0 overflow-hidden p-1 border border-neutral-100">
+                                <img src="/logo-lptq.png" alt="LPTQ Logo" className="w-full h-full object-contain" />
                             </div>
                             {!collapsed && (
                                 <span className="font-display font-bold text-neutral-800 text-xl tracking-tight group-hover:text-primary-600 transition-colors whitespace-nowrap">
@@ -166,9 +167,9 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                                         `}
                                         title={collapsed ? item.label : ''}
                                     >
-                                        <span className={`text-xl flex-shrink-0 ${isActive ? 'text-primary-500' : 'text-neutral-400'}`}>
+                                        <div className={`text-xl flex-shrink-0 flex items-center justify-center w-6 h-6 ${isActive ? 'text-primary-500' : 'text-neutral-500'}`}>
                                             {item.icon}
-                                        </span>
+                                        </div>
                                         {!collapsed && <span>{item.label}</span>}
                                     </Link>
                                 );

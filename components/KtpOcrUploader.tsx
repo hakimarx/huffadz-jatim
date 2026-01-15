@@ -5,6 +5,7 @@ import { FiUpload, FiCamera, FiX, FiLoader, FiCheck, FiAlertCircle, FiEdit2 } fr
 import ImageEditor from './ImageEditor';
 import Tesseract from 'tesseract.js';
 import { compressImage, formatFileSize } from '@/lib/utils/imageCompression';
+import { preprocessImageForOCR } from '@/lib/utils/ocrPreprocessing';
 
 interface KtpData {
     nik: string;
@@ -78,70 +79,6 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         setPreviewUrl(URL.createObjectURL(editedFile));
         setShowEditor(false);
     };
-
-    // Helper to preprocess image (grayscale + threshold)
-    const preprocessImage = (imageFile: File): Promise<string> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = URL.createObjectURL(imageFile);
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    resolve(img.src);
-                    return;
-                }
-
-                // Resize to optimal size for OCR (max dimension around 2000px)
-                const MAX_DIMENSION = 2000;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_DIMENSION) {
-                        height *= MAX_DIMENSION / width;
-                        width = MAX_DIMENSION;
-                    }
-                } else {
-                    if (height > MAX_DIMENSION) {
-                        width *= MAX_DIMENSION / height;
-                        height = MAX_DIMENSION;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-
-                const imageData = ctx.getImageData(0, 0, width, height);
-                const data = imageData.data;
-
-                // Apply Grayscale & Binarization
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-
-                    // Luminance formula
-                    const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-                    // Thresholding to remove background noise (KTP background pattern)
-                    // Text is dark, background is light.
-                    // Threshold around 150-160 helps separate black text from light blue bg.
-                    const threshold = 155;
-                    const val = gray < threshold ? 0 : 255;
-
-                    data[i] = val;
-                    data[i + 1] = val;
-                    data[i + 2] = val;
-                }
-
-                ctx.putImageData(imageData, 0, 0);
-                resolve(canvas.toDataURL('image/png'));
-            };
-        });
-    };
-
     const processKtp = async () => {
         if (!file) {
             setError('Pilih file KTP terlebih dahulu');
@@ -153,19 +90,22 @@ export default function KtpOcrUploader({ onDataExtracted, onSkip }: KtpOcrUpload
         setProgress(0);
 
         try {
-            // Preprocess image for better accuracy
-            const processedImageUrl = await preprocessImage(file);
+            // Preprocess image for better OCR results
+            const preprocessedBlob = await preprocessImageForOCR(file);
+            const preprocessedFile = new File([preprocessedBlob], 'processed.jpg', { type: 'image/jpeg' });
 
             // Use Tesseract.js for OCR
             const result = await Tesseract.recognize(
-                processedImageUrl,
-                'ind',
+                preprocessedFile,
+                'ind', // Focus on Indonesian only for better accuracy on KTP
                 {
                     logger: (m) => {
                         if (m.status === 'recognizing text') {
                             setProgress(Math.round(m.progress * 100));
                         }
-                    }
+                    },
+                    // Add whitelist for common KTP characters to reduce noise
+                    // tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/-:., ' 
                 }
             );
 

@@ -375,6 +375,7 @@ const hafizSchema = z.object({
 - ✅ **Database**: Local MySQL connection fixed and populated.
 - ✅ **Login**: Admin login verified with updated hash.
 - ✅ **Features**: Full flow (Periode -> Jadwal -> Absensi) ready for manual testing.
+- ✅ **OCR**: Improved KTP OCR with auto-preprocessing (Grayscale + Binarization).
 
 ---
 

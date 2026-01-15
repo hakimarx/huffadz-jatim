@@ -22,8 +22,16 @@ export async function GET(request: NextRequest) {
         let whereClause = '1=1';
         const params: unknown[] = [];
 
-        // Filter by hafiz_id
-        if (hafizId) {
+        // If user is hafiz, they can only see their own reports
+        if (user.role === 'hafiz') {
+            // Find the hafiz_id for this user
+            const hafiz = await queryOne<{ id: number }>('SELECT id FROM hafiz WHERE user_id = ?', [user.id]);
+            if (!hafiz) {
+                return NextResponse.json({ data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+            }
+            whereClause += ' AND l.hafiz_id = ?';
+            params.push(hafiz.id);
+        } else if (hafizId) {
             whereClause += ' AND l.hafiz_id = ?';
             params.push(hafizId);
         }

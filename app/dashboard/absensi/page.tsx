@@ -36,13 +36,16 @@ function AbsensiContent() {
     useEffect(() => {
         async function loadData() {
             try {
+                console.log('AbsensiPage: Fetching user...');
                 // Fetch user
-                const userRes = await fetch('/api/auth/me');
+                const userRes = await fetch('/api/auth/session');
                 if (!userRes.ok) {
+                    console.log('AbsensiPage: User fetch failed, redirecting to login');
                     window.location.href = '/login';
                     return;
                 }
                 const userData = await userRes.json();
+                console.log('AbsensiPage: User loaded:', userData.user);
                 setUser(userData.user);
 
                 // Fetch absensi data

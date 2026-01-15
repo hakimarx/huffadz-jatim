@@ -76,3 +76,17 @@ database/fix_and_seed_users.sql
 # Database dumps
 *.dump
 *.sql.gz
+
+# Large SQL dumps and potential sensitive data
+database.sql
+all_sql_content.txt
+
+# Scripts with credentials
+scripts/setup_admin_users.js
+
+# Database data and large schemas
+database/consolidated_schema.sql
+database/populate.sql
+database/raw_data.txt
+database/tidb_*.sql
+

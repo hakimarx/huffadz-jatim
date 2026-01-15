@@ -296,6 +296,25 @@ export default function QuranPage() {
             surah.nomor_surah?.toString().includes(searchQuery)
     );
 
+    const [selectedAyat, setSelectedAyat] = useState<number | null>(null);
+
+    const handleSurahChange = (id: number) => {
+        if (!id) return;
+        fetchAyahs(id);
+        setSelectedAyat(null);
+    };
+
+    const handleAyatChange = (ayatNum: number) => {
+        setSelectedAyat(ayatNum);
+        // Scroll to ayat
+        setTimeout(() => {
+            const element = document.getElementById(`ayat-${ayatNum}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    };
+
     // Show loading while fetching user
     if (userLoading) {
         return (
@@ -332,16 +351,58 @@ export default function QuranPage() {
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="relative mt-6">
-                        <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl" />
-                        <input
-                            type="text"
-                            placeholder="Cari surah... (nama, nomor, atau arti)"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 border-2 border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-all duration-300 text-lg"
-                        />
+                    {/* Dropdown Navigation */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        {/* Surah Dropdown */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-emerald-700 mb-1">Pilih Surah</label>
+                            <div className="relative">
+                                <FiBookOpen className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-500 text-lg" />
+                                <select
+                                    value={selectedSurah || ''}
+                                    onChange={(e) => handleSurahChange(Number(e.target.value))}
+                                    className="w-full pl-12 pr-10 py-3 border-2 border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all duration-300 appearance-none bg-white text-gray-800 font-medium cursor-pointer"
+                                >
+                                    <option value="" disabled>Pilih Surah...</option>
+                                    {surahs.map((surah) => (
+                                        <option key={surah.id} value={surah.id}>
+                                            {surah.nomor_surah}. {surah.nama_latin} ({surah.nama_surah})
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-emerald-500">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ayat Dropdown */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-emerald-700 mb-1">Pilih Ayat</label>
+                            <div className="relative">
+                                <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-500 text-lg" />
+                                <select
+                                    value={selectedAyat || ''}
+                                    onChange={(e) => handleAyatChange(Number(e.target.value))}
+                                    disabled={!selectedSurah}
+                                    className="w-full pl-12 pr-10 py-3 border-2 border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all duration-300 appearance-none bg-white text-gray-800 font-medium cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed"
+                                >
+                                    <option value="" disabled>Pilih Ayat...</option>
+                                    {selectedSurahData && Array.from({ length: selectedSurahData.jumlah_ayat }, (_, i) => i + 1).map((num) => (
+                                        <option key={num} value={num}>
+                                            Ayat {num}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-emerald-500">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Error Message */}
@@ -478,6 +539,7 @@ export default function QuranPage() {
                                     <div className="space-y-6">
                                         {ayahs.map((ayat) => (
                                             <div
+                                                id={`ayat-${ayat.nomor_ayat}`}
                                                 key={ayat.id || ayat.nomor_ayat}
                                                 className="p-6 bg-gradient-to-br from-white to-emerald-50 rounded-xl border-2 border-emerald-100 hover:border-emerald-400 hover:border-[3px] hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-200/50 hover:scale-[1.01] cursor-pointer group"
                                             >
