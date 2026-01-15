@@ -3,7 +3,7 @@
 import { useState, Suspense, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { PageLoader } from '@/components/LoadingSpinner';
-import { FiSave, FiLoader, FiTrash2 } from 'react-icons/fi';
+import { FiSave, FiLoader, FiTrash2, FiKey, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import KtpOcrUploader from '@/components/KtpOcrUploader';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -61,6 +61,20 @@ function ProfilContent() {
     // History state
     const [isAddingHistory, setIsAddingHistory] = useState(false);
     const [newHistoryItem, setNewHistoryItem] = useState({ tempat: '', tmt: '' });
+
+    // Change Password state
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [changingPassword, setChangingPassword] = useState(false);
+    const [showPasswords, setShowPasswords] = useState({
+        current: false,
+        new: false,
+        confirm: false
+    });
 
     const [formData, setFormData] = useState({
         nik: '',
@@ -284,6 +298,53 @@ function ProfilContent() {
         } catch (e) {
             console.error(e);
             alert('Error uploading signature');
+        }
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const currentPass = passwordData.currentPassword;
+        const newPass = passwordData.newPassword;
+        const confirmPass = passwordData.confirmPassword;
+
+        if (newPass !== confirmPass) {
+            alert('Password baru dan konfirmasi password tidak cocok');
+            return;
+        }
+
+        if (newPass.length < 6) {
+            alert('Password baru minimal 6 karakter');
+            return;
+        }
+
+        setChangingPassword(true);
+        try {
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: currentPass,
+                    newPassword: newPass
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Gagal mengubah password');
+            }
+
+            alert('✅ Password berhasil diperbarui!');
+            setShowPasswordModal(false);
+            setPasswordData({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
+        } catch (err: any) {
+            alert('Gagal: ' + err.message);
+        } finally {
+            setChangingPassword(false);
         }
     };
 
@@ -896,7 +957,136 @@ function ProfilContent() {
                         </form>
                     </div>
                 </div>
+
+                {/* Change Password Section */}
+                <div className="max-w-4xl mx-auto mt-8">
+                    <div className="card">
+                        <div className="flex items-center justify-between mb-4 border-b pb-4 border-neutral-100">
+                            <div>
+                                <h3 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
+                                    <FiLock className="text-primary-500" /> Keamanan Akun
+                                </h3>
+                                <p className="text-sm text-neutral-500">Perbarui kata sandi untuk menjaga keamanan akun Anda</p>
+                            </div>
+                            <button
+                                onClick={() => setShowPasswordModal(true)}
+                                className="btn btn-secondary border-primary-200 text-primary-600 hover:bg-primary-50"
+                            >
+                                <FiKey /> Ubah Password
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </main>
+
+            {/* Change Password Modal */}
+            {showPasswordModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50">
+                            <h3 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
+                                <FiLock className="text-primary-500" /> Ubah Password
+                            </h3>
+                            <button
+                                onClick={() => setShowPasswordModal(false)}
+                                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                            >
+                                <FiTrash2 size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                            <div>
+                                <label className="form-label required">Password Saat Ini</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPasswords.current ? "text" : "password"}
+                                        className="form-input pr-10"
+                                        value={passwordData.currentPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                        required
+                                        placeholder="Masukkan password lama"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                    >
+                                        {showPasswords.current ? <FiEyeOff /> : <FiEye />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="form-label required">Password Baru</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPasswords.new ? "text" : "password"}
+                                        className="form-input pr-10"
+                                        value={passwordData.newPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        required
+                                        minLength={6}
+                                        placeholder="Minimal 6 karakter"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                    >
+                                        {showPasswords.new ? <FiEyeOff /> : <FiEye />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="form-label required">Konfirmasi Password Baru</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPasswords.confirm ? "text" : "password"}
+                                        className="form-input pr-10"
+                                        value={passwordData.confirmPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                        required
+                                        placeholder="Ulangi password baru"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                    >
+                                        {showPasswords.confirm ? <FiEyeOff /> : <FiEye />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={changingPassword}
+                                    className="btn btn-primary flex-1"
+                                >
+                                    {changingPassword ? (
+                                        <>
+                                            <FiLoader className="animate-spin" /> Memproses...
+                                        </>
+                                    ) : (
+                                        'Simpan Password'
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswordModal(false)}
+                                    className="btn btn-secondary flex-1"
+                                    disabled={changingPassword}
+                                >
+                                    Batal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
