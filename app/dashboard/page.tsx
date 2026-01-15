@@ -492,7 +492,7 @@ function HafizDashboard() {
         totalLaporan: 0,
         laporanPending: 0,
         laporanDisetujui: 0,
-        totalAbsensi: 0,
+        laporanDitolak: 0,
         loading: true
     });
     const [user, setUser] = useState<UserData | null>(null);
@@ -518,16 +518,11 @@ function HafizDashboard() {
                     const laporanResult = await laporanRes.json();
                     const laporanList = laporanResult.data || [];
 
-                    // Fetch Absensi Stats
-                    const absensiRes = await fetch(`/api/absensi?hafiz_id=${hafizId}`);
-                    const absensiResult = await absensiRes.json();
-                    const absensiList = absensiResult.data || [];
-
                     setStats({
                         totalLaporan: laporanList.length,
                         laporanPending: laporanList.filter((l: any) => l.status_verifikasi === 'pending').length,
                         laporanDisetujui: laporanList.filter((l: any) => l.status_verifikasi === 'disetujui').length,
-                        totalAbsensi: absensiList.filter((a: any) => a.status === 'hadir').length,
+                        laporanDitolak: laporanList.filter((l: any) => l.status_verifikasi === 'ditolak').length,
                         loading: false
                     });
                 } else {
@@ -569,9 +564,9 @@ function HafizDashboard() {
                             </div>
                             <div className="w-px bg-indigo-400/30 h-16 self-center"></div>
                             <div>
-                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold mb-2">Kehadiran</p>
+                                <p className="text-xs text-indigo-200 uppercase tracking-widest font-bold mb-2">Laporan Disetujui</p>
                                 <p className="text-5xl font-extrabold">
-                                    {stats.loading ? '...' : stats.totalAbsensi}
+                                    {stats.loading ? '...' : stats.laporanDisetujui}
                                 </p>
                             </div>
                         </div>
@@ -595,11 +590,11 @@ function HafizDashboard() {
                     subtext="Laporan perlu tinjauan admin"
                 />
                 <ModernStatCard
-                    title="Total Kehadiran"
-                    value={stats.loading ? "..." : stats.totalAbsensi.toString()}
-                    icon={<FiActivity className="text-white" />}
-                    gradient="bg-gradient-to-br from-blue-400 to-blue-600"
-                    subtext="Jumlah kehadiran tercatat"
+                    title="Laporan Ditolak"
+                    value={stats.loading ? "..." : stats.laporanDitolak.toString()}
+                    icon={<FiAlertCircle className="text-white" />}
+                    gradient="bg-gradient-to-br from-red-400 to-red-600"
+                    subtext="Laporan yang perlu diperbaiki"
                 />
             </div>
         </div>

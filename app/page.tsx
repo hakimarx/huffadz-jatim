@@ -21,8 +21,8 @@ export default function Home() {
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-md border border-white/50 rounded-full shadow-sm mb-8 animate-fade-in hover:scale-105 transition-transform cursor-default">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/60 backdrop-blur-md border border-white/50 rounded-full shadow-sm mb-8 animate-fade-in hover:scale-105 transition-transform cursor-default">
+            <img src="/logo-lptq.png" alt="LPTQ Logo" className="w-6 h-6 object-contain" />
             <span className="font-semibold text-neutral-600 text-sm tracking-wide">Official Platform LPTQ Jawa Timur</span>
           </div>
 
@@ -191,7 +191,9 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">L</div>
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-neutral-100 p-1 overflow-hidden">
+                  <img src="/logo-lptq.png" alt="LPTQ Logo" className="w-full h-full object-contain" />
+                </div>
                 <span className="font-display font-bold text-2xl text-neutral-800">LPTQ Jawa Timur</span>
               </div>
               <p className="text-neutral-500 leading-relaxed max-w-sm mb-6">

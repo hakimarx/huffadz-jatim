@@ -97,7 +97,7 @@ function LaporanHarianContent() {
     const [exporting, setExporting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'stats'>('stats');
-    const [activeTab, setActiveTab] = useState<'laporan' | 'absensi'>('laporan');
+    const [activeTab, setActiveTab] = useState<'laporan'>('laporan');
 
     // Available years for filter
     const availableYears = useMemo(() => {
@@ -113,731 +113,699 @@ function LaporanHarianContent() {
         fetchUserData();
     }, []);
 
-    useEffect(() => {
-        if (user && activeTab === 'laporan') {
-            fetchLaporanData();
-        }
-    }, [user, selectedKabKo, selectedTahun, filter, activeTab]);
+    if (user) {
+        fetchLaporanData();
+    }
+}, [user, selectedKabKo, selectedTahun, filter]);
 
-    async function fetchUserData() {
-        try {
-            const response = await fetch('/api/auth/session');
-            const data = await response.json();
+async function fetchUserData() {
+    try {
+        const response = await fetch('/api/auth/session');
+        const data = await response.json();
 
-            if (!response.ok || !data.user) {
-                console.error('No session found:', data);
-                window.location.href = '/login';
-                return;
-            }
-
-            setUser(data.user as UserData);
-
-            if (data.user.role === 'admin_provinsi') {
-                try {
-                    const kabResponse = await fetch('/api/kabupaten');
-                    const kabData = await kabResponse.json();
-                    if (kabData.data) {
-                        setKabKoList(kabData.data.map((k: any) => k.nama));
-                    }
-                } catch (err) {
-                    console.error('Error fetching kabupaten:', err);
-                }
-            }
-
-            if (data.user.role === 'hafiz') {
-                try {
-                    const hafizResponse = await fetch(`/api/hafiz?limit=1`);
-                    const hafizData = await hafizResponse.json();
-                    if (hafizData.data && hafizData.data.length > 0) {
-                        setHafizId(hafizData.data[0].id);
-                    }
-                } catch (err) {
-                    console.error('Error fetching hafiz ID:', err);
-                }
-            }
-        } catch (err) {
-            console.error('Unexpected error fetching user:', err);
+        if (!response.ok || !data.user) {
+            console.error('No session found:', data);
             window.location.href = '/login';
-        } finally {
-            setLoading(false);
+            return;
         }
-    }
 
-    async function fetchLaporanData() {
-        if (!user) return;
-        setRefreshing(true);
+        setUser(data.user as UserData);
 
-        try {
-            const params = new URLSearchParams();
-
-            if (filter !== 'semua') {
-                params.set('status', filter);
-            }
-
-            if (hafizId && user.role === 'hafiz') {
-                params.set('hafiz_id', hafizId.toString());
-            }
-
-            const response = await fetch(`/api/laporan?${params.toString()}`);
-            const result = await response.json();
-
-            if (!response.ok) {
-                console.error('Error fetching laporan:', result.error);
-                return;
-            }
-
-            let laporanData = result.data || [];
-
-            const transformedData: LaporanData[] = laporanData.map((item: any) => ({
-                id: item.id,
-                hafiz_id: item.hafiz_id,
-                tanggal: item.tanggal,
-                jam: item.jam,
-                jenis_kegiatan: item.jenis_kegiatan,
-                deskripsi: item.deskripsi,
-                lokasi: item.lokasi,
-                foto_url: item.foto_url,
-                status_verifikasi: item.status_verifikasi,
-                verified_at: item.verified_at,
-                catatan_verifikasi: item.catatan_verifikasi,
-                nama_hafiz: item.nama_hafiz,
-                kabupaten_kota: item.kabupaten_kota,
-                hafiz: {
-                    nama: item.nama_hafiz || '',
-                    nik: '',
-                    kabupaten_kota: item.kabupaten_kota || ''
+        if (data.user.role === 'admin_provinsi') {
+            try {
+                const kabResponse = await fetch('/api/kabupaten');
+                const kabData = await kabResponse.json();
+                if (kabData.data) {
+                    setKabKoList(kabData.data.map((k: any) => k.nama));
                 }
-            }));
+            } catch (err) {
+                console.error('Error fetching kabupaten:', err);
+            }
+        }
 
-            const startDate = `${selectedTahun}-01-01`;
-            const endDate = `${selectedTahun}-12-31`;
-            let filteredData = transformedData.filter(l =>
-                l.tanggal >= startDate && l.tanggal <= endDate
+        if (data.user.role === 'hafiz') {
+            try {
+                const hafizResponse = await fetch(`/api/hafiz?limit=1`);
+                const hafizData = await hafizResponse.json();
+                if (hafizData.data && hafizData.data.length > 0) {
+                    setHafizId(hafizData.data[0].id);
+                }
+            } catch (err) {
+                console.error('Error fetching hafiz ID:', err);
+            }
+        }
+    } catch (err) {
+        console.error('Unexpected error fetching user:', err);
+        window.location.href = '/login';
+    } finally {
+        setLoading(false);
+    }
+}
+
+async function fetchLaporanData() {
+    if (!user) return;
+    setRefreshing(true);
+
+    try {
+        const params = new URLSearchParams();
+
+        if (filter !== 'semua') {
+            params.set('status', filter);
+        }
+
+        if (hafizId && user.role === 'hafiz') {
+            params.set('hafiz_id', hafizId.toString());
+        }
+
+        const response = await fetch(`/api/laporan?${params.toString()}`);
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('Error fetching laporan:', result.error);
+            return;
+        }
+
+        let laporanData = result.data || [];
+
+        const transformedData: LaporanData[] = laporanData.map((item: any) => ({
+            id: item.id,
+            hafiz_id: item.hafiz_id,
+            tanggal: item.tanggal,
+            jam: item.jam,
+            jenis_kegiatan: item.jenis_kegiatan,
+            deskripsi: item.deskripsi,
+            lokasi: item.lokasi,
+            foto_url: item.foto_url,
+            status_verifikasi: item.status_verifikasi,
+            verified_at: item.verified_at,
+            catatan_verifikasi: item.catatan_verifikasi,
+            nama_hafiz: item.nama_hafiz,
+            kabupaten_kota: item.kabupaten_kota,
+            hafiz: {
+                nama: item.nama_hafiz || '',
+                nik: '',
+                kabupaten_kota: item.kabupaten_kota || ''
+            }
+        }));
+
+        const startDate = `${selectedTahun}-01-01`;
+        const endDate = `${selectedTahun}-12-31`;
+        let filteredData = transformedData.filter(l =>
+            l.tanggal >= startDate && l.tanggal <= endDate
+        );
+
+        if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
+            filteredData = filteredData.filter(l =>
+                l.kabupaten_kota === selectedKabKo
             );
-
-            if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
-                filteredData = filteredData.filter(l =>
-                    l.kabupaten_kota === selectedKabKo
-                );
-            } else if (user.role === 'admin_kabko') {
-                filteredData = filteredData.filter(l =>
-                    l.kabupaten_kota === user.kabupaten_kota
-                );
-            }
-
-            setLaporanList(filteredData);
-
-            if (user.role === 'admin_provinsi') {
-                await fetchKabKoStats();
-            }
-
-        } catch (err) {
-            console.error('Error:', err);
-        } finally {
-            setRefreshing(false);
+        } else if (user.role === 'admin_kabko') {
+            filteredData = filteredData.filter(l =>
+                l.kabupaten_kota === user.kabupaten_kota
+            );
         }
-    }
 
-    async function fetchKabKoStats() {
-        try {
-            const response = await fetch(`/api/statistics?type=kabko&year=${selectedTahun}`);
-            if (response.ok) {
-                const stats = await response.json();
-                setKabKoStats(stats);
-            } else {
-                console.error('Failed to fetch kabko stats');
-            }
-        } catch (err) {
-            console.error('Error fetching kabko stats:', err);
+        setLaporanList(filteredData);
+
+        if (user.role === 'admin_provinsi') {
+            await fetchKabKoStats();
         }
+
+    } catch (err) {
+        console.error('Error:', err);
+    } finally {
+        setRefreshing(false);
     }
+}
 
-    // ... (Export functions remain the same)
-    async function handleExportExcel() {
-        setExporting(true);
-        try {
-            // Prepare data for export
-            const exportData = laporanList.map(l => ({
-                'Tanggal': l.tanggal,
-                'Jam': l.jam || '-',
-                'Nama Hafiz': l.hafiz?.nama || '-',
-                'NIK': l.hafiz?.nik || '-',
-                'Kab/Kota': l.hafiz?.kabupaten_kota || '-',
-                'Jenis Kegiatan': l.jenis_kegiatan,
-                'Deskripsi': l.deskripsi,
-                'Lokasi': l.lokasi || '-',
-                'Status': l.status_verifikasi,
-                'Diverifikasi': l.verified_at ? new Date(l.verified_at).toLocaleString('id-ID') : '-',
-                'Catatan': l.catatan_verifikasi || '-'
-            }));
-
-            // Generate CSV content
-            if (exportData.length === 0) {
-                alert('Tidak ada data untuk diekspor');
-                return;
-            }
-
-            const headers = Object.keys(exportData[0]);
-            const csvContent = [
-                headers.join(','),
-                ...exportData.map(row =>
-                    headers.map(h => {
-                        const value = row[h as keyof typeof row] || '';
-                        // Escape commas and quotes
-                        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-                            return `"${value.replace(/"/g, '""')}"`;
-                        }
-                        return value;
-                    }).join(',')
-                )
-            ].join('\n');
-
-            // Add BOM for Excel UTF-8 compatibility
-            const BOM = '\uFEFF';
-            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-            // Create download link
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            const fileName = `Laporan_Harian_${selectedTahun}${selectedKabKo !== 'semua' ? '_' + selectedKabKo.replace(/\s/g, '_') : ''}_${new Date().toISOString().split('T')[0]}.csv`;
-            link.setAttribute('download', fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            alert('✅ Export berhasil! File CSV dapat dibuka di Excel.');
-
-        } catch (err) {
-            console.error('Export error:', err);
-            alert('Gagal mengekspor data');
-        } finally {
-            setExporting(false);
+async function fetchKabKoStats() {
+    try {
+        const response = await fetch(`/api/statistics?type=kabko&year=${selectedTahun}`);
+        if (response.ok) {
+            const stats = await response.json();
+            setKabKoStats(stats);
+        } else {
+            console.error('Failed to fetch kabko stats');
         }
+    } catch (err) {
+        console.error('Error fetching kabko stats:', err);
     }
+}
 
-    async function handleExportStatsExcel() {
-        setExporting(true);
-        try {
-            const exportData = kabKoStats.map(s => ({
-                'Kabupaten/Kota': s.kabupaten_kota,
-                'Total Hafiz': s.total_hafiz,
-                'Hafiz Sudah Lapor': s.hafiz_sudah_lapor,
-                'Persentase Lapor (%)': s.persentase_lapor,
-                'Total Laporan': s.total_laporan,
-                'Disetujui': s.laporan_disetujui,
-                'Pending': s.laporan_pending,
-                'Ditolak': s.laporan_ditolak
-            }));
+// ... (Export functions remain the same)
+async function handleExportExcel() {
+    setExporting(true);
+    try {
+        // Prepare data for export
+        const exportData = laporanList.map(l => ({
+            'Tanggal': l.tanggal,
+            'Jam': l.jam || '-',
+            'Nama Hafiz': l.hafiz?.nama || '-',
+            'NIK': l.hafiz?.nik || '-',
+            'Kab/Kota': l.hafiz?.kabupaten_kota || '-',
+            'Jenis Kegiatan': l.jenis_kegiatan,
+            'Deskripsi': l.deskripsi,
+            'Lokasi': l.lokasi || '-',
+            'Status': l.status_verifikasi,
+            'Diverifikasi': l.verified_at ? new Date(l.verified_at).toLocaleString('id-ID') : '-',
+            'Catatan': l.catatan_verifikasi || '-'
+        }));
 
-            if (exportData.length === 0) {
-                alert('Tidak ada data statistik untuk diekspor');
-                return;
-            }
-
-            const headers = Object.keys(exportData[0]);
-            const csvContent = [
-                headers.join(','),
-                ...exportData.map(row =>
-                    headers.map(h => row[h as keyof typeof row] || '').join(',')
-                )
-            ].join('\n');
-
-            const BOM = '\uFEFF';
-            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', `Statistik_Laporan_Per_KabKo_${selectedTahun}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            alert('✅ Export statistik berhasil!');
-
-        } catch (err) {
-            console.error('Export error:', err);
-            alert('Gagal mengekspor statistik');
-        } finally {
-            setExporting(false);
+        // Generate CSV content
+        if (exportData.length === 0) {
+            alert('Tidak ada data untuk diekspor');
+            return;
         }
+
+        const headers = Object.keys(exportData[0]);
+        const csvContent = [
+            headers.join(','),
+            ...exportData.map(row =>
+                headers.map(h => {
+                    const value = row[h as keyof typeof row] || '';
+                    // Escape commas and quotes
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                }).join(',')
+            )
+        ].join('\n');
+
+        // Add BOM for Excel UTF-8 compatibility
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        const fileName = `Laporan_Harian_${selectedTahun}${selectedKabKo !== 'semua' ? '_' + selectedKabKo.replace(/\s/g, '_') : ''}_${new Date().toISOString().split('T')[0]}.csv`;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        alert('✅ Export berhasil! File CSV dapat dibuka di Excel.');
+
+    } catch (err) {
+        console.error('Export error:', err);
+        alert('Gagal mengekspor data');
+    } finally {
+        setExporting(false);
     }
+}
 
-    async function handleApprove(laporanId: number) {
-        if (!confirm('Yakin ingin menyetujui laporan ini?')) return;
+async function handleExportStatsExcel() {
+    setExporting(true);
+    try {
+        const exportData = kabKoStats.map(s => ({
+            'Kabupaten/Kota': s.kabupaten_kota,
+            'Total Hafiz': s.total_hafiz,
+            'Hafiz Sudah Lapor': s.hafiz_sudah_lapor,
+            'Persentase Lapor (%)': s.persentase_lapor,
+            'Total Laporan': s.total_laporan,
+            'Disetujui': s.laporan_disetujui,
+            'Pending': s.laporan_pending,
+            'Ditolak': s.laporan_ditolak
+        }));
 
-        try {
-            const response = await fetch(`/api/laporan/${laporanId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    status_verifikasi: 'disetujui',
-                    verified_by: user?.id,
-                    verified_at: new Date().toISOString()
-                })
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to approve');
-            }
-
-            alert('✅ Laporan berhasil disetujui');
-            fetchLaporanData();
-        } catch (err) {
-            console.error('Error:', err);
-            alert('Gagal menyetujui laporan');
+        if (exportData.length === 0) {
+            alert('Tidak ada data statistik untuk diekspor');
+            return;
         }
+
+        const headers = Object.keys(exportData[0]);
+        const csvContent = [
+            headers.join(','),
+            ...exportData.map(row =>
+                headers.map(h => row[h as keyof typeof row] || '').join(',')
+            )
+        ].join('\n');
+
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Statistik_Laporan_Per_KabKo_${selectedTahun}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        alert('✅ Export statistik berhasil!');
+
+    } catch (err) {
+        console.error('Export error:', err);
+        alert('Gagal mengekspor statistik');
+    } finally {
+        setExporting(false);
     }
+}
 
-    async function handleReject(laporanId: number) {
-        const catatan = prompt('Masukkan catatan penolakan:');
-        if (catatan === null) return;
+async function handleApprove(laporanId: number) {
+    if (!confirm('Yakin ingin menyetujui laporan ini?')) return;
 
-        try {
-            const response = await fetch(`/api/laporan/${laporanId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    status_verifikasi: 'ditolak',
-                    verified_by: user?.id,
-                    verified_at: new Date().toISOString(),
-                    catatan_verifikasi: catatan
-                })
-            });
+    try {
+        const response = await fetch(`/api/laporan/${laporanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status_verifikasi: 'disetujui',
+                verified_by: user?.id,
+                verified_at: new Date().toISOString()
+            })
+        });
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to reject');
-            }
-
-            alert('Laporan berhasil ditolak');
-            fetchLaporanData();
-        } catch (err) {
-            console.error('Error:', err);
-            alert('Gagal menolak laporan');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to approve');
         }
-    }
 
-    function handleEdit(laporan: LaporanData) {
-        setLaporanToEdit(laporan);
-        setShowModal(true);
+        alert('✅ Laporan berhasil disetujui');
+        fetchLaporanData();
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Gagal menyetujui laporan');
     }
+}
 
-    if (loading) {
-        return <PageLoader />;
+async function handleReject(laporanId: number) {
+    const catatan = prompt('Masukkan catatan penolakan:');
+    if (catatan === null) return;
+
+    try {
+        const response = await fetch(`/api/laporan/${laporanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status_verifikasi: 'ditolak',
+                verified_by: user?.id,
+                verified_at: new Date().toISOString(),
+                catatan_verifikasi: catatan
+            })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to reject');
+        }
+
+        alert('Laporan berhasil ditolak');
+        fetchLaporanData();
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Gagal menolak laporan');
     }
+}
 
-    if (!user) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-red-600 mb-4">Gagal memuat data user</p>
-                    <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
-                        Kembali ke Login
-                    </button>
+function handleEdit(laporan: LaporanData) {
+    setLaporanToEdit(laporan);
+    setShowModal(true);
+}
+
+if (loading) {
+    return <PageLoader />;
+}
+
+if (!user) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+                <p className="text-red-600 mb-4">Gagal memuat data user</p>
+                <button onClick={() => window.location.href = '/login'} className="btn btn-primary">
+                    Kembali ke Login
+                </button>
+            </div>
+        </div>
+    );
+}
+
+const isHafiz = user.role === 'hafiz';
+const isAdminProvinsi = user.role === 'admin_provinsi';
+const isAdminKabko = user.role === 'admin_kabko';
+
+// Calculate summary stats
+const totalLaporan = laporanList.length;
+const totalDisetujui = laporanList.filter(l => l.status_verifikasi === 'disetujui').length;
+const totalPending = laporanList.filter(l => l.status_verifikasi === 'pending').length;
+const totalDitolak = laporanList.filter(l => l.status_verifikasi === 'ditolak').length;
+
+return (
+    <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+        <Sidebar
+            userRole={user.role}
+            userName={user.nama}
+            userPhoto={user.foto_profil}
+        />
+
+        <main className="flex-1 p-6 lg:p-8 overflow-auto">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-neutral-800 mb-2">
+                        Laporan Harian
+                    </h1>
+                    <p className="text-neutral-600">
+                        {isHafiz ? 'Kelola laporan kegiatan harian Anda' : 'Verifikasi laporan kegiatan Huffadz'}
+                    </p>
+                </div>
+                <div className="flex gap-3 mt-4 lg:mt-0 flex-wrap">
+                    {isHafiz && (
+                        <button
+                            onClick={() => {
+                                setLaporanToEdit(undefined);
+                                setShowModal(true);
+                            }}
+                            className="btn btn-primary"
+                        >
+                            <FiPlus />
+                            Tambah Laporan
+                        </button>
+                    )}
+                    {true && (
+                        <>
+                            <button
+                                onClick={handleExportExcel}
+                                className="btn btn-secondary"
+                                disabled={exporting || laporanList.length === 0}
+                            >
+                                {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
+                                Export Excel
+                            </button>
+                            <button
+                                onClick={() => fetchLaporanData()}
+                                className="btn btn-secondary"
+                                disabled={refreshing}
+                            >
+                                <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
-        );
-    }
 
-    const isHafiz = user.role === 'hafiz';
-    const isAdminProvinsi = user.role === 'admin_provinsi';
-    const isAdminKabko = user.role === 'admin_kabko';
 
-    // Calculate summary stats
-    const totalLaporan = laporanList.length;
-    const totalDisetujui = laporanList.filter(l => l.status_verifikasi === 'disetujui').length;
-    const totalPending = laporanList.filter(l => l.status_verifikasi === 'pending').length;
-    const totalDitolak = laporanList.filter(l => l.status_verifikasi === 'ditolak').length;
 
-    return (
-        <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-            <Sidebar
-                userRole={user.role}
-                userName={user.nama}
-                userPhoto={user.foto_profil}
-            />
-
-            <main className="flex-1 p-6 lg:p-8 overflow-auto">
-                {/* Header */}
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-neutral-800 mb-2">
-                            Laporan Harian
-                        </h1>
-                        <p className="text-neutral-600">
-                            {isHafiz ? 'Kelola laporan kegiatan harian Anda' : 'Verifikasi laporan kegiatan Huffadz'}
-                        </p>
-                    </div>
-                    <div className="flex gap-3 mt-4 lg:mt-0 flex-wrap">
-                        {isHafiz && activeTab === 'laporan' && (
-                            <button
-                                onClick={() => {
-                                    setLaporanToEdit(undefined);
-                                    setShowModal(true);
-                                }}
-                                className="btn btn-primary"
-                            >
-                                <FiPlus />
-                                Tambah Laporan
-                            </button>
-                        )}
-                        {activeTab === 'laporan' && (
-                            <>
-                                <button
-                                    onClick={handleExportExcel}
-                                    className="btn btn-secondary"
-                                    disabled={exporting || laporanList.length === 0}
+            {/* Content based on active tab */}
+            <>
+                {/* Filters for Admin Provinsi */}
+                {isAdminProvinsi && (
+                    <div className="card mb-6">
+                        <div className="flex flex-wrap gap-4 items-end">
+                            {/* Year Filter */}
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiCalendar className="inline mr-1" /> Tahun
+                                </label>
+                                <select
+                                    value={selectedTahun}
+                                    onChange={(e) => setSelectedTahun(parseInt(e.target.value))}
+                                    className="form-select"
                                 >
-                                    {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
-                                    Export Excel
+                                    {availableYears.map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Kab/Ko Filter */}
+                            <div className="flex-1 min-w-[250px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiMapPin className="inline mr-1" /> Kabupaten/Kota
+                                </label>
+                                <select
+                                    value={selectedKabKo}
+                                    onChange={(e) => setSelectedKabKo(e.target.value)}
+                                    className="form-select"
+                                >
+                                    <option value="semua">Semua Kabupaten/Kota</option>
+                                    {kabKoList.map(kab => (
+                                        <option key={kab} value={kab}>{kab}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setViewMode('stats')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'stats'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    <FiPieChart /> Statistik
                                 </button>
                                 <button
-                                    onClick={() => fetchLaporanData()}
-                                    className="btn btn-secondary"
-                                    disabled={refreshing}
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
                                 >
-                                    <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
+                                    <FiBarChart2 /> Daftar
                                 </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Tab Navigation for Hafiz */}
-                {isHafiz && (
-                    <div className="flex gap-4 mb-6 border-b border-neutral-200">
-                        <button
-                            onClick={() => setActiveTab('laporan')}
-                            className={`pb-3 px-4 font-medium transition-colors relative ${activeTab === 'laporan'
-                                ? 'text-primary-600'
-                                : 'text-neutral-500 hover:text-neutral-700'
-                                }`}
-                        >
-                            Laporan Kegiatan
-                            {activeTab === 'laporan' && (
-                                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-600 rounded-t-full"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('absensi')}
-                            className={`pb-3 px-4 font-medium transition-colors relative ${activeTab === 'absensi'
-                                ? 'text-primary-600'
-                                : 'text-neutral-500 hover:text-neutral-700'
-                                }`}
-                        >
-                            Data Absensi
-                            {activeTab === 'absensi' && (
-                                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-600 rounded-t-full"></div>
-                            )}
-                        </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* Content based on active tab */}
-                {activeTab === 'absensi' ? (
-                    <AbsensiView user={user} />
-                ) : (
+                {/* Stats Overview for Admin Provinsi */}
+                {isAdminProvinsi && viewMode === 'stats' && (
                     <>
-                        {/* Filters for Admin Provinsi */}
-                        {isAdminProvinsi && (
-                            <div className="card mb-6">
-                                <div className="flex flex-wrap gap-4 items-end">
-                                    {/* Year Filter */}
-                                    <div className="flex-1 min-w-[200px]">
-                                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                            <FiCalendar className="inline mr-1" /> Tahun
-                                        </label>
-                                        <select
-                                            value={selectedTahun}
-                                            onChange={(e) => setSelectedTahun(parseInt(e.target.value))}
-                                            className="form-select"
-                                        >
-                                            {availableYears.map(year => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Kab/Ko Filter */}
-                                    <div className="flex-1 min-w-[250px]">
-                                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                            <FiMapPin className="inline mr-1" /> Kabupaten/Kota
-                                        </label>
-                                        <select
-                                            value={selectedKabKo}
-                                            onChange={(e) => setSelectedKabKo(e.target.value)}
-                                            className="form-select"
-                                        >
-                                            <option value="semua">Semua Kabupaten/Kota</option>
-                                            {kabKoList.map(kab => (
-                                                <option key={kab} value={kab}>{kab}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* View Mode Toggle */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setViewMode('stats')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'stats'
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            <FiPieChart /> Statistik
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('list')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            <FiBarChart2 /> Daftar
-                                        </button>
-                                    </div>
-                                </div>
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                                <div className="text-3xl font-bold">{totalLaporan}</div>
+                                <div className="text-sm opacity-90">Total Laporan</div>
                             </div>
-                        )}
+                            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
+                                <div className="text-3xl font-bold">{totalDisetujui}</div>
+                                <div className="text-sm opacity-90">Disetujui</div>
+                            </div>
+                            <div className="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+                                <div className="text-3xl font-bold">{totalPending}</div>
+                                <div className="text-sm opacity-90">Pending</div>
+                            </div>
+                            <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white">
+                                <div className="text-3xl font-bold">{totalDitolak}</div>
+                                <div className="text-sm opacity-90">Ditolak</div>
+                            </div>
+                        </div>
 
-                        {/* Stats Overview for Admin Provinsi */}
-                        {isAdminProvinsi && viewMode === 'stats' && (
-                            <>
-                                {/* Summary Cards */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                    <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                                        <div className="text-3xl font-bold">{totalLaporan}</div>
-                                        <div className="text-sm opacity-90">Total Laporan</div>
-                                    </div>
-                                    <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-                                        <div className="text-3xl font-bold">{totalDisetujui}</div>
-                                        <div className="text-sm opacity-90">Disetujui</div>
-                                    </div>
-                                    <div className="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
-                                        <div className="text-3xl font-bold">{totalPending}</div>
-                                        <div className="text-sm opacity-90">Pending</div>
-                                    </div>
-                                    <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white">
-                                        <div className="text-3xl font-bold">{totalDitolak}</div>
-                                        <div className="text-sm opacity-90">Ditolak</div>
-                                    </div>
-                                </div>
+                        {/* Statistik per Kab/Ko */}
+                        <div className="card mb-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-neutral-800">
+                                    <FiPieChart className="inline mr-2" />
+                                    Statistik Laporan Harian per Kab/Kota - Tahun {selectedTahun}
+                                </h2>
+                                <button
+                                    onClick={handleExportStatsExcel}
+                                    className="btn btn-secondary text-sm"
+                                    disabled={exporting || kabKoStats.length === 0}
+                                >
+                                    {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
+                                    Export Statistik
+                                </button>
+                            </div>
 
-                                {/* Statistik per Kab/Ko */}
-                                <div className="card mb-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="text-xl font-bold text-neutral-800">
-                                            <FiPieChart className="inline mr-2" />
-                                            Statistik Laporan Harian per Kab/Kota - Tahun {selectedTahun}
-                                        </h2>
-                                        <button
-                                            onClick={handleExportStatsExcel}
-                                            className="btn btn-secondary text-sm"
-                                            disabled={exporting || kabKoStats.length === 0}
-                                        >
-                                            {exporting ? <FiLoader className="animate-spin" /> : <FiDownload />}
-                                            Export Statistik
-                                        </button>
-                                    </div>
-
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="bg-neutral-100">
-                                                    <th className="text-left p-3 rounded-tl-lg">Kabupaten/Kota</th>
-                                                    <th className="text-center p-3">Total Hafiz</th>
-                                                    <th className="text-center p-3">Sudah Lapor</th>
-                                                    <th className="text-center p-3">% Lapor</th>
-                                                    <th className="text-center p-3">Total Laporan</th>
-                                                    <th className="text-center p-3">Disetujui</th>
-                                                    <th className="text-center p-3">Pending</th>
-                                                    <th className="text-center p-3 rounded-tr-lg">Ditolak</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {kabKoStats.map((stat, idx) => (
-                                                    <tr
-                                                        key={stat.kabupaten_kota}
-                                                        className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-25'
-                                                            }`}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-neutral-100">
+                                            <th className="text-left p-3 rounded-tl-lg">Kabupaten/Kota</th>
+                                            <th className="text-center p-3">Total Hafiz</th>
+                                            <th className="text-center p-3">Sudah Lapor</th>
+                                            <th className="text-center p-3">% Lapor</th>
+                                            <th className="text-center p-3">Total Laporan</th>
+                                            <th className="text-center p-3">Disetujui</th>
+                                            <th className="text-center p-3">Pending</th>
+                                            <th className="text-center p-3 rounded-tr-lg">Ditolak</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {kabKoStats.map((stat, idx) => (
+                                            <tr
+                                                key={stat.kabupaten_kota}
+                                                className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-25'
+                                                    }`}
+                                            >
+                                                <td className="p-3 font-medium">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedKabKo(stat.kabupaten_kota);
+                                                            setViewMode('list');
+                                                        }}
+                                                        className="text-primary-600 hover:text-primary-800 hover:underline text-left"
                                                     >
-                                                        <td className="p-3 font-medium">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedKabKo(stat.kabupaten_kota);
-                                                                    setViewMode('list');
-                                                                }}
-                                                                className="text-primary-600 hover:text-primary-800 hover:underline text-left"
-                                                            >
-                                                                {stat.kabupaten_kota}
-                                                            </button>
-                                                        </td>
-                                                        <td className="text-center p-3">{stat.total_hafiz}</td>
-                                                        <td className="text-center p-3">{stat.hafiz_sudah_lapor}</td>
-                                                        <td className="text-center p-3">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <div className="w-24 bg-neutral-200 rounded-full h-2.5">
-                                                                    <div
-                                                                        className={`h-2.5 rounded-full transition-all ${stat.persentase_lapor >= 75 ? 'bg-green-500' :
-                                                                            stat.persentase_lapor >= 50 ? 'bg-yellow-500' :
-                                                                                stat.persentase_lapor >= 25 ? 'bg-orange-500' :
-                                                                                    'bg-red-500'
-                                                                            }`}
-                                                                        style={{ width: `${stat.persentase_lapor}%` }}
-                                                                    ></div>
-                                                                </div>
-                                                                <span className="font-semibold min-w-[3rem]">{stat.persentase_lapor}%</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="text-center p-3 font-semibold">{stat.total_laporan}</td>
-                                                        <td className="text-center p-3 text-green-600">{stat.laporan_disetujui}</td>
-                                                        <td className="text-center p-3 text-yellow-600">{stat.laporan_pending}</td>
-                                                        <td className="text-center p-3 text-red-600">{stat.laporan_ditolak}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot>
-                                                <tr className="bg-neutral-100 font-bold">
-                                                    <td className="p-3">TOTAL</td>
-                                                    <td className="text-center p-3">
-                                                        {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)}
-                                                    </td>
-                                                    <td className="text-center p-3">
-                                                        {kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0)}
-                                                    </td>
-                                                    <td className="text-center p-3">
-                                                        {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0) > 0
-                                                            ? Math.round((kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0) /
-                                                                kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)) * 100)
-                                                            : 0}%
-                                                    </td>
-                                                    <td className="text-center p-3">
-                                                        {kabKoStats.reduce((a, b) => a + b.total_laporan, 0)}
-                                                    </td>
-                                                    <td className="text-center p-3 text-green-600">
-                                                        {kabKoStats.reduce((a, b) => a + b.laporan_disetujui, 0)}
-                                                    </td>
-                                                    <td className="text-center p-3 text-yellow-600">
-                                                        {kabKoStats.reduce((a, b) => a + b.laporan_pending, 0)}
-                                                    </td>
-                                                    <td className="text-center p-3 text-red-600">
-                                                        {kabKoStats.reduce((a, b) => a + b.laporan_ditolak, 0)}
-                                                    </td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Status Filters */}
-                        {(viewMode === 'list' || !isAdminProvinsi) && (
-                            <div className="card mb-6">
-                                <div className="flex flex-wrap gap-4 items-center">
-                                    <div className="flex items-center gap-2">
-                                        <FiFilter className="text-neutral-500" />
-                                        <span className="font-semibold text-neutral-700">Filter Status:</span>
-                                    </div>
-                                    <div className="flex gap-2 flex-wrap">
-                                        <button
-                                            onClick={() => setFilter('semua')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'semua'
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            Semua ({totalLaporan})
-                                        </button>
-                                        <button
-                                            onClick={() => setFilter('pending')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'pending'
-                                                ? 'bg-accent-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            Pending ({totalPending})
-                                        </button>
-                                        <button
-                                            onClick={() => setFilter('disetujui')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'disetujui'
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            Disetujui ({totalDisetujui})
-                                        </button>
-                                        <button
-                                            onClick={() => setFilter('ditolak')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'ditolak'
-                                                ? 'bg-red-600 text-white'
-                                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                                }`}
-                                        >
-                                            Ditolak ({totalDitolak})
-                                        </button>
-                                    </div>
-                                </div>
+                                                        {stat.kabupaten_kota}
+                                                    </button>
+                                                </td>
+                                                <td className="text-center p-3">{stat.total_hafiz}</td>
+                                                <td className="text-center p-3">{stat.hafiz_sudah_lapor}</td>
+                                                <td className="text-center p-3">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-24 bg-neutral-200 rounded-full h-2.5">
+                                                            <div
+                                                                className={`h-2.5 rounded-full transition-all ${stat.persentase_lapor >= 75 ? 'bg-green-500' :
+                                                                    stat.persentase_lapor >= 50 ? 'bg-yellow-500' :
+                                                                        stat.persentase_lapor >= 25 ? 'bg-orange-500' :
+                                                                            'bg-red-500'
+                                                                    }`}
+                                                                style={{ width: `${stat.persentase_lapor}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="font-semibold min-w-[3rem]">{stat.persentase_lapor}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="text-center p-3 font-semibold">{stat.total_laporan}</td>
+                                                <td className="text-center p-3 text-green-600">{stat.laporan_disetujui}</td>
+                                                <td className="text-center p-3 text-yellow-600">{stat.laporan_pending}</td>
+                                                <td className="text-center p-3 text-red-600">{stat.laporan_ditolak}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr className="bg-neutral-100 font-bold">
+                                            <td className="p-3">TOTAL</td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)}
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0)}
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_hafiz, 0) > 0
+                                                    ? Math.round((kabKoStats.reduce((a, b) => a + b.hafiz_sudah_lapor, 0) /
+                                                        kabKoStats.reduce((a, b) => a + b.total_hafiz, 0)) * 100)
+                                                    : 0}%
+                                            </td>
+                                            <td className="text-center p-3">
+                                                {kabKoStats.reduce((a, b) => a + b.total_laporan, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-green-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_disetujui, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-yellow-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_pending, 0)}
+                                            </td>
+                                            <td className="text-center p-3 text-red-600">
+                                                {kabKoStats.reduce((a, b) => a + b.laporan_ditolak, 0)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
                             </div>
-                        )}
-
-                        {/* Laporan List */}
-                        {(viewMode === 'list' || !isAdminProvinsi) && (
-                            <div className="grid gap-6">
-                                {refreshing ? (
-                                    <div className="card text-center py-12">
-                                        <FiLoader className="animate-spin text-4xl text-primary-600 mx-auto mb-4" />
-                                        <p className="text-neutral-600">Memuat data...</p>
-                                    </div>
-                                ) : laporanList.length === 0 ? (
-                                    <div className="card text-center py-12">
-                                        <FiBarChart2 className="text-4xl text-neutral-400 mx-auto mb-4" />
-                                        <p className="text-neutral-600">Belum ada data laporan{selectedKabKo !== 'semua' ? ` untuk ${selectedKabKo}` : ''} di tahun {selectedTahun}</p>
-                                    </div>
-                                ) : (
-                                    laporanList.map((laporan) => (
-                                        <LaporanCard
-                                            key={laporan.id}
-                                            laporan={laporan}
-                                            isHafiz={isHafiz}
-                                            userRole={user.role}
-                                            onApprove={handleApprove}
-                                            onReject={handleReject}
-                                            onEdit={handleEdit}
-                                            onView={(l) => setLaporanToView(l)}
-                                        />
-                                    ))
-                                )}
-                            </div>
-                        )}
+                        </div>
                     </>
                 )}
 
-                {/* Add/Edit Laporan Modal */}
-                {showModal && (
-                    <AddLaporanModal
-                        onClose={() => setShowModal(false)}
-                        hafizId={hafizId ? String(hafizId) : undefined}
-                        onSuccess={() => fetchLaporanData()}
-                        laporanToEdit={laporanToEdit}
-                    />
+                {/* Status Filters */}
+                {(viewMode === 'list' || !isAdminProvinsi) && (
+                    <div className="card mb-6">
+                        <div className="flex flex-wrap gap-4 items-center">
+                            <div className="flex items-center gap-2">
+                                <FiFilter className="text-neutral-500" />
+                                <span className="font-semibold text-neutral-700">Filter Status:</span>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                <button
+                                    onClick={() => setFilter('semua')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'semua'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Semua ({totalLaporan})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('pending')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'pending'
+                                        ? 'bg-accent-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Pending ({totalPending})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('disetujui')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'disetujui'
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Disetujui ({totalDisetujui})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('ditolak')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'ditolak'
+                                        ? 'bg-red-600 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                        }`}
+                                >
+                                    Ditolak ({totalDitolak})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
-                {/* Detail Laporan Modal */}
-                {laporanToView && (
-                    <DetailLaporanModal
-                        laporan={laporanToView}
-                        onClose={() => setLaporanToView(null)}
-                    />
+                {/* Laporan List */}
+                {(viewMode === 'list' || !isAdminProvinsi) && (
+                    <div className="grid gap-6">
+                        {refreshing ? (
+                            <div className="card text-center py-12">
+                                <FiLoader className="animate-spin text-4xl text-primary-600 mx-auto mb-4" />
+                                <p className="text-neutral-600">Memuat data...</p>
+                            </div>
+                        ) : laporanList.length === 0 ? (
+                            <div className="card text-center py-12">
+                                <FiBarChart2 className="text-4xl text-neutral-400 mx-auto mb-4" />
+                                <p className="text-neutral-600">Belum ada data laporan{selectedKabKo !== 'semua' ? ` untuk ${selectedKabKo}` : ''} di tahun {selectedTahun}</p>
+                            </div>
+                        ) : (
+                            laporanList.map((laporan) => (
+                                <LaporanCard
+                                    key={laporan.id}
+                                    laporan={laporan}
+                                    isHafiz={isHafiz}
+                                    userRole={user.role}
+                                    onApprove={handleApprove}
+                                    onReject={handleReject}
+                                    onEdit={handleEdit}
+                                    onView={(l) => setLaporanToView(l)}
+                                />
+                            ))
+                        )}
+                    </div>
                 )}
-            </main>
-        </div>
-    );
+            </>
+                )}
+
+            {/* Add/Edit Laporan Modal */}
+            {showModal && (
+                <AddLaporanModal
+                    onClose={() => setShowModal(false)}
+                    hafizId={hafizId ? String(hafizId) : undefined}
+                    onSuccess={() => fetchLaporanData()}
+                    laporanToEdit={laporanToEdit}
+                />
+            )}
+
+            {/* Detail Laporan Modal */}
+            {laporanToView && (
+                <DetailLaporanModal
+                    laporan={laporanToView}
+                    onClose={() => setLaporanToView(null)}
+                />
+            )}
+        </main>
+    </div>
+);
 }
 
 interface LaporanCardProps {
@@ -1416,147 +1384,7 @@ function DetailLaporanModal({ laporan, onClose }: { laporan: LaporanData, onClos
     );
 }
 
-function AbsensiView({ user }: { user: UserData }) {
-    const [absensiList, setAbsensiList] = useState<AbsensiData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        async function loadData() {
-            try {
-                setLoading(true);
-                const params = new URLSearchParams();
-
-                if (user.role === 'hafiz') {
-                    params.append('hafiz_id', user.id.toString());
-                } else if (user.role === 'admin_kabko' && user.kabupaten_kota) {
-                    params.append('kabupaten_kota', user.kabupaten_kota);
-                }
-
-                // Fetch absensi data with filters
-                const absensiRes = await fetch(`/api/absensi?${params.toString()}`);
-                if (absensiRes.ok) {
-                    const absensiData = await absensiRes.json();
-                    setAbsensiList(absensiData.data || []);
-                }
-            } catch (err) {
-                console.error('Error loading data:', err);
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadData();
-    }, [user]);
-
-    const filteredList = absensiList.filter(item =>
-        item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.nik.includes(searchTerm) ||
-        item.kabupaten_kota.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const stats = {
-        hadir: absensiList.filter(x => x.status === 'hadir').length,
-        tidak_hadir: absensiList.filter(x => x.status === 'tidak_hadir').length,
-        total: absensiList.length
-    };
-
-    if (loading) return <div className="py-12 text-center"><FiLoader className="animate-spin text-4xl mx-auto text-primary-600" /></div>;
-
-    return (
-        <div>
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="card bg-green-50 border-2 border-green-200 p-4 rounded-xl">
-                    <h4 className="text-sm font-semibold text-green-700 mb-1">Hadir</h4>
-                    <p className="text-3xl font-bold text-green-900">{stats.hadir}</p>
-                </div>
-                <div className="card bg-red-50 border-2 border-red-200 p-4 rounded-xl">
-                    <h4 className="text-sm font-semibold text-red-700 mb-1">Tidak Hadir</h4>
-                    <p className="text-3xl font-bold text-red-900">{stats.tidak_hadir}</p>
-                </div>
-                <div className="card bg-blue-50 border-2 border-blue-200 p-4 rounded-xl">
-                    <h4 className="text-sm font-semibold text-blue-700 mb-1">Total Entri</h4>
-                    <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
-                <div className="p-4 border-b border-neutral-100 flex gap-4">
-                    <div className="relative flex-1 max-w-md">
-                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                        <input
-                            type="text"
-                            placeholder="Cari nama, NIK, atau kota..."
-                            className="input input-bordered w-full pl-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="table w-full">
-                        <thead className="bg-neutral-50 text-neutral-600">
-                            <tr>
-                                <th className="px-6 py-4 text-left">Waktu</th>
-                                <th className="px-6 py-4 text-left">Hafiz</th>
-                                <th className="px-6 py-4 text-left">Kabupaten/Kota</th>
-                                <th className="px-6 py-4 text-left">Status</th>
-                                <th className="px-6 py-4 text-left">Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                            {filteredList.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-neutral-500">
-                                        Belum ada data absensi
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredList.map((item) => (
-                                    <tr key={item.id} className="hover:bg-neutral-50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-medium text-neutral-900">
-                                                    {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                                                </span>
-                                                <span className="text-xs text-neutral-500">{item.waktu}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-neutral-800">{item.nama}</div>
-                                            <div className="text-xs font-mono text-neutral-500">{item.nik}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-600">{item.kabupaten_kota}</td>
-                                        <td className="px-6 py-4">
-                                            {item.status === 'hadir' && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                                    <FiCheckCircle /> Hadir
-                                                </span>
-                                            )}
-                                            {item.status === 'tidak_hadir' && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                                    <FiXCircle /> Tidak Hadir
-                                                </span>
-                                            )}
-                                            {item.status === 'izin' && (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                                                    <FiClock /> Izin
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-600 text-sm">
-                                            {item.keterangan || '-'}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export default function LaporanHarianPage() {
     return (
