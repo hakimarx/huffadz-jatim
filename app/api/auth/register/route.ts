@@ -58,11 +58,15 @@ export async function POST(request: NextRequest) {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Insert user
+        // Generate verification token
+        const { generateVerificationToken, sendEmail } = await import('@/lib/mail');
+        const verificationToken = generateVerificationToken();
+
+        // Insert user (set is_active = 0 and is_verified = 0)
         const userId = await insert(
-            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active) 
-             VALUES (?, ?, ?, 'hafiz', ?, ?, 1)`,
-            [email, hashedPassword, nama, telepon || null, kabupaten_kota || null]
+            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token) 
+             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?)`,
+            [email, hashedPassword, nama, telepon || null, kabupaten_kota || null, verificationToken]
         );
 
         // Insert hafiz profile
@@ -73,10 +77,30 @@ export async function POST(request: NextRequest) {
             [userId, nik, nama, kabupaten_kota || 'Jawa Timur', telepon || null, new Date().getFullYear()]
         );
 
+        // Send verification email (mock)
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const verificationLink = `${baseUrl}/verify?token=${verificationToken}`;
+
+        await sendEmail({
+            to: email,
+            subject: 'Verifikasi Email - LPTQ Jatim',
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Selamat Datang di LPTQ Jatim</h2>
+                    <p>Halo ${nama},</p>
+                    <p>Terima kasih telah mendaftar. Silakan klik tombol di bawah ini untuk memverifikasi email Anda:</p>
+                    <a href="${verificationLink}" style="display: inline-block; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Verifikasi Email</a>
+                    <p>Atau klik link berikut: <br> <a href="${verificationLink}">${verificationLink}</a></p>
+                    <p>Jika Anda tidak merasa mendaftar, silakan abaikan email ini.</p>
+                </div>
+            `
+        });
+
         return NextResponse.json({
             success: true,
-            message: 'Registrasi berhasil. Silakan login.',
-            userId
+            message: 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi.',
+            userId,
+            requiresVerification: true
         });
     } catch (error: any) {
         console.error('Registration error:', error);

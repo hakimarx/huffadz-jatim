@@ -117,7 +117,7 @@ function LaporanHarianContent() {
         if (user) {
             fetchLaporanData();
         }
-    }, [user, selectedKabKo, selectedTahun, filter]);
+    }, [user, selectedKabKo, selectedTahun, filter, hafizId]);
 
     async function fetchUserData() {
         try {

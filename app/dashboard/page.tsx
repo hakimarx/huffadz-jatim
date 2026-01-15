@@ -496,6 +496,7 @@ function HafizDashboard() {
         loading: true
     });
     const [user, setUser] = useState<UserData | null>(null);
+    const [showProfilePrompt, setShowProfilePrompt] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
@@ -506,12 +507,18 @@ function HafizDashboard() {
                 if (!sessionData.user) return;
                 setUser(sessionData.user);
 
-                // Get Hafiz ID
-                const hafizRes = await fetch(`/api/hafiz?limit=1`);
+                // Get Hafiz ID for the logged-in user
+                const hafizRes = await fetch(`/api/hafiz`);
                 const hafizData = await hafizRes.json();
 
                 if (hafizData.data && hafizData.data.length > 0) {
-                    const hafizId = hafizData.data[0].id;
+                    const profile = hafizData.data[0];
+                    const hafizId = profile.id;
+
+                    // Check if profile is incomplete
+                    if (profile.tempat_lahir === '-' || profile.alamat === '-' || !profile.telepon) {
+                        setShowProfilePrompt(true);
+                    }
 
                     // Fetch Laporan Stats
                     const laporanRes = await fetch(`/api/laporan?hafiz_id=${hafizId}`);
@@ -538,6 +545,23 @@ function HafizDashboard() {
 
     return (
         <div className="space-y-8">
+            {showProfilePrompt && (
+                <div className="bg-amber-50 border-2 border-amber-200 p-6 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in shadow-lg shadow-amber-500/10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">
+                            <FiAlertCircle />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-amber-900">Profil Belum Lengkap</h3>
+                            <p className="text-amber-700">Silakan lengkapi profil Anda untuk dapat menggunakan semua fitur aplikasi.</p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/profil" className="btn bg-amber-500 hover:bg-amber-600 text-white border-none px-8 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                        Lengkapi Profil Sekarang
+                    </Link>
+                </div>
+            )}
+
             {/* Greeting Card */}
             <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-500/30 group">
                 <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-1000"></div>
