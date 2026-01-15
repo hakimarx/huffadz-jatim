@@ -444,8 +444,8 @@ function PengaturanContent() {
                             <button
                                 onClick={() => setActiveTab('users')}
                                 className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'users'
-                                        ? 'border-primary-500 text-primary-600'
-                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    ? 'border-primary-500 text-primary-600'
+                                    : 'border-transparent text-neutral-500 hover:text-neutral-700'
                                     }`}
                             >
                                 User Management
@@ -453,8 +453,8 @@ function PengaturanContent() {
                             <button
                                 onClick={() => setActiveTab('app')}
                                 className={`pb-3 px-1 font-medium transition-colors border-b-2 ${activeTab === 'app'
-                                        ? 'border-primary-500 text-primary-600'
-                                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    ? 'border-primary-500 text-primary-600'
+                                    : 'border-transparent text-neutral-500 hover:text-neutral-700'
                                     }`}
                             >
                                 Aplikasi & Logo
@@ -529,9 +529,6 @@ function PengaturanContent() {
                                                         </th>
                                                     )}
                                                     <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                                                        Telepon
-                                                    </th>
-                                                    <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                                                         Status
                                                     </th>
                                                     <th className="text-right px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
@@ -560,9 +557,6 @@ function PengaturanContent() {
                                                                 {managedUser.kabupaten_kota || '-'}
                                                             </td>
                                                         )}
-                                                        <td className="px-6 py-4 text-neutral-600">
-                                                            {managedUser.telepon || '-'}
-                                                        </td>
                                                         <td className="px-6 py-4">
                                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${managedUser.is_active
                                                                 ? 'bg-green-100 text-green-700'
@@ -812,24 +806,6 @@ function PengaturanContent() {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Telepon */}
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                                    Telepon
-                                </label>
-                                <div className="relative">
-                                    <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <input
-                                        type="tel"
-                                        name="telepon"
-                                        value={formData.telepon}
-                                        onChange={handleFormChange}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        placeholder="08xxxxxxxxxx"
-                                    />
-                                </div>
-                            </div>
 
                             {/* Actions */}
                             <div className="flex items-center gap-3 pt-4">

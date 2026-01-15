@@ -109,6 +109,7 @@ export interface DBUser {
     role: UserRole;
     nama: string;
     kabupaten_kota: string | null;
+    telepon: string | null;
     is_active: boolean;
     created_at: Date;
     updated_at: Date;

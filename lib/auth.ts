@@ -10,6 +10,7 @@ export interface SessionData {
     role?: UserRole;
     nama?: string;
     kabupaten_kota?: string | null;
+    telepon?: string | null;
     isLoggedIn: boolean;
 }
 
@@ -82,6 +83,7 @@ export async function loginUser(email: string, password: string): Promise<{
         session.role = user.role;
         session.nama = user.nama;
         session.kabupaten_kota = user.kabupaten_kota;
+        session.telepon = user.telepon;
         session.isLoggedIn = true;
         await session.save();
 

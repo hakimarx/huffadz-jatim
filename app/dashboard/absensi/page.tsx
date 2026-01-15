@@ -23,6 +23,7 @@ interface UserData {
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
     kabupaten_kota?: string;
+    telepon?: string;
     foto_profil?: string;
 }
 

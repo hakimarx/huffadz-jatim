@@ -12,6 +12,7 @@ interface UserData {
     nama: string;
     role: 'admin_provinsi' | 'admin_kabko' | 'hafiz';
     kabupaten_kota?: string;
+    telepon?: string;
     foto_profil?: string;
 }
 
@@ -22,6 +23,7 @@ function ProfilContent() {
     const [ocrProcessing, setOcrProcessing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [kabupatenList, setKabupatenList] = useState<{ id: string, nama: string }[]>([]);
 
     const [formData, setFormData] = useState({
         nik: '',
@@ -49,6 +51,17 @@ function ProfilContent() {
                 // Use MySQL session API
                 const sessionResponse = await fetch('/api/auth/session');
                 const sessionData = await sessionResponse.json();
+
+                // Fetch Kabupaten List
+                try {
+                    const kabRes = await fetch('/api/kabupaten');
+                    if (kabRes.ok) {
+                        const kabData = await kabRes.json();
+                        setKabupatenList(kabData.data || []);
+                    }
+                } catch (kErr) {
+                    console.error('Error fetching kabupaten list:', kErr);
+                }
 
                 if (!sessionResponse.ok || !sessionData.user) {
                     console.error('No session found');
@@ -126,10 +139,23 @@ function ProfilContent() {
             uploadData.append('file', processedFile);
             uploadData.append('type', 'profile-photo');
 
-            // Upload via API - For now, show message that this feature needs API implementation
-            // TODO: Implement /api/upload endpoint for file uploads
-            alert('Fitur upload foto sedang dalam pengembangan. Silakan hubungi administrator.');
-            console.log('Photo upload needs /api/upload endpoint implementation');
+            // Upload via API
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: uploadData
+            });
+
+            if (!response.ok) {
+                throw new Error('Gagal upload foto');
+            }
+
+            const result = await response.json();
+
+            // Update state
+            setFormData(prev => ({ ...prev, foto_profil: result.url }));
+
+            // Show location as requested by user
+            alert(`✅ Foto berhasil diupload!\n\nLokasi File: ${result.debug_path}\nURL Public: ${result.url}`);
 
         } catch (err) {
             console.error('Unexpected error uploading photo:', err);
@@ -469,11 +495,20 @@ function ProfilContent() {
                                         required
                                     >
                                         <option value="">Pilih Kabupaten/Kota</option>
-                                        <option value="Kota Surabaya">Kota Surabaya</option>
-                                        <option value="Kota Malang">Kota Malang</option>
-                                        <option value="Kabupaten Sidoarjo">Kabupaten Sidoarjo</option>
-                                        <option value="Kabupaten Gresik">Kabupaten Gresik</option>
-                                        {/* Add all 38 kab/ko */}
+                                        {kabupatenList.length > 0 ? (
+                                            kabupatenList.map((kab) => (
+                                                <option key={kab.id} value={kab.nama}>
+                                                    {kab.nama}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Kota Surabaya">Kota Surabaya</option>
+                                                <option value="Kota Malang">Kota Malang</option>
+                                                <option value="Kabupaten Sidoarjo">Kabupaten Sidoarjo</option>
+                                                <option value="Kabupaten Gresik">Kabupaten Gresik</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 

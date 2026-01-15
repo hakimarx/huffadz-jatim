@@ -240,7 +240,7 @@ h6 {
   border-radius: 1.5rem;
   padding: 1.5rem;
   box-shadow: 0 20px 25px -5px rgba(226, 232, 240, 0.5);
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--neutral-200);
   transition: all 0.3s;
 }
 

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         }
 
         const users = await query<Omit<DBUser, 'password'>>(
-            `SELECT id, email, role, nama, kabupaten_kota, telepon, is_active, created_at, updated_at 
+            `SELECT id, email, role, nama, kabupaten_kota, is_active, created_at, updated_at 
        FROM users WHERE ${whereClause} ORDER BY nama ASC`,
             params
         );
@@ -145,13 +145,11 @@ export async function PUT(request: NextRequest) {
             `UPDATE users SET 
                 nama = ?,
                 kabupaten_kota = ?,
-                telepon = ?,
                 updated_at = NOW()
             WHERE id = ?`,
             [
                 data.nama,
                 data.kabupaten_kota,
-                data.telepon || null,
                 data.id
             ]
         );
