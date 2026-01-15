@@ -77,6 +77,11 @@ function KuotaStatistikContent() {
         );
     }
 
+    // Filter data based on role
+    const filteredKuota = user.role === 'admin_kabko' 
+        ? mockKuota.filter(item => item.kabupaten === user.kabupaten_kota)
+        : mockKuota;
+
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
             <Sidebar
@@ -93,7 +98,7 @@ function KuotaStatistikContent() {
                             Kuota & Statistik
                         </h1>
                         <p className="text-neutral-600">
-                            Statistik pendaftar dan kuota per kabupaten/kota
+                            Statistik pendaftar dan kuota {user.role === 'admin_kabko' ? `Wilayah ${user.kabupaten_kota}` : 'per kabupaten/kota'}
                         </p>
                     </div>
                     <div className="flex gap-3 mt-4 lg:mt-0">
@@ -118,27 +123,27 @@ function KuotaStatistikContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <StatsCard
                         title="Total Pendaftar"
-                        value="4,190"
+                        value={filteredKuota.reduce((acc, curr) => acc + curr.pendaftar, 0).toLocaleString()}
                         icon={<FiUsers />}
                         color="primary"
                         trend={{ value: 15, isPositive: true }}
                     />
                     <StatsCard
                         title="Total Kuota"
-                        value="1,000"
+                        value={filteredKuota.reduce((acc, curr) => acc + curr.kuota, 0).toLocaleString()}
                         icon={<FiPieChart />}
                         color="accent"
                     />
                     <StatsCard
                         title="Total Lulus"
-                        value="952"
+                        value={filteredKuota.reduce((acc, curr) => acc + curr.lulus, 0).toLocaleString()}
                         icon={<FiTrendingUp />}
                         color="success"
                         trend={{ value: 12, isPositive: true }}
                     />
                     <StatsCard
                         title="Tingkat Kelulusan"
-                        value="95.2%"
+                        value={(filteredKuota.reduce((acc, curr) => acc + curr.persen, 0) / (filteredKuota.length || 1)).toFixed(1) + '%'}
                         icon={<FiBarChart2 />}
                         color="info"
                     />
@@ -147,7 +152,7 @@ function KuotaStatistikContent() {
                 {/* Statistik per Kabupaten */}
                 <div className="card mb-6">
                     <div className="card-header">
-                        <h2 className="card-title">Statistik per Kabupaten/Kota</h2>
+                        <h2 className="card-title">Statistik {user.role === 'admin_kabko' ? 'Wilayah' : 'per Kabupaten/Kota'}</h2>
                     </div>
 
                     <div className="table-container">
@@ -164,28 +169,36 @@ function KuotaStatistikContent() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {mockKuota.map((item, index) => (
-                                    <tr key={index}>
-                                        <td>{index + 1}</td>
-                                        <td className="font-semibold">{item.kabupaten}</td>
-                                        <td>{item.pendaftar.toLocaleString()}</td>
-                                        <td>{item.kuota}</td>
-                                        <td>{item.lulus}</td>
-                                        <td>
-                                            <span className="badge badge-success">
-                                                {item.persen}%
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="w-full bg-neutral-200 rounded-full h-2">
-                                                <div
-                                                    className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full"
-                                                    style={{ width: `${item.persen}%` }}
-                                                />
-                                            </div>
+                                {filteredKuota.length > 0 ? (
+                                    filteredKuota.map((item, index) => (
+                                        <tr key={index}>
+                                            <td>{index + 1}</td>
+                                            <td className="font-semibold">{item.kabupaten}</td>
+                                            <td>{item.pendaftar.toLocaleString()}</td>
+                                            <td>{item.kuota}</td>
+                                            <td>{item.lulus}</td>
+                                            <td>
+                                                <span className="badge badge-success">
+                                                    {item.persen}%
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="w-full bg-neutral-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full"
+                                                        style={{ width: `${item.persen}%` }}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="text-center py-4">
+                                            Data tidak ditemukan untuk wilayah Anda ({user.kabupaten_kota})
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -201,7 +214,7 @@ function KuotaStatistikContent() {
                         <div className="h-64 flex items-center justify-center bg-neutral-50 rounded-lg">
                             <div className="text-center text-neutral-500">
                                 <FiPieChart size={48} className="mx-auto mb-2" />
-                                <p>Pie Chart - Distribusi per Kab/Ko</p>
+                                <p>Pie Chart - Distribusi {user.role === 'admin_kabko' ? 'Wilayah' : 'per Kab/Ko'}</p>
                                 <p className="text-sm">(Akan diimplementasikan dengan Chart.js)</p>
                             </div>
                         </div>

@@ -164,13 +164,15 @@ function DetailHafizContent() {
                             </div>
 
                             <div className="flex flex-wrap gap-3">
-                                <button
-                                    onClick={() => router.push(`/dashboard/hafiz/${hafizId}/edit`)}
-                                    className="btn btn-primary"
-                                >
-                                    <FiEdit />
-                                    Edit
-                                </button>
+                                {currentUser && currentUser.role !== 'hafiz' && (
+                                    <button
+                                        onClick={() => router.push(`/dashboard/hafiz/${hafizId}/edit`)}
+                                        className="btn btn-primary"
+                                    >
+                                        <FiEdit />
+                                        Edit
+                                    </button>
+                                )}
                                 {currentUser && (currentUser.role === 'admin_provinsi' || currentUser.role === 'admin_kabko') && (
                                     <button
                                         onClick={() => setShowMutasiModal(true)}

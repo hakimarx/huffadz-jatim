@@ -433,12 +433,18 @@ function DataHafizContent() {
                                                     {hafiz.nik}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <button
-                                                        onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}`)}
-                                                        className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline text-left"
-                                                    >
-                                                        {hafiz.nama}
-                                                    </button>
+                                                    {user && user.role !== 'hafiz' ? (
+                                                        <button
+                                                            onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}`)}
+                                                            className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline text-left"
+                                                        >
+                                                            {hafiz.nama}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-neutral-800">
+                                                            {hafiz.nama}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-neutral-600">
                                                     {hafiz.kabupaten_kota}
@@ -483,20 +489,24 @@ function DataHafizContent() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}`)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                            title="Lihat Detail"
-                                                        >
-                                                            <FiEye size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}/edit`)}
-                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <FiEdit size={16} />
-                                                        </button>
+                                                        {user && user.role !== 'hafiz' && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}`)}
+                                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                                    title="Lihat Detail"
+                                                                >
+                                                                    <FiEye size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => router.push(`/dashboard/hafiz/${hafiz.id || hafiz.nik}/edit`)}
+                                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    <FiEdit size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                         {/* Tombol Mutasi - untuk admin_provinsi dan admin_kabko */}
                                                         {user && (user.role === 'admin_provinsi' || user.role === 'admin_kabko') && (
                                                             <button

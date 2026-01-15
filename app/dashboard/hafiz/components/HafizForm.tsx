@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { FiSave, FiX, FiAlertCircle, FiLoader, FiPlus, FiTrash2 } from 'react-icons/fi';
+import SignatureCanvas from 'react-signature-canvas';
 
 // Validation Schema
 const hafizSchema = z.object({
@@ -37,6 +38,7 @@ const hafizSchema = z.object({
     is_aktif: z.boolean().optional(),
     nomor_rekening: z.string().optional(),
     nama_bank: z.string().optional(),
+    tanda_tangan: z.string().optional(),
 });
 
 type HafizFormData = z.infer<typeof hafizSchema>;
@@ -53,6 +55,9 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+
+    const sigPad = useRef<SignatureCanvas>(null);
+    const [signatureUrl, setSignatureUrl] = useState<string | null>(initialData?.tanda_tangan || null);
 
     const {
         register,
@@ -72,6 +77,50 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
     });
 
     const mengajar = watch('mengajar');
+
+    const clearSignature = () => {
+        sigPad.current?.clear();
+        setSignatureUrl(null);
+        setValue('tanda_tangan', '');
+    };
+
+    const saveSignature = async () => {
+        if (sigPad.current?.isEmpty()) {
+            alert('Tanda tangan masih kosong');
+            return;
+        }
+
+        const dataUrl = sigPad.current?.getTrimmedCanvas().toDataURL('image/png');
+        if (!dataUrl) return;
+
+        // Convert base64 to blob
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], 'signature.png', { type: 'image/png' });
+
+        // Upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'signatures');
+
+        try {
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await uploadRes.json();
+            if (uploadRes.ok) {
+                setSignatureUrl(result.url);
+                setValue('tanda_tangan', result.url);
+                alert('Tanda tangan berhasil disimpan');
+            } else {
+                alert('Gagal mengupload tanda tangan');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error uploading signature');
+        }
+    };
 
     const onSubmit = async (data: HafizFormData) => {
         setLoading(true);
@@ -102,6 +151,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 keterangan: data.keterangan?.trim() || null,
                 nomor_rekening: data.nomor_rekening?.trim() || null,
                 nama_bank: data.nama_bank?.trim() || null,
+                tanda_tangan: data.tanda_tangan || null,
                 status_kelulusan: 'pending',
             };
 
@@ -453,54 +503,43 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Sertifikat Tahfidz */}
+                    {/* Lembaga Pemberi Ijazah Tahfidz */}
                     <div className="form-group md:col-span-2">
-                        <label className="form-label">Sertifikat Tahfidz</label>
+                        <label className="form-label">Lembaga Pemberi Ijazah Tahfidz</label>
                         <input
                             type="text"
                             className="form-input"
-                            placeholder="Juz 30, Juz 29-30, 30 Juz, dll"
+                            placeholder="Nama Pesantren / Lembaga"
                             {...register('sertifikat_tahfidz')}
                         />
-                        <span className="form-help">Contoh: Juz 30, Juz 29-30, 30 Juz</span>
+                        <span className="form-help">Nama lembaga yang mengeluarkan sertifikat/ijazah tahfidz</span>
                     </div>
 
-                    {/* Mengajar */}
-                    <div className="form-group md:col-span-2">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="form-checkbox"
-                                {...register('mengajar')}
-                            />
-                            <span className="font-medium">Sedang Mengajar</span>
-                        </label>
+                    {/* Lembaga Mengajar & TMT */}
+                    <div className="form-group">
+                        <label className="form-label">Lembaga Mengajar</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Nama Lembaga / Pesantren"
+                            {...register('tempat_mengajar')}
+                            onChange={(e) => {
+                                setValue('tempat_mengajar', e.target.value);
+                                setValue('mengajar', !!e.target.value);
+                            }}
+                        />
+                        <span className="form-help">Isi jika sedang mengajar</span>
                     </div>
 
-                    {/* Tempat Mengajar (conditional) */}
-                    {mengajar && (
-                        <>
-                            <div className="form-group">
-                                <label className="form-label">Tempat Mengajar</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Pondok Pesantren ABC"
-                                    {...register('tempat_mengajar')}
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">TMT Mengajar</label>
-                                <input
-                                    type="date"
-                                    className="form-input"
-                                    {...register('tmt_mengajar')}
-                                />
-                                <span className="form-help">Tanggal Mulai Tugas</span>
-                            </div>
-                        </>
-                    )}
+                    <div className="form-group">
+                        <label className="form-label">TMT Mengajar</label>
+                        <input
+                            type="date"
+                            className="form-input"
+                            {...register('tmt_mengajar')}
+                        />
+                        <span className="form-help">Tanggal Mulai Tugas</span>
+                    </div>
 
                     {/* Keterangan */}
                     <div className="form-group md:col-span-2">
@@ -547,6 +586,54 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </div>
             </div>
 
+            {/* Tanda Tangan */}
+            <div className="card-modern">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                    Tanda Tangan Digital
+                </h3>
+
+                <div className="form-group">
+                    <label className="form-label">Tanda Tangan (Sekali Saja)</label>
+                    <div className="border border-neutral-300 rounded-xl overflow-hidden bg-white">
+                        {signatureUrl ? (
+                            <div className="relative p-4 flex justify-center bg-white">
+                                <img src={signatureUrl} alt="Tanda Tangan" className="h-32 object-contain" />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (confirm('Hapus tanda tangan dan buat baru?')) {
+                                            setSignatureUrl(null);
+                                            setValue('tanda_tangan', '');
+                                        }
+                                    }}
+                                    className="absolute top-2 right-2 p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                                >
+                                    <FiTrash2 />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <SignatureCanvas
+                                    ref={sigPad}
+                                    penColor="black"
+                                    canvasProps={{ className: 'w-full h-40 bg-white cursor-crosshair' }}
+                                />
+                                <div className="flex justify-end gap-2 p-2 border-t border-neutral-200 bg-neutral-50">
+                                    <button type="button" onClick={() => sigPad.current?.clear()} className="btn btn-sm btn-secondary">
+                                        Bersihkan
+                                    </button>
+                                    <button type="button" onClick={saveSignature} className="btn btn-sm btn-primary">
+                                        Simpan Tanda Tangan
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <span className="form-help">Silakan tanda tangan di area kotak di atas, lalu klik Simpan.</span>
+                </div>
+            </div>
+
             {/* Riwayat Mengajar Section (Edit Mode Only) */}
             {mode === 'edit' && hafizId && (
                 <HistorySection hafizId={hafizId} initialHistory={(initialData as any)?.riwayat_mengajar || []} />
@@ -585,7 +672,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
     );
 }
 
-function HistorySection({ hafizId, initialHistory }: { hafizId: string, initialHistory: any[] }) {
+export function HistorySection({ hafizId, initialHistory }: { hafizId: string, initialHistory: any[] }) {
     const [history, setHistory] = useState<any[]>(initialHistory);
     const [loading, setLoading] = useState(false);
     const [newItem, setNewItem] = useState({
@@ -607,9 +694,6 @@ function HistorySection({ hafizId, initialHistory }: { hafizId: string, initialH
             });
             if (!res.ok) throw new Error('Gagal menambah riwayat');
 
-            // Refresh list or optimistic update? List refresh via router refresh might be better but here we can just update local state if we knew the ID.
-            // But we can just reload the page or fetch again. For simplicity, reload or optimistic add with fake ID then reload on next visit.
-            // Actually API returns ID.
             const result = await res.json();
 
             setHistory([{ ...newItem, id: result.id, tmt_mulai: newItem.tmt_mulai || null, tmt_selesai: newItem.tmt_selesai || null }, ...history]);
@@ -639,7 +723,7 @@ function HistorySection({ hafizId, initialHistory }: { hafizId: string, initialH
         <div className="card-modern mt-6">
             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
-                Riwayat Mengajar
+                Riwayat / Lembaga Mengajar Lainnya
             </h3>
 
             <div className="bg-neutral-50 p-4 rounded-xl mb-6">

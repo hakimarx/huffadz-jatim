@@ -160,8 +160,8 @@ export async function POST(request: NextRequest) {
                 alamat, rt, rw, desa_kelurahan, kecamatan, kabupaten_kota,
                 telepon, email, nama_bank, nomor_rekening, sertifikat_tahfidz, mengajar, tmt_mengajar,
                 tempat_mengajar, tahun_tes, status_kelulusan, nilai_tahfidz,
-                nilai_wawasan, keterangan, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                nilai_wawasan, keterangan, tanda_tangan, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
                 userIdToLink,
                 data.nik, data.nama, data.tempat_lahir, data.tanggal_lahir, data.jenis_kelamin,
@@ -171,7 +171,8 @@ export async function POST(request: NextRequest) {
                 data.sertifikat_tahfidz || null, data.mengajar ? 1 : 0, data.tmt_mengajar || null,
                 data.tempat_mengajar || null, data.tahun_tes,
                 user.role === 'hafiz' ? 'pending' : (data.status_kelulusan || 'pending'),
-                data.nilai_tahfidz || null, data.nilai_wawasan || null, data.keterangan || null
+                data.nilai_tahfidz || null, data.nilai_wawasan || null, data.keterangan || null,
+                data.tanda_tangan || null
             ]
         );
 

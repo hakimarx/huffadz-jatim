@@ -17,6 +17,10 @@ const UPLOAD_CONFIG = {
         maxSize: 2 * 1024 * 1024, // 2MB
         allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     },
+    'signatures': {
+        maxSize: 1 * 1024 * 1024, // 1MB
+        allowedTypes: ['image/png'],
+    },
 };
 
 type UploadType = keyof typeof UPLOAD_CONFIG;

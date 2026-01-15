@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth';
 // POST - Add teaching history
 export async function POST(request: NextRequest) {
     try {
-        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko']);
+        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
 
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
@@ -20,16 +20,20 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Verify ownership (if admin_kabko)
-        if (user.role === 'admin_kabko') {
+        // Verify ownership
+        if (user.role === 'admin_kabko' || user.role === 'hafiz') {
             const hafiz = await query(
-                'SELECT kabupaten_kota FROM hafiz WHERE id = ?',
+                'SELECT id, kabupaten_kota, user_id FROM hafiz WHERE id = ?',
                 [data.hafiz_id]
             );
 
-            // Should cast to any or define type
             const h = hafiz[0] as any;
-            if (!h || h.kabupaten_kota !== user.kabupaten_kota) {
+            if (!h) return NextResponse.json({ error: 'Hafiz not found' }, { status: 404 });
+
+            if (user.role === 'admin_kabko' && h.kabupaten_kota !== user.kabupaten_kota) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+            if (user.role === 'hafiz' && h.user_id !== user.id) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
 // DELETE - Remove teaching history
 export async function DELETE(request: NextRequest) {
     try {
-        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko']);
+        const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
 
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
@@ -77,17 +81,22 @@ export async function DELETE(request: NextRequest) {
         }
 
         // Verify ownership for history item
-        if (user.role === 'admin_kabko') {
-            // Join to check hafiz kabko
+        if (user.role === 'admin_kabko' || user.role === 'hafiz') {
+            // Join to check hafiz kabko and user_id
             const check = await query(
-                `SELECT h.kabupaten_kota 
+                `SELECT h.kabupaten_kota, h.user_id
                  FROM riwayat_mengajar rm
                  JOIN hafiz h ON rm.hafiz_id = h.id
                  WHERE rm.id = ?`,
                 [id]
             );
             const c = check[0] as any;
-            if (!c || c.kabupaten_kota !== user.kabupaten_kota) {
+            if (!c) return NextResponse.json({ error: 'History not found' }, { status: 404 });
+
+            if (user.role === 'admin_kabko' && c.kabupaten_kota !== user.kabupaten_kota) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+            if (user.role === 'hafiz' && c.user_id !== user.id) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }

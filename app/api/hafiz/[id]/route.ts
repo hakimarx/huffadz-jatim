@@ -92,7 +92,8 @@ export async function PUT(
             'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'telepon', 'email',
             'sertifikat_tahfidz', 'mengajar', 'tmt_mengajar', 'tempat_mengajar',
             'tempat_mengajar_2', 'tmt_mengajar_2', 'status_kelulusan', 'nilai_tahfidz',
-            'nilai_wawasan', 'nomor_piagam', 'tanggal_lulus', 'status_insentif', 'keterangan'
+            'nilai_wawasan', 'nomor_piagam', 'tanggal_lulus', 'status_insentif', 'keterangan',
+            'nama_bank', 'nomor_rekening', 'tanda_tangan', 'is_aktif'
         ];
 
         for (const field of allowedFields) {
