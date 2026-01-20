@@ -22,7 +22,7 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
         const resend = new Resend(apiKey);
 
         const { data, error } = await resend.emails.send({
-            from: 'Huffadz Jatim <onboarding@resend.dev>', // Use verified domain in production
+            from: 'Huffadz Jatim <onboarding@resend.dev>', // WAJIB pakai ini untuk testing/gratis
             to,
             subject,
             html,
