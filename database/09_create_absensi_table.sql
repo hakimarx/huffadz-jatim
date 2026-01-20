@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS `absensi` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `hafiz_id` INT NOT NULL,
+  `tanggal` DATE NOT NULL,
+  `waktu` TIME NOT NULL,
+  `status` ENUM('hadir', 'tidak_hadir', 'izin') NOT NULL,
+  `keterangan` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`hafiz_id`) REFERENCES `hafiz`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
