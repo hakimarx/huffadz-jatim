@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import StatsCard from '@/components/StatsCard';
 import { PageLoader } from '@/components/LoadingSpinner';
+import { PieChartComponent, BarChartComponent } from '@/components/Charts';
 import {
     FiUsers,
     FiTrendingUp,
@@ -13,6 +14,8 @@ import {
 } from 'react-icons/fi';
 
 // Mock data kuota per kabupaten
+// CATATAN: Ini adalah data DUMMY untuk demonstrasi tampilan
+// Nantinya akan diganti dengan data REAL dari API database
 const mockKuota = [
     { kabupaten: 'Kota Surabaya', pendaftar: 1250, kuota: 150, lulus: 142, persen: 94.7 },
     { kabupaten: 'Kabupaten Sidoarjo', pendaftar: 890, kuota: 100, lulus: 95, persen: 95.0 },
@@ -78,7 +81,7 @@ function KuotaStatistikContent() {
     }
 
     // Filter data based on role
-    const filteredKuota = user.role === 'admin_kabko' 
+    const filteredKuota = user.role === 'admin_kabko'
         ? mockKuota.filter(item => item.kabupaten === user.kabupaten_kota)
         : mockKuota;
 
@@ -206,31 +209,33 @@ function KuotaStatistikContent() {
 
                 {/* Charts */}
                 <div className="grid lg:grid-cols-2 gap-6">
-                    {/* Pie Chart Placeholder */}
+                    {/* Pie Chart */}
                     <div className="card">
                         <div className="card-header">
                             <h3 className="card-title">Distribusi Pendaftar</h3>
                         </div>
-                        <div className="h-64 flex items-center justify-center bg-neutral-50 rounded-lg">
-                            <div className="text-center text-neutral-500">
-                                <FiPieChart size={48} className="mx-auto mb-2" />
-                                <p>Pie Chart - Distribusi {user.role === 'admin_kabko' ? 'Wilayah' : 'per Kab/Ko'}</p>
-                                <p className="text-sm">(Akan diimplementasikan dengan Chart.js)</p>
-                            </div>
+                        <div className="h-64 p-4">
+                            <PieChartComponent
+                                data={{
+                                    labels: filteredKuota.map(item => item.kabupaten),
+                                    values: filteredKuota.map(item => item.pendaftar)
+                                }}
+                            />
                         </div>
                     </div>
 
-                    {/* Bar Chart Placeholder */}
+                    {/* Bar Chart */}
                     <div className="card">
                         <div className="card-header">
                             <h3 className="card-title">Tren Pendaftar per Tahun</h3>
                         </div>
-                        <div className="h-64 flex items-center justify-center bg-neutral-50 rounded-lg">
-                            <div className="text-center text-neutral-500">
-                                <FiBarChart2 size={48} className="mx-auto mb-2" />
-                                <p>Bar Chart - Tren 2015-2024</p>
-                                <p className="text-sm">(Akan diimplementasikan dengan Chart.js)</p>
-                            </div>
+                        <div className="h-64 p-4">
+                            <BarChartComponent
+                                data={{
+                                    labels: ['2019', '2020', '2021', '2022', '2023', '2024'],
+                                    values: [3200, 4100, 5300, 6800, 8900, 11500]
+                                }}
+                            />
                         </div>
                     </div>
                 </div>

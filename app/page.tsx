@@ -57,9 +57,9 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 relative">
+      <section className="py-16 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
+          <div className="text-center mb-16">
             <h2 className="font-display text-3xl lg:text-5xl font-bold text-neutral-800 mb-6">
               Fitur Unggulan
             </h2>
@@ -110,7 +110,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section - Modern Steps */}
-      <section className="py-24 bg-white/50 backdrop-blur-sm border-t border-white/50">
+      <section className="py-16 bg-white/50 backdrop-blur-sm border-t border-white/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-16 items-center">
             <div className="lg:w-1/2">
@@ -162,7 +162,7 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 relative overflow-hidden">
+      <section className="py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800 -z-10"></div>
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] -z-10"></div>
 
@@ -258,7 +258,7 @@ function FeatureCard({ icon, title, description, color }: { icon: React.ReactNod
 function StepItem({ number, title, text }: { number: string, title: string, text: string }) {
   return (
     <div className="flex gap-6 group">
-      <span className="font-display text-4xl font-bold text-neutral-200 group-hover:text-primary-200 transition-colors">{number}</span>
+      <span className="font-display text-4xl font-bold bg-gradient-to-br from-primary-400 to-accent-500 bg-clip-text text-transparent group-hover:from-primary-600 group-hover:to-accent-600 transition-all">{number}</span>
       <div>
         <h4 className="text-lg font-bold text-neutral-800 mb-1">{title}</h4>
         <p className="text-neutral-500 text-sm leading-relaxed">{text}</p>
