@@ -20,16 +20,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   `kabupaten_kota` VARCHAR(100) DEFAULT NULL,
   `telepon` VARCHAR(20) DEFAULT NULL,
   `is_active` TINYINT(1) DEFAULT 1,
-  `is_aktif` TINYINT(1) DEFAULT 1,
-  `email_verified` TINYINT(1) DEFAULT 0,
+  `is_verified` TINYINT(1) DEFAULT 0,
+  `verification_token` VARCHAR(255) DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default admin user (password: Admin123!)
 -- Hash generated with bcryptjs
-INSERT INTO `users` (`email`, `password`, `role`, `nama`, `is_active`, `is_aktif`, `email_verified`) VALUES
-('admin@hafizjatim.my.id', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4FKlvNS0M8d3rQPe', 'admin_provinsi', 'Admin Provinsi', 1, 1, 1);
+INSERT INTO `users` (`email`, `password`, `role`, `nama`, `is_active`, `is_verified`) VALUES
+('admin@hafizjatim.my.id', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4FKlvNS0M8d3rQPe', 'admin_provinsi', 'Admin Provinsi', 1, 1);
 
 -- =====================================================
 -- TABLE: kabupaten_kota
@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS `hafiz` (
   `kabupaten_kota` VARCHAR(100) NOT NULL,
   `telepon` VARCHAR(20) DEFAULT NULL,
   `email` VARCHAR(255) DEFAULT NULL,
+  `nama_bank` VARCHAR(100) DEFAULT NULL,
+  `nomor_rekening` VARCHAR(50) DEFAULT NULL,
   `sertifikat_tahfidz` VARCHAR(255) DEFAULT NULL,
   `mengajar` TINYINT(1) DEFAULT 0,
   `tmt_mengajar` DATE DEFAULT NULL,
@@ -149,9 +151,11 @@ CREATE TABLE IF NOT EXISTS `hafiz` (
   `nilai_wawasan` DECIMAL(5,2) DEFAULT NULL,
   `foto_ktp` VARCHAR(255) DEFAULT NULL,
   `foto_profil` VARCHAR(255) DEFAULT NULL,
+  `tanda_tangan` TEXT DEFAULT NULL,
   `nomor_piagam` VARCHAR(50) DEFAULT NULL,
   `tanggal_lulus` DATE DEFAULT NULL,
   `status_insentif` ENUM('aktif', 'tidak_aktif', 'suspend') DEFAULT 'tidak_aktif',
+  `is_aktif` TINYINT(1) DEFAULT 1,
   `keterangan` TEXT DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -161,6 +165,21 @@ CREATE TABLE IF NOT EXISTS `hafiz` (
   INDEX `idx_hafiz_nama` (`nama`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`periode_tes_id`) REFERENCES `periode_tes`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABLE: riwayat_mengajar
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `riwayat_mengajar` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `hafiz_id` INT NOT NULL,
+  `tempat_mengajar` VARCHAR(255) NOT NULL,
+  `alamat_mengajar` TEXT,
+  `tmt_mulai` DATE NOT NULL,
+  `tmt_selesai` DATE DEFAULT NULL,
+  `is_current` TINYINT(1) DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`hafiz_id`) REFERENCES `hafiz`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================

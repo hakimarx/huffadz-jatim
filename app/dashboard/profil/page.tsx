@@ -7,6 +7,77 @@ import { FiSave, FiLoader, FiTrash2, FiKey, FiLock, FiEye, FiEyeOff } from 'reac
 import KtpOcrUploader from '@/components/KtpOcrUploader';
 import SignatureCanvas from 'react-signature-canvas';
 
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Helper function to compress image
+async function compressImage(file: File, options: { maxSizeKB: number }): Promise<File> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+
+                // Calculate new dimensions while maintaining aspect ratio
+                const maxDimension = 1200;
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = (height / width) * maxDimension;
+                        width = maxDimension;
+                    } else {
+                        width = (width / height) * maxDimension;
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Start with high quality and reduce if needed
+                let quality = 0.8;
+                const tryCompress = () => {
+                    canvas.toBlob(
+                        (blob) => {
+                            if (!blob) {
+                                reject(new Error('Failed to compress image'));
+                                return;
+                            }
+
+                            if (blob.size <= options.maxSizeKB * 1024 || quality <= 0.1) {
+                                const compressedFile = new File([blob], file.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                quality -= 0.1;
+                                tryCompress();
+                            }
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                tryCompress();
+            };
+            img.onerror = () => reject(new Error('Failed to load image'));
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+}
 
 interface UserData {
     id: number;

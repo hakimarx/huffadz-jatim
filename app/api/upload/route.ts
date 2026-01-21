@@ -3,11 +3,9 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { requireAuth } from '@/lib/auth';
 
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-    'signatures': {
+// File upload limits (internal use only, not exported config)
+const UPLOAD_LIMITS = {
+    signatures: {
         maxSize: 1 * 1024 * 1024, // 1MB
         allowedTypes: ['image/png'],
     },

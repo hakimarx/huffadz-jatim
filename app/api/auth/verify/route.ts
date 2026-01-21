@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, execute, queryOne } from '@/lib/db';
 
+interface VerifyUser {
+    id: number;
+    nama: string;
+}
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -11,7 +16,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Find user with this token
-        const user = await queryOne(
+        const user = await queryOne<VerifyUser>(
             'SELECT id, nama FROM users WHERE verification_token = ?',
             [token]
         );
