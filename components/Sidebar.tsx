@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
     { label: 'Al-Quran', href: '/dashboard/quran', icon: <FiBook />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Saran dan Masukan', href: '/dashboard/saran', icon: <FiMessageSquare />, roles: ['hafiz'] },
     { label: 'Pengaturan', href: '/dashboard/pengaturan', icon: <FiSettings />, roles: ['admin_provinsi', 'admin_kabko'] },
+    { label: 'WhatsApp Gateway', href: '/dashboard/whatsapp', icon: <FiMessageSquare />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Profil', href: '/dashboard/profil', icon: <FiSettings />, roles: ['hafiz'] }
 ];
 

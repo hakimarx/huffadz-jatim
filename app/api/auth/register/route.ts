@@ -96,6 +96,14 @@ export async function POST(request: NextRequest) {
             `
         });
 
+        // Send WhatsApp notification
+        if (telepon) {
+            const { sendWhatsAppMessage } = await import('@/lib/wa');
+            const waMessage = `Assalamualaikum ${nama}, terima kasih telah mendaftar di LPTQ Jatim. Silakan cek email Anda (${email}) untuk verifikasi akun.`;
+            // Fire and forget to avoid blocking response
+            sendWhatsAppMessage(telepon, waMessage).catch(console.error);
+        }
+
         return NextResponse.json({
             success: true,
             message: 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi.',
