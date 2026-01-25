@@ -1,4 +1,4 @@
-name: Deploy to cPanel
+name: Deploy to cPanel (SCP)
 
 on:
   push:
@@ -52,27 +52,26 @@ jobs:
         zip -r ../deployment.zip .
         cd ..
         
-    - name: Upload Application (ZIP) to cPanel
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    - name: Upload Application (ZIP) via SCP
+      uses: appleboy/scp-action@master
       with:
-        server: ${{ secrets.FTP_SERVER }}
+        host: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./
-        server-dir: /huffadz-jatim/
-        include: '["deployment.zip"]'
-        exclude: '["**"]'
+        port: 22
+        source: "deployment.zip"
+        target: "/home/hafizjat/huffadz-jatim/"
         
-    - name: Upload Helper Script to public_html
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    - name: Upload Helper Script via SCP
+      uses: appleboy/scp-action@master
       with:
-        server: ${{ secrets.FTP_SERVER }}
+        host: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./public/
-        server-dir: /public_html/
-        include: '["deploy_helper.php"]'
-        exclude: '["**"]'
+        port: 22
+        source: "public/deploy_helper.php"
+        target: "/home/hafizjat/public_html/"
+        strip_components: 1
 
     - name: Trigger Extraction & Restart
       run: |
