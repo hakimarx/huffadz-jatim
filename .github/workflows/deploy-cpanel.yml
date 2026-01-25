@@ -1,4 +1,4 @@
-name: Deploy to cPanel (SCP)
+name: Deploy to cPanel (UAPI)
 
 on:
   push:
@@ -52,26 +52,21 @@ jobs:
         zip -r ../deployment.zip .
         cd ..
         
-    - name: Upload Application (ZIP) via SCP
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: 22
-        source: "deployment.zip"
-        target: "/home/hafizjat/huffadz-jatim/"
-        
-    - name: Upload Helper Script via SCP
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: 22
-        source: "public/deploy_helper.php"
-        target: "/home/hafizjat/public_html/"
-        strip_components: 1
+    - name: Upload Application (ZIP) via cPanel API
+      run: |
+        curl -X POST \
+             -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" \
+             -F "file-1=@deployment.zip" \
+             -F "dir=/home/hafizjat/huffadz-jatim" \
+             "http://${{ secrets.FTP_SERVER }}:2082/execute/Fileman/upload_files"
+
+    - name: Upload Helper Script via cPanel API
+      run: |
+        curl -X POST \
+             -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" \
+             -F "file-1=@public/deploy_helper.php" \
+             -F "dir=/home/hafizjat/public_html" \
+             "http://${{ secrets.FTP_SERVER }}:2082/execute/Fileman/upload_files"
 
     - name: Trigger Extraction & Restart
       run: |

@@ -11,19 +11,24 @@ if ($secret_key !== $expected_key) {
     die("⛔ Access Denied: Invalid Key");
 }
 
-// DEFINISI PATH
-// Sesuaikan path ini dengan struktur folder hosting Anda
-$app_root = __DIR__ . '/../huffadz-jatim'; // Path ke folder aplikasi Node.js
+// DEFINISI PATH ABSOLUT (Hardcoded untuk kestabilan)
+$app_root = '/home/hafizjat/huffadz-jatim';
 $zip_file = $app_root . '/deployment.zip';
+
+// Logika fallback jika script dijalankan dari public_html
+if (!is_dir($app_root)) {
+    // Coba path relatif standar cPanel (jika script di public_html)
+    $app_root = realpath(__DIR__ . '/../huffadz-jatim');
+}
 
 echo "<pre>";
 echo "🚀 <strong>Starting Deployment Process</strong>\n";
 echo "Date: " . date('Y-m-d H:i:s') . "\n";
-echo "App Root: $app_root\n";
+echo "App Root: " . ($app_root ?: 'NOT FOUND') . "\n";
 
-// 1. Cek File ZIP
-if (!file_exists($zip_file)) {
-    die("❌ Error: File deployment.zip tidak ditemukan di $zip_file.\nPastikan GitHub Action berhasil upload ke folder yang benar.\n");
+// 1. Cek Folder App
+if (!$app_root || !is_dir($app_root)) {
+    die("❌ Error: Folder aplikasi tidak ditemukan di /home/hafizjat/huffadz-jatim atau ../huffadz-jatim\n");
 }
 
 // 2. Extract ZIP
