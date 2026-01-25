@@ -1,0 +1,79 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Build Application
+      run: npm run build
+      env:
+        DATABASE_HOST: localhost
+        DATABASE_USER: text
+        DATABASE_PASSWORD: test
+        SESSION_SECRET: build-time-secret
+
+    - name: Prepare Deployment Artifact (ZIP)
+      run: |
+        mkdir -p deploy_package
+        
+        # Copy standalone build
+        cp -r .next/standalone/* deploy_package/
+        
+        # Copy static files (Next.js requirement)
+        mkdir -p deploy_package/.next/static
+        cp -r .next/static/* deploy_package/.next/static/
+        
+        # Copy public assets
+        cp -r public deploy_package/public
+        
+        # Copy server.js
+        cp .next/standalone/server.js deploy_package/server.js
+        
+        # Zip content
+        cd deploy_package
+        zip -r ../deployment.zip .
+        cd ..
+        
+    - name: Upload Application (ZIP) to cPanel
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./
+        server-dir: /huffadz-jatim/
+        include: '["deployment.zip"]'
+        exclude: '["**"]'
+        
+    - name: Upload Helper Script to public_html
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./public/
+        server-dir: /public_html/
+        include: '["deploy_helper.php"]'
+        exclude: '["**"]'
+
+    - name: Trigger Extraction & Restart
+      run: |
+        curl -L "https://hafizjatim.my.id/deploy_helper.php?key=${{ secrets.DEPLOY_KEY }}"
