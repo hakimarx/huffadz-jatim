@@ -38,13 +38,16 @@ export default function WhatsAppGatewayPage() {
             const data = await res.json();
             setStatus(data.status);
 
-            if (data.status !== 'connected') {
+            if (data.status === 'qr_ready') {
                 fetchQr();
-            } else {
+            } else if (data.status === 'connected') {
+                setQrCode(null);
+            } else if (data.status === 'server_down') {
                 setQrCode(null);
             }
         } catch (error) {
-            setStatus('error');
+            setStatus('server_down');
+            setQrCode(null);
         }
     };
 
@@ -53,7 +56,9 @@ export default function WhatsAppGatewayPage() {
             const res = await fetch('/api/whatsapp/qr');
             if (res.ok) {
                 const data = await res.json();
-                setQrCode(data.qr);
+                if (data.qr) {
+                    setQrCode(data.qr);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch QR');
@@ -155,26 +160,43 @@ export default function WhatsAppGatewayPage() {
                             <div className="flex flex-col md:flex-row items-center gap-10">
                                 <div className="flex-1">
                                     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-4 ${status === 'connected' ? 'bg-emerald-100 text-emerald-700' :
-                                            status === 'checking' ? 'bg-blue-100 text-blue-700' :
+                                        status === 'checking' ? 'bg-blue-100 text-blue-700' :
+                                            status === 'qr_ready' ? 'bg-amber-100 text-amber-700' :
                                                 'bg-red-100 text-red-700'
                                         }`}>
                                         <span className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-emerald-500' :
-                                                status === 'checking' ? 'bg-blue-500' :
+                                            status === 'checking' ? 'bg-blue-500' :
+                                                status === 'qr_ready' ? 'bg-amber-500' :
                                                     'bg-red-500'
                                             }`}></span>
                                         {status === 'connected' ? 'Terhubung' :
                                             status === 'checking' ? 'Memeriksa...' :
-                                                status === 'qr_ready' ? 'Menunggu Scan QR' : 'Terputus'}
+                                                status === 'qr_ready' ? 'Menunggu Scan QR' :
+                                                    status === 'server_down' ? 'Server Tidak Aktif' : 'Terputus'}
                                     </div>
                                     <p className="text-neutral-600">
                                         {status === 'connected'
                                             ? 'WhatsApp Gateway siap digunakan untuk mengirim notifikasi otomatis dan pengumuman.'
-                                            : 'Silakan scan QR Code di samping menggunakan WhatsApp pada ponsel Anda untuk menghubungkan gateway.'}
+                                            : status === 'server_down'
+                                                ? 'Server WhatsApp Gateway tidak berjalan. Jalankan server terlebih dahulu dengan perintah: node scripts/wa-server.js'
+                                                : status === 'qr_ready'
+                                                    ? 'Silakan scan QR Code di samping menggunakan WhatsApp pada ponsel Anda untuk menghubungkan gateway.'
+                                                    : 'Menunggu status dari server...'}
                                     </p>
                                     {status === 'connected' && (
                                         <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3 text-emerald-700">
                                             <FiCheckCircle size={24} />
                                             <span>Server berjalan normal. Cron job pengingat aktif.</span>
+                                        </div>
+                                    )}
+                                    {status === 'server_down' && (
+                                        <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-100 flex items-start gap-3 text-red-700">
+                                            <FiXCircle size={24} className="flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-bold">Server WhatsApp tidak aktif</p>
+                                                <p className="text-sm mt-1">Buka terminal baru dan jalankan:</p>
+                                                <code className="block mt-2 bg-red-100 px-3 py-2 rounded text-sm font-mono">node scripts/wa-server.js</code>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -189,9 +211,19 @@ export default function WhatsAppGatewayPage() {
                                         <div className="w-48 h-48 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100">
                                             <FiCheckCircle size={64} className="text-emerald-500" />
                                         </div>
+                                    ) : status === 'server_down' ? (
+                                        <div className="w-48 h-48 bg-red-50 rounded-full flex items-center justify-center border-4 border-red-100">
+                                            <FiXCircle size={64} className="text-red-500" />
+                                        </div>
+                                    ) : status === 'checking' ? (
+                                        <div className="w-48 h-48 bg-blue-50 rounded-xl flex flex-col items-center justify-center animate-pulse border-2 border-blue-100">
+                                            <FiRefreshCw size={40} className="text-blue-400 animate-spin" />
+                                            <span className="text-blue-400 mt-2 text-sm">Memeriksa...</span>
+                                        </div>
                                     ) : (
-                                        <div className="w-48 h-48 bg-neutral-100 rounded-xl flex items-center justify-center animate-pulse">
-                                            <span className="text-neutral-400">Loading QR...</span>
+                                        <div className="w-48 h-48 bg-amber-50 rounded-xl flex flex-col items-center justify-center border-2 border-amber-100">
+                                            <FiSmartphone size={40} className="text-amber-400" />
+                                            <span className="text-amber-500 mt-2 text-sm text-center px-4">Menunggu QR...</span>
                                         </div>
                                     )}
                                 </div>
