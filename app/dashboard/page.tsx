@@ -178,7 +178,7 @@ function AdminProvinsiDashboard() {
                                 Pantau perkembangan jumlah hafiz dan kelulusan seleksi secara real-time.
                             </p>
                             <div className="mt-8 flex gap-4">
-                                <Link href="/dashboard/kuota" className="btn bg-white text-primary-900 hover:bg-neutral-100 border-none px-6 py-3 rounded-xl font-bold shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95">
+                                <Link href="/dashboard/kuota" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary-900 hover:bg-neutral-50 font-bold text-base rounded-xl shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95 border-2 border-white/50" style={{ fontFamily: 'Outfit, sans-serif' }}>
                                     Lihat Statistik Lengkap
                                 </Link>
                             </div>
@@ -207,7 +207,7 @@ function AdminProvinsiDashboard() {
                 <ModernStatCard
                     title="Laki-laki"
                     value={stats.loading ? "..." : stats.gender.L.toString()}
-                    icon={<FiUsers className="text-white" />}
+                    icon={<FiUsers size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-blue-500 to-blue-600"
                     trend="+5.2%"
                     subtext="Bulan ini"
@@ -215,7 +215,7 @@ function AdminProvinsiDashboard() {
                 <ModernStatCard
                     title="Perempuan"
                     value={stats.loading ? "..." : stats.gender.P.toString()}
-                    icon={<FiUsers className="text-white" />}
+                    icon={<FiUsers size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-pink-500 to-pink-600"
                     trend="+3.8%"
                     subtext="Bulan ini"
@@ -223,14 +223,14 @@ function AdminProvinsiDashboard() {
                 <ModernStatCard
                     title="Rata-rata Usia"
                     value="24"
-                    icon={<FiClock className="text-white" />}
+                    icon={<FiClock size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-orange-400 to-orange-600"
                     subtext="Tahun"
                 />
                 <ModernStatCard
                     title="Tingkat Kelulusan"
                     value={stats.total > 0 ? `${Math.round((stats.lulus / stats.total) * 100)}%` : "0%"}
-                    icon={<FiCheckCircle className="text-white" />}
+                    icon={<FiCheckCircle size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
                     trend="+12%"
                     subtext="Dari periode lalu"
@@ -602,21 +602,21 @@ function HafizDashboard() {
                 <ModernStatCard
                     title="Laporan Disetujui"
                     value={stats.loading ? "..." : stats.laporanDisetujui.toString()}
-                    icon={<FiCheckCircle className="text-white" />}
+                    icon={<FiCheckCircle size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
                     subtext="Total laporan yang telah diverifikasi"
                 />
                 <ModernStatCard
                     title="Menunggu Verifikasi"
                     value={stats.loading ? "..." : stats.laporanPending.toString()}
-                    icon={<FiClock className="text-white" />}
+                    icon={<FiClock size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-orange-400 to-orange-600"
                     subtext="Laporan perlu tinjauan admin"
                 />
                 <ModernStatCard
                     title="Laporan Ditolak"
                     value={stats.loading ? "..." : stats.laporanDitolak.toString()}
-                    icon={<FiAlertCircle className="text-white" />}
+                    icon={<FiAlertCircle size={24} className="text-white" />}
                     gradient="bg-gradient-to-br from-red-400 to-red-600"
                     subtext="Laporan yang perlu diperbaiki"
                 />

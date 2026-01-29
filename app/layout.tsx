@@ -29,6 +29,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" href="/logo-lptq.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo-lptq.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#15803d" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />

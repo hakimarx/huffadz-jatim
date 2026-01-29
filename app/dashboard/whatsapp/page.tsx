@@ -155,26 +155,38 @@ export default function WhatsAppGatewayPage() {
                             <div className="flex flex-col md:flex-row items-center gap-10">
                                 <div className="flex-1">
                                     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-4 ${status === 'connected' ? 'bg-emerald-100 text-emerald-700' :
-                                            status === 'checking' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-red-100 text-red-700'
+                                        status === 'checking' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-red-100 text-red-700'
                                         }`}>
                                         <span className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-emerald-500' :
-                                                status === 'checking' ? 'bg-blue-500' :
-                                                    'bg-red-500'
+                                            status === 'checking' ? 'bg-blue-500 animate-pulse' :
+                                                'bg-red-500'
                                             }`}></span>
-                                        {status === 'connected' ? 'Terhubung' :
+                                        {status === 'connected' ? 'Server Aktif' :
                                             status === 'checking' ? 'Memeriksa...' :
-                                                status === 'qr_ready' ? 'Menunggu Scan QR' : 'Terputus'}
+                                                status === 'qr_ready' ? 'Menunggu Scan QR' : 'Server Tidak Aktif'}
                                     </div>
-                                    <p className="text-neutral-600">
+                                    <p className="text-neutral-600 mb-4">
                                         {status === 'connected'
                                             ? 'WhatsApp Gateway siap digunakan untuk mengirim notifikasi otomatis dan pengumuman.'
-                                            : 'Silakan scan QR Code di samping menggunakan WhatsApp pada ponsel Anda untuk menghubungkan gateway.'}
+                                            : 'Server WhatsApp Gateway tidak berjalan. Jalankan server terlebih dahulu dengan perintah: node scripts/wa-server.js'}
                                     </p>
                                     {status === 'connected' && (
                                         <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3 text-emerald-700">
                                             <FiCheckCircle size={24} />
                                             <span>Server berjalan normal. Cron job pengingat aktif.</span>
+                                        </div>
+                                    )}
+                                    {status !== 'connected' && status !== 'checking' && (
+                                        <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-200">
+                                            <div className="flex items-center gap-3 text-red-700 mb-3">
+                                                <FiXCircle size={24} />
+                                                <span className="font-bold">Server WhatsApp tidak aktif</span>
+                                            </div>
+                                            <p className="text-sm text-red-600 mb-2">Buka terminal baru dan jalankan:</p>
+                                            <code className="block bg-red-100 px-3 py-2 rounded-lg text-sm text-red-800 font-mono">
+                                                node scripts/wa-server.js
+                                            </code>
                                         </div>
                                     )}
                                 </div>
@@ -190,8 +202,8 @@ export default function WhatsAppGatewayPage() {
                                             <FiCheckCircle size={64} className="text-emerald-500" />
                                         </div>
                                     ) : (
-                                        <div className="w-48 h-48 bg-neutral-100 rounded-xl flex items-center justify-center animate-pulse">
-                                            <span className="text-neutral-400">Loading QR...</span>
+                                        <div className="w-48 h-48 bg-red-50 rounded-full flex items-center justify-center border-4 border-red-100">
+                                            <FiXCircle size={64} className="text-red-400" />
                                         </div>
                                     )}
                                 </div>

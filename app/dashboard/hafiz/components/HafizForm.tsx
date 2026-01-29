@@ -39,6 +39,7 @@ const hafizSchema = z.object({
     nomor_rekening: z.string().optional(),
     nama_bank: z.string().optional(),
     tanda_tangan: z.string().optional(),
+    foto_profil: z.string().optional(),
 });
 
 type HafizFormData = z.infer<typeof hafizSchema>;
@@ -58,6 +59,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
 
     const sigPad = useRef<SignatureCanvas>(null);
     const [signatureUrl, setSignatureUrl] = useState<string | null>(initialData?.tanda_tangan || null);
+    const [fotoProfilUrl, setFotoProfilUrl] = useState<string | null>((initialData as any)?.foto_profil || null);
 
     const {
         register,
@@ -122,6 +124,40 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
         }
     };
 
+    const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert('Ukuran foto maksimal 2MB');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'profiles');
+
+        try {
+            setLoading(true);
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await uploadRes.json();
+            if (uploadRes.ok) {
+                setFotoProfilUrl(result.url);
+                setValue('foto_profil', result.url);
+            } else {
+                alert('Gagal mengupload foto');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error uploading photo');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const onSubmit = async (data: HafizFormData) => {
         setLoading(true);
         setError('');
@@ -152,6 +188,7 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 nomor_rekening: data.nomor_rekening?.trim() || null,
                 nama_bank: data.nama_bank?.trim() || null,
                 tanda_tangan: data.tanda_tangan || null,
+                foto_profil: data.foto_profil || null,
                 status_kelulusan: 'pending',
             };
 
@@ -239,6 +276,36 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Foto Profil */}
+                    <div className="form-group md:col-span-2">
+                        <label className="form-label">Foto Profil</label>
+                        <div className="flex items-center gap-6">
+                            <div className="w-24 h-24 rounded-full bg-neutral-100 border-2 border-neutral-200 overflow-hidden flex-shrink-0 relative">
+                                {fotoProfilUrl ? (
+                                    <img src={fotoProfilUrl} alt="Foto Profil" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="flex items-center justify-center w-full h-full text-neutral-400">
+                                        <FiPlus size={24} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="block w-full text-sm text-neutral-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-primary-50 file:text-primary-700
+                                        hover:file:bg-primary-100
+                                        transition-all"
+                                    onChange={handleUploadFoto}
+                                />
+                                <p className="text-xs text-neutral-500 mt-2">Format: JPG, PNG. Maksimal 2MB.</p>
+                            </div>
+                        </div>
+                    </div>
                     {/* NIK */}
                     <div className="form-group md:col-span-2">
                         <label className="form-label required">NIK</label>

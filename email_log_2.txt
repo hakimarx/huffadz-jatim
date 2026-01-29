@@ -1,5 +1,0 @@
-[dotenv@17.2.3] injecting env (8) from .env.local -- tip: ≡ƒùé∩╕Å backup and recover secrets: https://dotenvx.com/ops
-≡ƒôº Mencoba mengirim email test...
-≡ƒöæ API Key: Terdeteksi (re_...)
-Γ£à Email TERKIRIM! { id: 'd2bc644c-89b7-4c59-9be3-6fd494629678' }
-≡ƒæë Silakan cek inbox/spam hakim.luk81@gmail.com sekarang.

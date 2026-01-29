@@ -131,27 +131,35 @@ export default function Home() {
               {/* Abstract Visual for Steps */}
               <div className="relative aspect-square w-full max-w-lg mx-auto">
                 <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-accent-100 rounded-[3rem] rotate-3 animate-float"></div>
-                <div className="absolute inset-0 bg-white/40 backdrop-blur-xl rounded-[3rem] border border-white/50 shadow-2xl flex items-center justify-center p-12">
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-xl rounded-[3rem] border border-white/50 shadow-2xl flex items-center justify-center p-10">
                   <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 animate-pulse">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full mb-3"></div>
-                      <div className="h-4 bg-neutral-100 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-neutral-50 rounded w-full"></div>
+                    <div className="bg-white p-5 rounded-2xl shadow-md border border-neutral-100 hover:shadow-lg transition-shadow">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl mb-3 flex items-center justify-center text-white">
+                        <FiUsers size={20} />
+                      </div>
+                      <h4 className="font-bold text-neutral-800 text-sm mb-1">Pendaftaran</h4>
+                      <p className="text-xs text-neutral-500">Daftar online mudah</p>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 mt-8">
-                      <div className="w-8 h-8 bg-accent-100 rounded-full mb-3"></div>
-                      <div className="h-4 bg-neutral-100 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-neutral-50 rounded w-full"></div>
+                    <div className="bg-white p-5 rounded-2xl shadow-md border border-neutral-100 mt-8 hover:shadow-lg transition-shadow">
+                      <div className="w-10 h-10 bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl mb-3 flex items-center justify-center text-white">
+                        <FiFileText size={20} />
+                      </div>
+                      <h4 className="font-bold text-neutral-800 text-sm mb-1">Verifikasi</h4>
+                      <p className="text-xs text-neutral-500">Periksa dokumen</p>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
-                      <div className="w-8 h-8 bg-secondary-100 rounded-full mb-3"></div>
-                      <div className="h-4 bg-neutral-100 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-neutral-50 rounded w-full"></div>
+                    <div className="bg-white p-5 rounded-2xl shadow-md border border-neutral-100 hover:shadow-lg transition-shadow">
+                      <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl mb-3 flex items-center justify-center text-white">
+                        <FiCalendar size={20} />
+                      </div>
+                      <h4 className="font-bold text-neutral-800 text-sm mb-1">Tes Hafalan</h4>
+                      <p className="text-xs text-neutral-500">Jadwal tes teratur</p>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 mt-8 animate-pulse" style={{ animationDelay: '1s' }}>
-                      <div className="w-8 h-8 bg-emerald-100 rounded-full mb-3"></div>
-                      <div className="h-4 bg-neutral-100 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-neutral-50 rounded w-full"></div>
+                    <div className="bg-white p-5 rounded-2xl shadow-md border border-neutral-100 mt-8 hover:shadow-lg transition-shadow">
+                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl mb-3 flex items-center justify-center text-white">
+                        <FiAward size={20} />
+                      </div>
+                      <h4 className="font-bold text-neutral-800 text-sm mb-1">Sertifikasi</h4>
+                      <p className="text-xs text-neutral-500">SK Gubernur resmi</p>
                     </div>
                   </div>
                 </div>

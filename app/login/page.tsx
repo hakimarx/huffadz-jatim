@@ -71,8 +71,8 @@ export default function LoginPage() {
             <div className="max-w-md w-full space-y-8 glass p-10 rounded-[2.5rem] shadow-2xl relative z-10 animate-fade-in border border-white/50">
                 <div className="text-center">
                     <Link href="/" className="inline-block mb-6 group">
-                        <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-primary-500/30 mx-auto group-hover:scale-105 transition-transform">
-                            H
+                        <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20 mx-auto group-hover:scale-105 transition-transform border border-neutral-100 p-2 overflow-hidden">
+                            <img src="/logo-lptq.png" alt="LPTQ Logo" className="w-full h-full object-contain" />
                         </div>
                     </Link>
                     <h2 className="text-3xl font-display font-bold text-neutral-800 tracking-tight">
