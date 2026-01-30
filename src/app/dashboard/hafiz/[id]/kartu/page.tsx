@@ -86,7 +86,9 @@ export default function KartuAkunPage() {
                                         <FiGlobe className="mt-1 text-primary-500" />
                                         <div>
                                             <p className="text-xs text-neutral-500">Website</p>
-                                            <p className="text-sm font-medium text-neutral-800 break-all">hafizjatim.my.id</p>
+                                            <p className="text-sm font-medium text-neutral-800 break-all">
+                                                {typeof window !== 'undefined' ? window.location.hostname : 'hafizjatim.my.id'}
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
