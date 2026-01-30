@@ -90,3 +90,7 @@ database/populate.sql
 database/raw_data.txt
 database/tidb_*.sql
 
+
+wa_auth_info/
+
+*.zip

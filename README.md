@@ -1,150 +1,83 @@
-# 📖 Sistem Pendataan Huffadz Jawa Timur
+# Sistem Pendataan Huffadz Jawa Timur (Si-Huffadz)
 
-Aplikasi web untuk pendataan, seleksi, dan pelaporan kegiatan Huffadz penerima insentif Gubernur Jawa Timur.
+![LPTQ Jatim Logo](/public/logo-lptq.png)
 
-## 🎯 Tentang Aplikasi
+Platform digital terintegrasi resmi dari **LPTQ Provinsi Jawa Timur** untuk pendataan, seleksi, dan pelaporan kegiatan para Huffadz (Penghafal Al-Qur'an) penerima insentif Gubernur Jawa Timur.
 
-Sistem ini memfasilitasi:
+## 🚀 Fitur Unggulan
 
-- ✅ Pendataan Huffadz
-- ✅ Manajemen Tes Seleksi (Tahfidz & Wawasan Kebangsaan)
-- ✅ Sistem Kuota per Kab/Ko (max 1000/tahun)
-- ✅ Laporan Harian Kegiatan
-- ✅ Verifikasi Multi-Level
-- ✅ Statistik & Reporting
+*   **Pendataan Terpusat**: Database tunggal untuk ribuan Huffadz se-Jawa Timur.
+*   **Verifikasi Berjenjang**: Validasi data dari tingkat Kabupaten/Kota hingga Provinsi.
+*   **Seleksi Digital**: Pengelolaan tes hafalan dan wawasan kebangsaan.
+*   **Monitoring Real-time**: Pelaporan kegiatan harian (mengajar & muroja'ah) via aplikasi.
+*   **WhatsApp Gateway**: Notifikasi otomatis untuk jadwal tes dan pengumuman.
+*   **OCR & QR Scan**: Otomatisasi pembacaan KTP dan verifikasi kehadiran.
 
-## 🚀 Teknologi
+## 🛠️ Teknologi Stack
 
-- **Frontend**: Next.js 16 + React + TypeScript
-- **Backend**: MySQL Database
-- **Styling**: TailwindCSS + Custom CSS
-- **Icons**: React Icons
-- **Deployment**: cPanel Node.js
+Proyek ini dibangun menggunakan teknologi modern untuk performa, keamanan, dan skalabilitas:
 
-## 📋 Fitur Utama
+*   **Framework**: [Next.js 15+](https://nextjs.org/) (App Router)
+*   **Language**: [TypeScript](https://www.typescriptlang.org/)
+*   **Database**: MySQL (via `mysql2`)
+*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+*   **Authentication**: Iron Session (Secure encrypted cookies) & Bcrypt
+*   **Integration**: WhatsApp (Baileys), OCR (Tesseract.js)
 
-### 1. **Admin Provinsi**
-- Kelola semua data Huffadz se-Jawa Timur
-- Atur periode tes dan kuota per daerah
-- Verifikasi dan approve data
-- Export laporan SPJ
-- Manajemen penguji dan jadwal tes
-- Dashboard statistik lengkap
+## 📂 Struktur Project (Clean Architecture)
 
-### 2. **Admin Kabupaten/Kota**
-- Input data Huffadz dari wilayahnya
-- Verifikasi laporan harian Huffadz
-- Lihat kuota dan statistik daerah
-- Upload dokumen pendukung
-- Kelola absensi tes
+```
+├── database/          # Skema database SQL dan migrasi
+├── public/            # Aset statis (gambar, logo)
+├── scripts/           # Script utilitas & maintenance (mis: fix_db, check_user)
+├── src/
+│   ├── app/           # Halaman Next.js (App Router)
+│   ├── components/    # Komponen UI Reusable
+│   ├── lib/           # Logic bisnis & Helper (DB connection, Auth)
+│   ├── hooks/         # Custom React Hooks
+│   ├── types/         # Definisi Tipe TypeScript
+│   └── data/          # Data statis
+└── .env               # Variabel lingkungan (RAHASIA)
+```
 
-### 3. **Hafiz**
-- Registrasi dengan upload KTP
-- Update profil dan data pribadi
-- Input laporan harian kegiatan
-- Upload foto kegiatan
-- Lihat status verifikasi
-- Download piagam kelulusan
-
-## 🛠️ Instalasi
+## 🏁 Cara Menjalankan
 
 ### Prasyarat
-- Node.js 18+ 
-- npm atau yarn
-- MySQL Database
+*   Node.js (v18+)
+*   MySQL Server
 
-### Langkah Instalasi
+### Instalasi
+1.  **Clone Repository**
+    ```bash
+    git clone https://github.com/hakimarx/huffadz-jatim.git
+    cd huffadz-jatim
+    ```
 
-1. **Clone repository**
-```bash
-git clone https://github.com/hakimarx/huffadz-jatim.git
-cd huffadz-jatim
-```
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-2. **Install dependencies**
-```bash
-npm install
-```
+3.  **Setup Database**
+    *   Buat database MySQL baru (misal: `huffadz_db`).
+    *   Import file `database/database.sql` ke database Anda.
+    *   Konfigurasi koneksi di file `.env` (Lihat `.env.example`).
 
-3. **Konfigurasi Environment**
-   - Buat file `.env.local` dengan konfigurasi:
-```env
-DATABASE_HOST=[your-database-host]
-DATABASE_PORT=3306
-DATABASE_USER=[your-database-user]
-DATABASE_PASSWORD=[your-database-password]
-DATABASE_NAME=huffadz_jatim
-SESSION_SECRET=[your-secret-key]
-```
+4.  **Jalankan Development Server**
+    ```bash
+    npm run dev
+    ```
+    Buka [http://localhost:3000](http://localhost:3000).
 
-4. **Jalankan Development Server**
-```bash
-npm run dev
-```
+## 🔐 Keamanan
 
-5. **Buka browser**
-```
-http://localhost:3000
-```
+*   **Environment Variables**: Jangan pernah mengupload file `.env` ke repository publik. Gunakan `.env.example` sebagai referensi.
+*   **Credential**: Pastikan data sensitif seperti password DB atau API Key tersimpan aman.
 
-## 👥 Role & Permissions
+## 🤝 Kontribusi
 
-### Admin Provinsi
-- Full access ke semua data
-- CRUD periode tes, kuota, penguji
-- Verifikasi final
-- Export laporan
-
-### Admin Kab/Ko
-- Access data Huffadz di wilayahnya
-- Input & edit data Huffadz daerah
-- Verifikasi laporan harian
-- Lihat statistik daerah
-
-### Hafiz
-- View & edit profil sendiri
-- Input laporan harian
-- Upload foto kegiatan
-- Lihat status verifikasi
-
-## 📱 Responsive Design
-
-Aplikasi fully responsive untuk:
-- 💻 Desktop
-- 📱 Tablet
-- 📱 Mobile
-
-## 🎨 Design System
-
-- **Color Palette**: Islamic Green & Gold
-- **Typography**: Inter (Google Fonts)
-- **Effects**: Glassmorphism, Gradients, Smooth Animations
-
-## 📦 Deployment
-
-### Deploy ke cPanel
-
-1. Build production:
-```bash
-npm run build
-```
-
-2. Upload folder `.next`, `public`, `package.json`, `server.js`
-
-3. Setup Node.js App di cPanel
-
-4. Konfigurasi environment variables
-
-## 📞 Kontak
-
-**LPTQ Provinsi Jawa Timur**
-- Website: [lptq.jatimprov.go.id](https://lptq.jatimprov.go.id)
-- Email: info@lptq.jatimprov.go.id
+Silakan buat *Pull Request* untuk perbaikan bug atau penambahan fitur. Pastikan kode mengikuti standar *style guide* yang ada.
 
 ## 📄 Lisensi
 
-© 2026 LPTQ Provinsi Jawa Timur. All rights reserved.
-
----
-
-**Dibuat dengan ❤️ untuk Huffadz Jawa Timur**
+Hak Cipta © 2026 LPTQ Provinsi Jawa Timur. Private Repository.
