@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         // Hash and update password
         const hashedNewPassword = await hashPassword(newPassword);
         const updatedRows = await execute(
-            'UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?',
+            "UPDATE users SET password = ?, status = 'active', updated_at = NOW() WHERE id = ?",
             [hashedNewPassword, user.id]
         );
 

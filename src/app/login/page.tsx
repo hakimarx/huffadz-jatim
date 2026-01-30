@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiArrowRight, FiAlertCircle, FiLoader } from 'react-icons/fi';
@@ -9,6 +9,7 @@ export default function LoginPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -16,16 +17,30 @@ export default function LoginPage() {
 
     const [showPassword, setShowPassword] = useState(false);
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('verified') === 'true') {
+            setSuccessMessage('✅ Email berhasil diverifikasi! Silakan login.');
+        }
+        if (params.get('error')) {
+            setError(params.get('error') || '');
+        }
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
         });
+        // Clear messages when user types
+        if (error) setError('');
+        if (successMessage) setSuccessMessage('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setSuccessMessage('');
         setLoading(true);
 
         try {
@@ -48,8 +63,9 @@ export default function LoginPage() {
             }
 
             if (result.success && result.user) {
-                router.push(`/dashboard?role=${result.user.role}`);
-                router.refresh();
+                // Use window.location.href for a hard reload to ensure session state is completely reset
+                // and to avoid any "role ngikut" (stale role) issues from previous sessions.
+                window.location.href = `/dashboard?role=${result.user.role}`;
             }
         } catch (err: unknown) {
             console.error('Login exception:', err);
@@ -90,6 +106,12 @@ export default function LoginPage() {
                     </div>
                 )}
 
+                {successMessage && (
+                    <div className="bg-green-50 border border-green-100 text-green-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm animate-fade-in font-semibold">
+                        <p>{successMessage}</p>
+                    </div>
+                )}
+
                 <form className="space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
                         <div className="relative group">
@@ -99,11 +121,11 @@ export default function LoginPage() {
                             <input
                                 id="email"
                                 name="email"
-                                type="email"
-                                autoComplete="email"
+                                type="text"
+                                autoComplete="username"
                                 required
                                 className="input-modern pl-12 w-full"
-                                placeholder="Alamat Email"
+                                placeholder="Email atau NIK"
                                 value={formData.email}
                                 onChange={handleChange}
                             />

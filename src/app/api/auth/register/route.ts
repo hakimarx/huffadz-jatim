@@ -59,48 +59,62 @@ export async function POST(request: NextRequest) {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Generate verification token
-        const { sendEmail } = await import('@/lib/mail');
-        // const verificationToken = generateVerificationToken();
+        const crypto = await import('crypto');
+        const verificationToken = crypto.randomBytes(32).toString('hex');
 
-        // Insert user (set is_active = 1, skip verification columns for compatibility)
+        // Insert user
         const userId = await insert(
-            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active) 
-             VALUES (?, ?, ?, 'hafiz', ?, ?, 1)`,
-            [email, hashedPassword, nama, telepon || null, kabupaten_kota || null]
+            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token) 
+             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?)`,
+            [email, hashedPassword, nama, telepon || null, kabupaten_kota || null, verificationToken]
         );
 
         // Insert hafiz profile
         await insert(
             `INSERT INTO hafiz (user_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, 
-             desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan) 
-             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending')`,
+             desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan, is_aktif) 
+             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending', 1)`,
             [userId, nik, nama, kabupaten_kota || 'Jawa Timur', telepon || null, new Date().getFullYear()]
         );
 
-        // Send welcome email
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        // Send welcome email - Wrap in try-catch to avoid blocking registration if email fails
+        try {
+            const { sendEmail } = await import('@/lib/mail');
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+            const verifyUrl = `${baseUrl}/api/auth/verify?token=${verificationToken}`;
 
-        await sendEmail({
-            to: email,
-            subject: 'Pendaftaran Berhasil - LPTQ Jatim',
-            html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2>Selamat Datang di LPTQ Jatim</h2>
-                    <p>Halo ${nama},</p>
-                    <p>Terima kasih telah mendaftar. Akun Anda telah aktif dan siap digunakan.</p>
-                    <p>Silakan login untuk melengkapi data profil Anda.</p>
-                    <a href="${baseUrl}/login" style="display: inline-block; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Login Sekarang</a>
-                    <p>Jika Anda tidak merasa mendaftar, silakan abaikan email ini.</p>
-                </div>
-            `
-        });
+            await sendEmail({
+                to: email,
+                subject: 'Verifikasi Akun LPTQ Jatim',
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px;">
+                        <h2 style="color: #10b981; text-align: center;">Selamat Datang di LPTQ Jatim</h2>
+                        <p>Halo <strong>${nama}</strong>,</p>
+                        <p>Terima kasih telah mendaftar di sistem Huffadz Jawa Timur. Sedikit lagi akun Anda akan siap digunakan sepenuhnya.</p>
+                        <p>Silakan klik tombol di bawah ini untuk memverifikasi alamat email Anda:</p>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="${verifyUrl}" style="display: inline-block; padding: 14px 28px; background-color: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Verifikasi Email</a>
+                        </div>
+                        <p style="color: #6b7280; font-size: 14px;">Atau salin link berikut ke browser Anda:</p>
+                        <p style="color: #6b7280; font-size: 14px; word-break: break-all;">${verifyUrl}</p>
+                        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                        <p style="font-size: 12px; color: #9ca3af; text-align: center;">Jika Anda tidak merasa mendaftar, silakan abaikan email ini.</p>
+                    </div>
+                `
+            });
+        } catch (mailError) {
+            console.error('Failed to send welcome email:', mailError);
+        }
 
         // Send WhatsApp notification
         if (telepon) {
-            const { sendWhatsAppMessage } = await import('@/lib/wa');
-            const waMessage = `Assalamualaikum ${nama}, terima kasih telah mendaftar di LPTQ Jatim. Silakan cek email Anda (${email}) untuk verifikasi akun.`;
-            // Fire and forget to avoid blocking response
-            sendWhatsAppMessage(telepon, waMessage).catch(console.error);
+            try {
+                const { sendWhatsAppMessage } = await import('@/lib/wa');
+                const waMessage = `Assalamualaikum ${nama}, terima kasih telah mendaftar di LPTQ Jatim. Akun Anda telah dibuat. Silakan cek email Anda (${email}) untuk melakukan verifikasi akun.`;
+                sendWhatsAppMessage(telepon, waMessage).catch(console.error);
+            } catch (waError) {
+                console.error('WA Notification error:', waError);
+            }
         }
 
         return NextResponse.json({

@@ -1,4 +1,4 @@
-export const WA_SERVER_URL = 'http://localhost:3001';
+export const WA_SERVER_URL = process.env.WA_SERVER_URL || 'http://localhost:3001';
 
 export async function sendWhatsAppMessage(number: string, message: string) {
     try {

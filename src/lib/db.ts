@@ -36,6 +36,12 @@ export function getPool(): mysql.Pool {
     return pool;
 }
 
+// Helper to clean params (convert undefined to null)
+function cleanParams(params?: unknown[]): any[] | undefined {
+    if (!params) return undefined;
+    return params.map(p => p === undefined ? null : p);
+}
+
 // Helper function to execute queries
 export async function query<T = unknown>(
     sql: string,
@@ -43,7 +49,8 @@ export async function query<T = unknown>(
 ): Promise<T[]> {
     try {
         const connection = getPool();
-        const [rows] = await connection.execute(sql, params);
+        const cleanedParams = cleanParams(params);
+        const [rows] = await connection.execute(sql, cleanedParams);
         return rows as T[];
     } catch (error: any) {
         console.error('Database Query Error:', {
@@ -78,7 +85,8 @@ export async function insert(
     params?: unknown[]
 ): Promise<number> {
     const connection = getPool();
-    const [result] = await connection.execute(sql, params);
+    const cleanedParams = cleanParams(params);
+    const [result] = await connection.execute(sql, cleanedParams);
     return (result as mysql.ResultSetHeader).insertId;
 }
 
@@ -88,7 +96,8 @@ export async function execute(
     params?: unknown[]
 ): Promise<number> {
     const connection = getPool();
-    const [result] = await connection.execute(sql, params);
+    const cleanedParams = cleanParams(params);
+    const [result] = await connection.execute(sql, cleanedParams);
     return (result as mysql.ResultSetHeader).affectedRows;
 }
 

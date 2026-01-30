@@ -21,20 +21,28 @@ export async function GET(request: NextRequest) {
 
         const offset = (page - 1) * limit;
 
-        // Build query with filters (default: only active hafiz)
-        let whereClause = 'is_aktif = 1';
+        // Default where clause
+        let whereClause = '1=1';
         const params: unknown[] = [];
 
         // Filter by role
-        if (user.role === 'admin_kabko' && user.kabupaten_kota) {
-            whereClause += ' AND kabupaten_kota = ?';
-            params.push(user.kabupaten_kota);
-        } else if (user.role === 'hafiz') {
+        if (user.role === 'hafiz') {
+            // Hafiz can always see their own profile regardless of is_aktif status
             whereClause += ' AND user_id = ?';
             params.push(user.id);
-        } else if (kabupaten) {
-            whereClause += ' AND kabupaten_kota = ?';
-            params.push(kabupaten);
+        } else {
+            // For admins, default to showing active ones only, unless overridden by status filter
+            if (!status) {
+                whereClause += ' AND is_aktif = 1';
+            }
+
+            if (user.role === 'admin_kabko' && user.kabupaten_kota) {
+                whereClause += ' AND kabupaten_kota = ?';
+                params.push(user.kabupaten_kota);
+            } else if (kabupaten) {
+                whereClause += ' AND kabupaten_kota = ?';
+                params.push(kabupaten);
+            }
         }
 
         // Search filter
@@ -153,6 +161,31 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // If admin is adding, we should probably create a user account if it doesn't exist
+        // so the Hafiz can login later.
+        if (!userIdToLink && user.role !== 'hafiz') {
+            const tempEmail = data.email || `${data.nik}@huffadz-jatim.com`;
+
+            // Check if email already exists in users table
+            const existingUser = await queryOne('SELECT id FROM users WHERE email = ?', [tempEmail]);
+
+            if (!existingUser) {
+                // Set default password: last 6 digits of NIK
+                const { hashPassword } = await import('@/lib/auth');
+                const defaultPassword = data.nik.slice(-6);
+                const hashedPassword = await hashPassword(defaultPassword);
+
+                userIdToLink = await insert(
+                    `INSERT INTO users (email, password, nama, role, kabupaten_kota, telepon, is_active, status, is_verified) 
+                     VALUES (?, ?, ?, 'hafiz', ?, ?, 1, 'pending', 1)`,
+                    [tempEmail, hashedPassword, data.nama, data.kabupaten_kota, data.telepon || null]
+                );
+                console.log(`[POST Hafiz] Created auto-user for NIK ${data.nik}, UserID: ${userIdToLink}`);
+            } else {
+                userIdToLink = (existingUser as any).id;
+            }
+        }
+
         // Insert new hafiz
         const insertId = await insert(
             `INSERT INTO hafiz (
@@ -160,8 +193,8 @@ export async function POST(request: NextRequest) {
                 alamat, rt, rw, desa_kelurahan, kecamatan, kabupaten_kota,
                 telepon, email, nama_bank, nomor_rekening, sertifikat_tahfidz, mengajar, tmt_mengajar,
                 tempat_mengajar, tahun_tes, status_kelulusan, nilai_tahfidz,
-                nilai_wawasan, keterangan, foto_profil, tanda_tangan, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                nilai_wawasan, keterangan, foto_profil, tanda_tangan, is_aktif, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
             [
                 userIdToLink,
                 data.nik, data.nama, data.tempat_lahir, data.tanggal_lahir, data.jenis_kelamin,

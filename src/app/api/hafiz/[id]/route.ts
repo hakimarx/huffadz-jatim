@@ -2,47 +2,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute, DBHafiz } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 
-// GET - Get single hafiz by ID
+// GET - Get single hafiz detail
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
-
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
         }
 
-        const { id } = await params;
+        const identifier = params.id;
+        let hafiz;
 
-        const hafiz = await queryOne<DBHafiz>(
-            'SELECT * FROM hafiz WHERE id = ?',
-            [id]
-        );
-
-        if (hafiz) {
-            const history = await query(
-                'SELECT * FROM riwayat_mengajar WHERE hafiz_id = ? ORDER BY tmt_mulai DESC',
-                [id]
-            );
-            (hafiz as any).riwayat_mengajar = history;
+        // Try ID first if it looks like an ID, otherwise try NIK
+        if (!isNaN(parseInt(identifier)) && identifier.length < 10) {
+            hafiz = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE id = ?', [parseInt(identifier)]);
+        } else {
+            hafiz = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE nik = ?', [identifier]);
         }
 
         if (!hafiz) {
             return NextResponse.json({ error: 'Hafiz tidak ditemukan' }, { status: 404 });
         }
 
-        // Admin kabko can only view hafiz in their region
+        // Access control
+        if (user.role === 'hafiz' && hafiz.user_id !== user.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
         if (user.role === 'admin_kabko' && hafiz.kabupaten_kota !== user.kabupaten_kota) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return NextResponse.json({ error: 'Unauthorized region' }, { status: 403 });
         }
 
-        return NextResponse.json({ data: hafiz });
+        // Get history
+        const riwayat = await query('SELECT * FROM riwayat_mengajar WHERE hafiz_id = ? ORDER BY tmt_mengajar DESC', [hafiz.id]);
+
+        return NextResponse.json({
+            data: {
+                ...hafiz,
+                riwayat_mengajar: riwayat
+            }
+        });
     } catch (error) {
-        console.error('Hafiz GET by ID error:', error);
+        console.error('Hafiz GET Detail error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Server error' },
             { status: 500 }
         );
     }
@@ -51,110 +56,107 @@ export async function GET(
 // PUT - Update hafiz
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
-
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
         }
 
-        const { id } = await params;
+        let identifier = params.id;
         const data = await request.json();
 
-        // Check if hafiz exists
-        const hafiz = await queryOne<DBHafiz>(
-            'SELECT * FROM hafiz WHERE id = ?',
-            [id]
-        );
+        console.log(`[PUT Hafiz] Identifier: ${identifier}, User: ${user.id} (${user.role})`);
 
-        if (!hafiz) {
-            return NextResponse.json({ error: 'Hafiz tidak ditemukan' }, { status: 404 });
+        let existing: DBHafiz | null = null;
+
+        // If identifier is invalid but user is a hafiz, try to find their profile automatically
+        if ((!identifier || identifier === 'undefined' || identifier === 'null') && user.role === 'hafiz') {
+            existing = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE user_id = ?', [user.id]);
+            if (existing) {
+                identifier = existing.id.toString();
+            }
         }
 
-        // Admin kabko can only edit hafiz in their region
-        if (user.role === 'admin_kabko' && hafiz.kabupaten_kota !== user.kabupaten_kota) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (!existing) {
+            if (!identifier || identifier === 'undefined' || identifier === 'null') {
+                return NextResponse.json({ error: 'ID Hafiz tidak valid' }, { status: 400 });
+            }
+
+            // Verify ownership/permission
+            // Try ID first if it's purely numeric and length suggests it is an ID (e.g., < 16 digits)
+            // NIK is always exactly 16 digits.
+            if (/^\d+$/.test(identifier) && identifier.length < 16) {
+                existing = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE id = ?', [parseInt(identifier)]);
+            } else {
+                existing = await queryOne<DBHafiz>('SELECT * FROM hafiz WHERE nik = ?', [identifier]);
+            }
         }
 
-        // Hafiz can only edit their own profile
-        if (user.role === 'hafiz' && hafiz.user_id !== user.id) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (!existing) {
+            console.warn(`[PUT Hafiz] Not Found: ${identifier}`);
+            return NextResponse.json({ error: `Profil Hafiz (${identifier}) tidak ditemukan` }, { status: 404 });
         }
 
-        // Build update query dynamically
-        const updates: string[] = [];
-        const values: unknown[] = [];
+        if (user.role === 'hafiz' && existing.user_id !== user.id) {
+            return NextResponse.json({ error: 'Unauthorized to update this profile' }, { status: 403 });
+        }
+        if (user.role === 'admin_kabko' && existing.kabupaten_kota !== user.kabupaten_kota) {
+            return NextResponse.json({ error: 'Unauthorized region' }, { status: 403 });
+        }
 
-        const allowedFields = [
-            'nama', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'alamat',
-            'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'telepon', 'email',
-            'sertifikat_tahfidz', 'mengajar', 'tmt_mengajar', 'tempat_mengajar',
-            'tempat_mengajar_2', 'tmt_mengajar_2', 'status_kelulusan', 'nilai_tahfidz',
-            'nilai_wawasan', 'nomor_piagam', 'tanggal_lulus', 'status_insentif', 'keterangan',
-            'nama_bank', 'nomor_rekening', 'tanda_tangan', 'foto_profil', 'is_aktif'
+        // Validate NIK uniqueness if it's being changed
+        if (data.nik && data.nik !== existing.nik) {
+            const nikConflict = await queryOne('SELECT id FROM hafiz WHERE nik = ? AND id != ?', [data.nik, existing.id]);
+            if (nikConflict) {
+                return NextResponse.json({ error: 'NIK sudah terdaftar pada profil lain' }, { status: 400 });
+            }
+        }
+
+        // Prepare update fields
+        const updateFields = [
+            'nik', 'nama', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin',
+            'alamat', 'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota',
+            'telepon', 'nama_bank', 'nomor_rekening', 'sertifikat_tahfidz',
+            'mengajar', 'tempat_mengajar', 'tmt_mengajar', 'foto_profil', 'tanda_tangan', 'is_aktif'
         ];
 
-        for (const field of allowedFields) {
+        // Admin fields
+        if (user.role !== 'hafiz') {
+            updateFields.push('status_kelulusan', 'nilai_tahfidz', 'nilai_wawasan', 'keterangan');
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+
+        updateFields.forEach(field => {
             if (data[field] !== undefined) {
                 updates.push(`${field} = ?`);
                 values.push(data[field]);
             }
-        }
-
-        if (updates.length === 0) {
-            return NextResponse.json({ error: 'Tidak ada data untuk diupdate' }, { status: 400 });
-        }
-
-        values.push(id);
-
-        await execute(
-            `UPDATE hafiz SET ${updates.join(', ')} WHERE id = ?`,
-            values
-        );
-
-        return NextResponse.json({
-            success: true,
-            message: 'Hafiz berhasil diupdate',
         });
-    } catch (error) {
-        console.error('Hafiz PUT error:', error);
-        return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
-            { status: 500 }
-        );
-    }
-}
 
-// DELETE - Delete hafiz
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const { authenticated, user, error } = await requireAuth(['admin_provinsi']);
+        // Always update updated_at
+        updates.push('updated_at = NOW()');
 
-        if (!authenticated || !user) {
-            return NextResponse.json({ error }, { status: 401 });
+        if (updates.length > 0) {
+            const sql = `UPDATE hafiz SET ${updates.join(', ')} WHERE id = ?`;
+            values.push(existing.id);
+            await execute(sql, values);
+
+            // If hafiz is updating their own profile, ensure user account is marked as active/not-pending
+            if (user.role === 'hafiz' && existing.user_id === user.id) {
+                await execute("UPDATE users SET status = 'active' WHERE id = ? AND status = 'pending'", [user.id]);
+            }
         }
 
-        const { id } = await params;
+        return NextResponse.json({ success: true, message: 'Profile updated' });
 
-        const affected = await execute('DELETE FROM hafiz WHERE id = ?', [id]);
-
-        if (affected === 0) {
-            return NextResponse.json({ error: 'Hafiz tidak ditemukan' }, { status: 404 });
-        }
-
-        return NextResponse.json({
-            success: true,
-            message: 'Hafiz berhasil dihapus',
-        });
     } catch (error) {
-        console.error('Hafiz DELETE error:', error);
+        console.error('Update error:', error);
         return NextResponse.json(
-            { error: 'Terjadi kesalahan server' },
+            { error: error instanceof Error ? error.message : 'Server error' },
             { status: 500 }
         );
     }

@@ -60,10 +60,13 @@ export async function loginUser(email: string, password: string): Promise<{
     user?: Omit<DBUser, 'password'>;
 }> {
     try {
-        // Find user by email
+        // Find user by email OR by NIK from hafiz table
         const user = await queryOne<DBUser>(
-            'SELECT * FROM users WHERE email = ? AND is_active = 1',
-            [email]
+            `SELECT u.* FROM users u 
+             LEFT JOIN hafiz h ON u.id = h.user_id 
+             WHERE u.email = ? OR h.nik = ? 
+             LIMIT 1`,
+            [email, email] // 'email' parameter acts as identifier (could be email or NIK)
         );
 
         if (!user) {
@@ -74,6 +77,15 @@ export async function loginUser(email: string, password: string): Promise<{
         const isValid = await verifyPassword(password, user.password);
         if (!isValid) {
             return { success: false, error: 'Email atau password salah' };
+        }
+
+        // Check if active
+        if (!user.is_active) {
+            // Check if it's because of verification
+            if ('is_verified' in user && !(user as any).is_verified) {
+                return { success: false, error: 'Akun Anda belum diverifikasi. Silakan cek email Anda.' };
+            }
+            return { success: false, error: 'Akun Anda sedang dinonaktifkan. Silakan hubungi admin.' };
         }
 
         // Create session

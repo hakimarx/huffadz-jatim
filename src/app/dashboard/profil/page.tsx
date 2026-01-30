@@ -6,6 +6,7 @@ import { PageLoader } from '@/components/LoadingSpinner';
 import { FiSave, FiLoader, FiTrash2, FiKey, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import KtpOcrUploader from '@/components/KtpOcrUploader';
 import SignatureCanvas from 'react-signature-canvas';
+import { useAuth } from '@/hooks/useUserAuth';
 
 // Helper function to format file size
 function formatFileSize(bytes: number): string {
@@ -116,8 +117,7 @@ interface HafizData {
 }
 
 function ProfilContent() {
-    const [user, setUser] = useState<UserData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { user, loading: authLoading } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -172,12 +172,10 @@ function ProfilContent() {
     });
 
     useEffect(() => {
-        async function fetchUserData() {
-            try {
-                // Use MySQL session API
-                const sessionResponse = await fetch('/api/auth/session');
-                const sessionData = await sessionResponse.json();
+        if (authLoading || !user) return;
 
+        async function fetchHafizData() {
+            try {
                 // Fetch Kabupaten List
                 try {
                     const kabRes = await fetch('/api/kabupaten');
@@ -189,25 +187,16 @@ function ProfilContent() {
                     console.error('Error fetching kabupaten list:', kErr);
                 }
 
-                if (!sessionResponse.ok || !sessionData.user) {
-                    console.error('No session found');
-                    window.location.href = '/login';
-                    return;
-                }
-
-                const userData = sessionData.user as UserData;
-                setUser(userData);
-
-                // Initialize form with user data
+                // Initialize form with base user data
                 setFormData(prev => ({
                     ...prev,
-                    nama: userData.nama,
-                    email: userData.email,
-                    kabupaten_kota: userData.kabupaten_kota || ''
+                    nama: user?.nama || prev.nama,
+                    email: user?.email || prev.email,
+                    kabupaten_kota: user?.kabupaten_kota || prev.kabupaten_kota || ''
                 }));
 
                 // For hafiz role, fetch hafiz profile
-                if (userData.role === 'hafiz') {
+                if (user?.role === 'hafiz') {
                     try {
                         // GET /api/hafiz filters by user_id for hafiz role automatically
                         const hafizResponse = await fetch('/api/hafiz?limit=1');
@@ -227,18 +216,18 @@ function ProfilContent() {
 
                             setFormData({
                                 nik: fullData.nik || '',
-                                nama: fullData.nama || userData.nama,
+                                nama: fullData.nama || user.nama,
                                 tempat_lahir: fullData.tempat_lahir || '',
-                                tanggal_lahir: fullData.tanggal_lahir || '',
+                                tanggal_lahir: fullData.tanggal_lahir ? new Date(fullData.tanggal_lahir).toISOString().split('T')[0] : '',
                                 jenis_kelamin: fullData.jenis_kelamin || 'L',
                                 alamat: fullData.alamat || '',
                                 rt: fullData.rt || '',
                                 rw: fullData.rw || '',
                                 desa_kelurahan: fullData.desa_kelurahan || '',
                                 kecamatan: fullData.kecamatan || '',
-                                kabupaten_kota: fullData.kabupaten_kota || userData.kabupaten_kota || '',
+                                kabupaten_kota: fullData.kabupaten_kota || user.kabupaten_kota || '',
                                 telepon: fullData.telepon || '',
-                                email: fullData.email || userData.email,
+                                email: fullData.email || user.email,
                                 sertifikat_tahfidz: fullData.sertifikat_tahfidz || '',
                                 mengajar: !!fullData.mengajar,
                                 tempat_mengajar: fullData.tempat_mengajar || '',
@@ -249,7 +238,7 @@ function ProfilContent() {
                                 tanda_tangan: fullData.tanda_tangan || ''
                             });
                         } else {
-                            // No profile yet, open edit mode to force completion
+                            // No profile found for this user
                             setIsEditing(true);
                         }
                     } catch (err) {
@@ -257,15 +246,12 @@ function ProfilContent() {
                     }
                 }
             } catch (err) {
-                console.error('Unexpected error fetching user:', err);
-                window.location.href = '/login';
-            } finally {
-                setLoading(false);
+                console.error('Unexpected error fetching user data:', err);
             }
         }
 
-        fetchUserData();
-    }, []);
+        fetchHafizData();
+    }, [user, authLoading]);
 
     const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -425,8 +411,10 @@ function ProfilContent() {
 
         setSaving(true);
         try {
-            const url = hafizId ? `/api/hafiz/${hafizId}` : '/api/hafiz';
-            const method = hafizId ? 'PUT' : 'POST';
+            // Ensure hafizId is actually a valid identifier, not 'undefined' or 'null' string
+            const validHafizId = (hafizId && hafizId !== 0) ? hafizId : null;
+            const url = validHafizId ? `/api/hafiz/${validHafizId}` : '/api/hafiz';
+            const method = validHafizId ? 'PUT' : 'POST';
 
             const payload = {
                 ...formData,
@@ -464,7 +452,7 @@ function ProfilContent() {
         }
     };
 
-    if (loading) {
+    if (authLoading) {
         return <PageLoader />;
     }
 
@@ -514,6 +502,53 @@ function ProfilContent() {
                     {/* Form Profil */}
                     <div className="card">
                         <form onSubmit={handleSubmit}>
+                            {/* Profile Photo Upload */}
+                            <div className="mb-8 flex flex-col items-center border-b border-neutral-100 pb-8">
+                                <div className="relative group">
+                                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-neutral-100 flex items-center justify-center relative">
+                                        {formData.foto_profil ? (
+                                            <img
+                                                src={formData.foto_profil}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                                            />
+                                        ) : (
+                                            <div className="text-4xl font-bold text-neutral-300">
+                                                {user.nama.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                        {uploadingPhoto && (
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                                                <FiLoader className="animate-spin text-2xl" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {isEditing && (
+                                        <label className={`
+                                            absolute -bottom-2 -right-2 w-10 h-10 bg-primary-600 text-white rounded-xl shadow-lg 
+                                            flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all
+                                            hover:scale-110 active:scale-95 z-10
+                                        `}>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleProfilePhotoUpload}
+                                                disabled={uploadingPhoto}
+                                            />
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.171-1.171A1 1 0 0011.828 3H8.172a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                            </svg>
+                                        </label>
+                                    )}
+                                </div>
+                                <div className="mt-4 text-center">
+                                    <h3 className="text-lg font-bold text-neutral-800">Foto Profil</h3>
+                                    <p className="text-xs text-neutral-500 max-w-[200px]">Format: JPG, PNG, atau WEBP (Maks. 5MB). Foto ini akan tampil di kartu akun dan sertifikat.</p>
+                                </div>
+                            </div>
+
                             <div className="grid md:grid-cols-2 gap-6">
                                 {/* NIK */}
                                 <div className="form-group">

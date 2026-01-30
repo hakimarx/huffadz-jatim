@@ -14,7 +14,8 @@ import {
     FiFilter,
     FiEye,
     FiShuffle,
-    FiLink
+    FiLink,
+    FiPrinter
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import MutasiModal from '@/components/MutasiModal';
@@ -558,6 +559,17 @@ function DataHafizContent() {
                                                                 title="Tautkan Akun"
                                                             >
                                                                 <FiLink size={16} />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Tombol Cetak Kartu */}
+                                                        {user && (user.role === 'admin_provinsi' || user.role === 'admin_kabko') && (
+                                                            <button
+                                                                onClick={() => router.push(`/dashboard/hafiz/${hafiz.id}/kartu`)}
+                                                                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                                title="Cetak Kartu Akun"
+                                                            >
+                                                                <FiPrinter size={16} />
                                                             </button>
                                                         )}
                                                     </div>

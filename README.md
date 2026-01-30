@@ -93,3 +93,16 @@ Hak Cipta © 2026 LPTQ Provinsi Jawa Timur. Private Repository.
 
 ## Deployment Status
 Last updated: 2026-01-30 08.07
+
+
+## Menjalankan WhatsApp Gateway Otomatis di cPanel
+Untuk menjalankan WhatsApp Gateway secara otomatis di cPanel tanpa membuka terminal, Anda perlu mengatur **Cron Job**:
+
+1. Login ke cPanel.
+2. Buka menu **Cron Jobs**.
+3. Pilih waktu **Once Per Minute** (* * * * *).
+4. Masukkan perintah berikut:
+   cd /home/huffadzj/public_html/scripts && /opt/cpanel/ea-nodejs20/bin/node wa-server.js > /dev/null 2>&1
+   *(Ganti huffadzj dengan username cPanel Anda dan cek lokasi bin node di server Anda)*
+
+> **Catatan:** Cara ini mungkin akan me-restart server setiap menit jika mati. Untuk solusi lebih permanen, disarankan menggunakan fitur **Node.js Selector** atau **PM2** jika tersedia akses SSH.

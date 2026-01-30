@@ -34,7 +34,7 @@ interface NavItem {
 const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <FiHome />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Data Hafiz', href: '/dashboard/hafiz', icon: <FiUsers />, roles: ['admin_provinsi', 'admin_kabko'] },
-    { label: 'Tambah Hafiz', href: '/dashboard/hafiz/create', icon: <FiUserPlus />, roles: ['admin_provinsi', 'admin_kabko'] },
+    { label: 'Tambah Hafiz', href: '/dashboard/hafiz/create', icon: <FiUserPlus />, roles: ['admin_provinsi'] },
     { label: 'Laporan', href: '/dashboard/laporan', icon: <FiFileText />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Cetak Laporan', href: '/dashboard/cetak-laporan', icon: <FiPrinter />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Periode', href: '/dashboard/periode-tes', icon: <FiCalendar />, roles: ['admin_provinsi'] },
@@ -111,9 +111,9 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                 `}
             >
                 <div className="flex flex-col h-full">
-                    {/* Logo & Brand */}
-                    <div className="p-6 border-b border-neutral-200">
-                        <Link href="/dashboard" className="flex items-center gap-3 group">
+                    {/* Logo & Brand & User Photo */}
+                    <div className="p-6 border-b border-neutral-200 bg-neutral-50/50">
+                        <Link href="/dashboard" className="flex items-center gap-3 group mb-6">
                             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/10 group-hover:scale-105 transition-transform flex-shrink-0 overflow-hidden p-1 border border-neutral-100">
                                 <img src="/logo-lptq.png" alt="LPTQ Logo" className="w-full h-full object-contain" />
                             </div>
@@ -123,28 +123,32 @@ export default function Sidebar({ userRole, userName, userPhoto }: SidebarProps)
                                 </span>
                             )}
                         </Link>
-                    </div>
 
-                    {/* User Info with Profile Photo */}
-                    <div className="p-4 border-b border-neutral-200">
-                        <div className="flex items-center gap-3">
-                            {userPhoto ? (
-                                <img
-                                    src={userPhoto}
-                                    alt={userName}
-                                    className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
-                                />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 text-primary-600 flex items-center justify-center font-bold text-lg border-2 border-white shadow-md flex-shrink-0">
-                                    {userName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
+                        {/* Profile Photo Display */}
+                        <div className={`flex flex-col ${collapsed ? 'items-center' : 'items-start'} gap-3`}>
+                            <div className="relative group/photo">
+                                {userPhoto ? (
+                                    <img
+                                        src={userPhoto}
+                                        alt={userName}
+                                        className={`${collapsed ? 'w-12 h-12' : 'w-20 h-20'} rounded-2xl object-cover border-4 border-white shadow-xl transition-all duration-300 group-hover/photo:scale-105`}
+                                    />
+                                ) : (
+                                    <div className={`${collapsed ? 'w-12 h-12' : 'w-20 h-20'} rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center font-bold ${collapsed ? 'text-xl' : 'text-3xl'} border-4 border-white shadow-xl transition-all duration-300 group-hover/photo:scale-105`}>
+                                        {userName.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                            </div>
+
                             {!collapsed && (
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-neutral-800 leading-none mb-1 truncate">{userName}</p>
-                                    <p className="text-xs text-neutral-500 font-medium capitalize bg-neutral-100 px-2 py-0.5 rounded-full inline-block">
-                                        {userRole.replace('_', ' ')}
-                                    </p>
+                                <div className="min-w-0">
+                                    <p className="text-base font-bold text-neutral-800 leading-tight mb-1 truncate">{userName}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[10px] uppercase tracking-wider text-primary-600 font-bold bg-primary-50 px-2 py-0.5 rounded-md">
+                                            {userRole.replace('_', ' ')}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>

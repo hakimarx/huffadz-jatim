@@ -1,46 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, execute, queryOne } from '@/lib/db';
-
-interface VerifyUser {
-    id: number;
-    nama: string;
-}
+import { queryOne, execute } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
+    const token = searchParams.get('token');
+
+    if (!token) {
+        return NextResponse.redirect(new URL('/login?error=Invalid token', request.url));
+    }
+
     try {
-        const { searchParams } = new URL(request.url);
-        const token = searchParams.get('token');
-
-        if (!token) {
-            return NextResponse.json({ error: 'Token tidak valid' }, { status: 400 });
-        }
-
         // Find user with this token
-        const user = await queryOne<VerifyUser>(
-            'SELECT id, nama FROM users WHERE verification_token = ?',
+        const user = await queryOne<{ id: number; email: string }>(
+            'SELECT id, email FROM users WHERE verification_token = ?',
             [token]
         );
 
         if (!user) {
-            return NextResponse.json({ error: 'Token tidak ditemukan atau sudah kadaluarsa' }, { status: 400 });
+            return NextResponse.redirect(new URL('/login?error=Token tidak valid atau sudah kadaluarsa', request.url));
         }
 
-        // Update user to verified and active
+        // Verify user and clear token
         await execute(
             'UPDATE users SET is_verified = 1, is_active = 1, verification_token = NULL WHERE id = ?',
             [user.id]
         );
 
-        return NextResponse.json({
-            success: true,
-            message: 'Email berhasil diverifikasi. Silakan login.',
-            nama: user.nama
-        });
-    } catch (error: any) {
+        // Redirect to login with success message
+        return NextResponse.redirect(new URL('/login?verified=true', request.url));
+    } catch (error) {
         console.error('Verification error:', error);
-        return NextResponse.json(
-            { error: 'Terjadi kesalahan server saat verifikasi' },
-            { status: 500 }
-        );
+        return NextResponse.redirect(new URL('/login?error=Terjadi kesalahan saat verifikasi', request.url));
     }
 }
