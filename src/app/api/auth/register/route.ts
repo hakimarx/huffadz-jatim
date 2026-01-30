@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
 
         // Insert user
         const userId = await insert(
-            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token, status, created_at, updated_at) 
-             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?, 'pending', NOW(), NOW())`,
+            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token, created_at, updated_at) 
+             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?, NOW(), NOW())`,
             [email, hashedPassword, nama, telepon || null, kabupaten_kota || null, verificationToken]
         );
 
@@ -142,8 +142,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Return more specific error in dev or clearer general error in prod
-        const errorMessage = error.sqlMessage 
-            ? `Database Error: ${error.sqlMessage}` 
+        const errorMessage = error.sqlMessage
+            ? `Database Error: ${error.sqlMessage}`
             : (error.message || 'Terjadi kesalahan server saat registrasi');
 
         return NextResponse.json(

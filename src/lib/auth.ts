@@ -45,7 +45,7 @@ export async function getSession(): Promise<IronSession<SessionData>> {
 
 // Hash password
 export async function hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 12);
+    return bcrypt.hash(password, 10);
 }
 
 // Verify password

@@ -20,7 +20,7 @@ const dbConfig: mysql.PoolOptions = {
         // ca: fs.readFileSync(path.join(process.cwd(), 'certs/ca.pem'))
     } : undefined,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 3,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
