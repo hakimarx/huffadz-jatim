@@ -94,3 +94,13 @@ database/tidb_*.sql
 wa_auth_info/
 
 *.zip
+
+# cPanel artifacts
+cpanel_*.json
+
+# Logs and outputs
+*.log
+*_log.txt
+*_output.txt
+login_error*.txt
+hash.txt
