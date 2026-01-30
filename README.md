@@ -1,5 +1,14 @@
 # Sistem Pendataan Huffadz Jawa Timur (Si-Huffadz)
 
+![LPTQ Banner](https://img.shields.io/badge/LPTQ-Jawa_Timur-green?style=for-the-badge&logo=mosque)
+![Next.js](https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+
+> **Platform Digital Terintegrasi LPTQ Provinsi Jawa Timur**
+> *Pendataan, Seleksi, dan Pelaporan Insentif Huffadz*
+
 ![LPTQ Jatim Logo](/public/logo-lptq.png)
 
 Platform digital terintegrasi resmi dari **LPTQ Provinsi Jawa Timur** untuk pendataan, seleksi, dan pelaporan kegiatan para Huffadz (Penghafal Al-Qur'an) penerima insentif Gubernur Jawa Timur.
