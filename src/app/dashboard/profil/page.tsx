@@ -502,53 +502,6 @@ function ProfilContent() {
                     {/* Form Profil */}
                     <div className="card">
                         <form onSubmit={handleSubmit}>
-                            {/* Profile Photo Upload */}
-                            <div className="mb-8 flex flex-col items-center border-b border-neutral-100 pb-8">
-                                <div className="relative group">
-                                    <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-neutral-100 flex items-center justify-center relative">
-                                        {formData.foto_profil ? (
-                                            <img
-                                                src={formData.foto_profil}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                                            />
-                                        ) : (
-                                            <div className="text-4xl font-bold text-neutral-300">
-                                                {user.nama.charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
-                                        {uploadingPhoto && (
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
-                                                <FiLoader className="animate-spin text-2xl" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {isEditing && (
-                                        <label className={`
-                                            absolute -bottom-2 -right-2 w-10 h-10 bg-primary-600 text-white rounded-xl shadow-lg 
-                                            flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all
-                                            hover:scale-110 active:scale-95 z-10
-                                        `}>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={handleProfilePhotoUpload}
-                                                disabled={uploadingPhoto}
-                                            />
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.171-1.171A1 1 0 0011.828 3H8.172a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                                            </svg>
-                                        </label>
-                                    )}
-                                </div>
-                                <div className="mt-4 text-center">
-                                    <h3 className="text-lg font-bold text-neutral-800">Foto Profil</h3>
-                                    <p className="text-xs text-neutral-500 max-w-[200px]">Format: JPG, PNG, atau WEBP (Maks. 5MB). Foto ini akan tampil di kartu akun dan sertifikat.</p>
-                                </div>
-                            </div>
-
                             <div className="grid md:grid-cols-2 gap-6">
                                 {/* NIK */}
                                 <div className="form-group">
@@ -1029,6 +982,56 @@ function ProfilContent() {
                                             Belum ada tanda tangan
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Foto Profil (Bottom) */}
+                            <div className="mt-8 pt-8 border-t border-neutral-200">
+                                <h3 className="text-lg font-bold mb-4">Foto Profil</h3>
+                                <div className="flex flex-col items-center bg-neutral-50 p-6 rounded-2xl border-2 border-dashed border-neutral-200">
+                                    <div className="relative group mb-4">
+                                        <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-xl bg-neutral-100 flex items-center justify-center relative">
+                                            {formData.foto_profil ? (
+                                                <img
+                                                    src={formData.foto_profil}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                                                />
+                                            ) : (
+                                                <div className="text-4xl font-bold text-neutral-300">
+                                                    {user.nama.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            {uploadingPhoto && (
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                                                    <FiLoader className="animate-spin text-2xl" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {isEditing && (
+                                            <label className={`
+                                                absolute -bottom-2 -right-2 w-10 h-10 bg-primary-600 text-white rounded-xl shadow-lg 
+                                                flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all
+                                                hover:scale-110 active:scale-95 z-10
+                                            `}>
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleProfilePhotoUpload}
+                                                    disabled={uploadingPhoto}
+                                                />
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.171-1.171A1 1 0 0011.828 3H8.172a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                                </svg>
+                                            </label>
+                                        )}
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="font-bold text-neutral-800">Klik ikon kamera untuk ganti foto</p>
+                                        <p className="text-xs text-neutral-500 mt-1">Format: JPG, PNG, atau WEBP (Maks. 5MB)</p>
+                                    </div>
                                 </div>
                             </div>
 

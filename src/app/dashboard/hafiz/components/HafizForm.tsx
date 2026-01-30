@@ -276,36 +276,6 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Foto Profil */}
-                    <div className="form-group md:col-span-2">
-                        <label className="form-label">Foto Profil</label>
-                        <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 rounded-full bg-neutral-100 border-2 border-neutral-200 overflow-hidden flex-shrink-0 relative">
-                                {fotoProfilUrl ? (
-                                    <img src={fotoProfilUrl} alt="Foto Profil" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="flex items-center justify-center w-full h-full text-neutral-400">
-                                        <FiPlus size={24} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="block w-full text-sm text-neutral-500
-                                        file:mr-4 file:py-2 file:px-4
-                                        file:rounded-full file:border-0
-                                        file:text-sm file:font-semibold
-                                        file:bg-primary-50 file:text-primary-700
-                                        hover:file:bg-primary-100
-                                        transition-all"
-                                    onChange={handleUploadFoto}
-                                />
-                                <p className="text-xs text-neutral-500 mt-2">Format: JPG, PNG. Maksimal 2MB.</p>
-                            </div>
-                        </div>
-                    </div>
                     {/* NIK */}
                     <div className="form-group md:col-span-2">
                         <label className="form-label required">NIK</label>
@@ -705,6 +675,51 @@ export default function HafizForm({ initialData, mode, hafizId, ktpImageFile }: 
             {mode === 'edit' && hafizId && (
                 <HistorySection hafizId={hafizId} initialHistory={(initialData as any)?.riwayat_mengajar || []} />
             )}
+
+            {/* Foto Profil (Bottom) */}
+            <div className="card-modern">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+                    Foto Profil
+                </h3>
+                <div className="flex flex-col items-center p-6 bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200">
+                    <div className="relative group mb-4">
+                        <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-xl bg-neutral-200 flex items-center justify-center relative">
+                            {fotoProfilUrl ? (
+                                <img
+                                    src={fotoProfilUrl}
+                                    alt="Foto Profil"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <FiPlus size={40} className="text-neutral-400" />
+                            )}
+                            {loading && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                                    <FiLoader className="animate-spin text-2xl" />
+                                </div>
+                            )}
+                        </div>
+
+                        <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary-600 text-white rounded-xl shadow-lg flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 z-10">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleUploadFoto}
+                                disabled={loading}
+                            />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.171-1.171A1 1 0 0011.828 3H8.172a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                            </svg>
+                        </label>
+                    </div>
+                    <div className="text-center">
+                        <p className="font-bold text-neutral-800">Klik ikon kamera untuk ganti foto</p>
+                        <p className="text-xs text-neutral-500 mt-1">Format: JPG, PNG, atau WEBP (Maks. 2MB)</p>
+                    </div>
+                </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-4 justify-end">
