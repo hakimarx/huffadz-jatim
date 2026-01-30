@@ -9,21 +9,20 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 // Database configuration - uses TiDB Serverless or local MySQL
 const dbConfig: mysql.PoolOptions = {
     host: process.env.DATABASE_HOST || 'localhost',
-    port: parseInt(process.env.DATABASE_PORT || '3306'),
+    port: parseInt(process.env.DATABASE_PORT || '4000'), // TiDB uses 4000
     user: process.env.DATABASE_USER || 'root',
     password: process.env.DATABASE_PASSWORD || '',
     database: process.env.DATABASE_NAME || 'huffadz_jatim',
     ssl: process.env.DATABASE_SSL === 'true' ? {
-        rejectUnauthorized: true,
-        // TiDB Serverless requires standard CA, which is usually present in system
-        // If specific CA is needed, it can be loaded here:
-        // ca: fs.readFileSync(path.join(process.cwd(), 'certs/ca.pem'))
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: false, // Set to false for better compatibility with serverless environments
     } : undefined,
     waitForConnections: true,
-    connectionLimit: 3,
+    connectionLimit: 10, // Increased for Vercel
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
+    connectTimeout: 10000, // 10 seconds timeout
 };
 
 // Connection pool for better performance
