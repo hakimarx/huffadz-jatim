@@ -64,23 +64,23 @@ export async function POST(request: NextRequest) {
 
         // Insert user
         const userId = await insert(
-            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token) 
-             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?)`,
+            `INSERT INTO users (email, password, nama, role, telepon, kabupaten_kota, is_active, is_verified, verification_token, status, created_at, updated_at) 
+             VALUES (?, ?, ?, 'hafiz', ?, ?, 0, 0, ?, 'pending', NOW(), NOW())`,
             [email, hashedPassword, nama, telepon || null, kabupaten_kota || null, verificationToken]
         );
 
         // Insert hafiz profile
         await insert(
             `INSERT INTO hafiz (user_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, 
-             desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan, is_aktif) 
-             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending', 1)`,
+             desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan, is_aktif, created_at, updated_at) 
+             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending', 1, NOW(), NOW())`,
             [userId, nik, nama, kabupaten_kota || 'Jawa Timur', telepon || null, new Date().getFullYear()]
         );
 
         // Send welcome email - Wrap in try-catch to avoid blocking registration if email fails
         try {
             const { sendEmail } = await import('@/lib/mail');
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://hafizjatim.my.id';
             const verifyUrl = `${baseUrl}/api/auth/verify?token=${verificationToken}`;
 
             await sendEmail({
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
                     </div>
                 `
             });
-        } catch (mailError) {
+        } catch (mailError: any) {
             console.error('Failed to send welcome email:', mailError);
         }
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
             try {
                 const { sendWhatsAppMessage } = await import('@/lib/wa');
                 const waMessage = `Assalamualaikum ${nama}, terima kasih telah mendaftar di LPTQ Jatim. Akun Anda telah dibuat. Silakan cek email Anda (${email}) untuk melakukan verifikasi akun.`;
-                sendWhatsAppMessage(telepon, waMessage).catch(console.error);
+                sendWhatsAppMessage(telepon, waMessage).catch((e) => console.error('WA async error:', e));
             } catch (waError) {
                 console.error('WA Notification error:', waError);
             }
@@ -124,7 +124,12 @@ export async function POST(request: NextRequest) {
             requiresVerification: true
         });
     } catch (error: any) {
-        console.error('Registration error:', error);
+        console.error('Registration error detail:', {
+            message: error.message,
+            code: error.code,
+            sql: error.sql,
+            sqlMessage: error.sqlMessage
+        });
 
         // Handle duplicate key errors
         if (error.code === 'ER_DUP_ENTRY') {
@@ -136,12 +141,16 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Return more specific error in dev or clearer general error in prod
+        const errorMessage = error.sqlMessage 
+            ? `Database Error: ${error.sqlMessage}` 
+            : (error.message || 'Terjadi kesalahan server saat registrasi');
+
         return NextResponse.json(
             {
-                error: 'Terjadi kesalahan server saat registrasi',
+                error: errorMessage,
                 details: error.message,
-                code: error.code,
-                sqlMessage: error.sqlMessage
+                code: error.code
             },
             { status: 500 }
         );
