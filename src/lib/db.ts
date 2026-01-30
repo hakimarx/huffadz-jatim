@@ -159,6 +159,7 @@ export interface DBHafiz {
     nilai_wawasan: number | null;
     foto_ktp: string | null;
     foto_profil: string | null;
+    tanda_tangan: string | null;
     nomor_piagam: string | null;
     tanggal_lulus: Date | null;
     status_insentif: 'aktif' | 'tidak_aktif' | 'suspend';

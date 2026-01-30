@@ -89,7 +89,7 @@ Silakan buat *Pull Request* untuk perbaikan bug atau penambahan fitur. Pastikan 
 
 ## 📄 Lisensi
 
-Hak Cipta © 2026 LPTQ Provinsi Jawa Timur. Private Repository.
+Hak Cipta © 2026 LPTQ Provinsi Jawa Timur. Private Repository. by hakimarx
 
 ## Deployment Status
 Last updated: 2026-01-30 08.07

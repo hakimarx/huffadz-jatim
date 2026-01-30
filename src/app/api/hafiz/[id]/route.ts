@@ -5,15 +5,15 @@ import { requireAuth } from '@/lib/auth';
 // GET - Get single hafiz detail
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id: identifier } = await params;
     try {
         const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
         }
 
-        const identifier = params.id;
         let hafiz;
 
         // Try ID first if it looks like an ID, otherwise try NIK
@@ -56,15 +56,16 @@ export async function GET(
 // PUT - Update hafiz
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id: rawIdentifier } = await params;
     try {
         const { authenticated, user, error } = await requireAuth(['admin_provinsi', 'admin_kabko', 'hafiz']);
         if (!authenticated || !user) {
             return NextResponse.json({ error }, { status: 401 });
         }
 
-        let identifier = params.id;
+        let identifier = rawIdentifier;
         const data = await request.json();
 
         console.log(`[PUT Hafiz] Identifier: ${identifier}, User: ${user.id} (${user.role})`);

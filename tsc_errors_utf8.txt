@@ -1,0 +1,73 @@
+﻿.next/dev/types/validator.ts(53,39): error TS2307: Cannot find module '../../../app/dashboard/absensi/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(62,39): error TS2307: Cannot find module '../../../app/dashboard/cetak-laporan/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(71,39): error TS2307: Cannot find module '../../../app/dashboard/dokumen/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(80,39): error TS2307: Cannot find module '../../../app/dashboard/hafiz/[id]/edit/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(89,39): error TS2307: Cannot find module '../../../app/dashboard/hafiz/[id]/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(98,39): error TS2307: Cannot find module '../../../app/dashboard/hafiz/create/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(107,39): error TS2307: Cannot find module '../../../app/dashboard/hafiz/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(116,39): error TS2307: Cannot find module '../../../app/dashboard/jadwal-tes/[id]/absensi/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(125,39): error TS2307: Cannot find module '../../../app/dashboard/jadwal-tes/[id]/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(134,39): error TS2307: Cannot find module '../../../app/dashboard/jadwal-tes/[id]/penilaian/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(143,39): error TS2307: Cannot find module '../../../app/dashboard/jadwal-tes/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(152,39): error TS2307: Cannot find module '../../../app/dashboard/kuota/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(161,39): error TS2307: Cannot find module '../../../app/dashboard/laporan/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(170,39): error TS2307: Cannot find module '../../../app/dashboard/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(179,39): error TS2307: Cannot find module '../../../app/dashboard/pengaturan/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(188,39): error TS2307: Cannot find module '../../../app/dashboard/penguji/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(197,39): error TS2307: Cannot find module '../../../app/dashboard/periode-tes/[id]/kuota/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(206,39): error TS2307: Cannot find module '../../../app/dashboard/periode-tes/[id]/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(215,39): error TS2307: Cannot find module '../../../app/dashboard/periode-tes/[id]/pendaftaran/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(224,39): error TS2307: Cannot find module '../../../app/dashboard/periode-tes/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(233,39): error TS2307: Cannot find module '../../../app/dashboard/profil/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(242,39): error TS2307: Cannot find module '../../../app/dashboard/quran/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(251,39): error TS2307: Cannot find module '../../../app/dashboard/saran/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(260,39): error TS2307: Cannot find module '../../../app/dashboard/whatsapp/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(269,39): error TS2307: Cannot find module '../../../app/download/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(278,39): error TS2307: Cannot find module '../../../app/login/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(287,39): error TS2307: Cannot find module '../../../app/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(296,39): error TS2307: Cannot find module '../../../app/register/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(305,39): error TS2307: Cannot find module '../../../app/verify/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(314,39): error TS2307: Cannot find module '../../../app/api/absensi/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(323,39): error TS2307: Cannot find module '../../../app/api/auth/change-password/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(332,39): error TS2307: Cannot find module '../../../app/api/auth/login/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(341,39): error TS2307: Cannot find module '../../../app/api/auth/logout/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(350,39): error TS2307: Cannot find module '../../../app/api/auth/me/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(359,39): error TS2307: Cannot find module '../../../app/api/auth/register/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(368,39): error TS2307: Cannot find module '../../../app/api/auth/session/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(377,39): error TS2307: Cannot find module '../../../app/api/auth/verify/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(386,39): error TS2307: Cannot find module '../../../app/api/fix-db/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(395,39): error TS2307: Cannot find module '../../../app/api/hafiz/[id]/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(404,39): error TS2307: Cannot find module '../../../app/api/hafiz/history/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(413,39): error TS2307: Cannot find module '../../../app/api/hafiz/link/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(422,39): error TS2307: Cannot find module '../../../app/api/hafiz/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(431,39): error TS2307: Cannot find module '../../../app/api/jadwal/[id]/absensi/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(440,39): error TS2307: Cannot find module '../../../app/api/jadwal/[id]/penilaian/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(449,39): error TS2307: Cannot find module '../../../app/api/jadwal/[id]/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(458,39): error TS2307: Cannot find module '../../../app/api/jadwal/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(467,39): error TS2307: Cannot find module '../../../app/api/kabupaten/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(476,39): error TS2307: Cannot find module '../../../app/api/laporan/[id]/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(485,39): error TS2307: Cannot find module '../../../app/api/laporan/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(494,39): error TS2307: Cannot find module '../../../app/api/penguji/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(503,39): error TS2307: Cannot find module '../../../app/api/periode/[id]/kuota/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(512,39): error TS2307: Cannot find module '../../../app/api/periode/[id]/pendaftaran/[pendaftaranId]/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(521,39): error TS2307: Cannot find module '../../../app/api/periode/[id]/pendaftaran/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(530,39): error TS2307: Cannot find module '../../../app/api/periode/[id]/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(539,39): error TS2307: Cannot find module '../../../app/api/periode/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(548,39): error TS2307: Cannot find module '../../../app/api/quran/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(557,39): error TS2307: Cannot find module '../../../app/api/settings/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(566,39): error TS2307: Cannot find module '../../../app/api/statistics/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(575,39): error TS2307: Cannot find module '../../../app/api/test-db/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(584,39): error TS2307: Cannot find module '../../../app/api/upload/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(593,39): error TS2307: Cannot find module '../../../app/api/users/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(602,39): error TS2307: Cannot find module '../../../app/api/whatsapp/broadcast/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(611,39): error TS2307: Cannot find module '../../../app/api/whatsapp/qr/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(620,39): error TS2307: Cannot find module '../../../app/api/whatsapp/send/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(629,39): error TS2307: Cannot find module '../../../app/api/whatsapp/status/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(642,39): error TS2307: Cannot find module '../../../app/layout.js' or its corresponding type declarations.
+.next/types/validator.ts(405,31): error TS2344: Type 'typeof import("C:/Users/PENAISZAWA/New folder/cosmic-puffin-bob-lomba/huffadz-jatim/src/app/api/hafiz/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/hafiz/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ error: string | undefined; }> | NextResponse<{ data: { riwayat_mengajar: unknown[]; id: number; user_id: number | null; ... 33 more ...; updated_at: Date; }; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
