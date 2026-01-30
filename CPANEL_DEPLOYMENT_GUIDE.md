@@ -104,11 +104,6 @@ Atau via File Manager, copy isi folder `.next/static/` ke `public/static/`
 3. Klik **RUN NPM INSTALL** jika belum (opsional, standalone sudah include dependencies)
 4. Klik **START** untuk menjalankan aplikasi
 
-### 4.2 Verifikasi
-1. Buka browser dan akses: `https://hafizjatim.my.id`
-2. Coba login dengan:
-   - **Email**: admin@hafizjatim.my.id
-   - **Password**: Admin123!
 
 ---
 
@@ -133,12 +128,6 @@ Atau via File Manager, copy isi folder `.next/static/` ke `public/static/`
 - Atau upload ulang folder `node_modules` dari standalone
 
 ---
-
-## 📊 INFORMASI LOGIN DEFAULT
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin Provinsi | admin@hafizjatim.my.id | Admin123! |
 
 > ⚠️ **PENTING**: Segera ganti password default setelah login pertama!
 
