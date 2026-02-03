@@ -210,7 +210,8 @@ export async function PUT(
 
             // If hafiz is updating their own profile, ensure user account is marked as active/not-pending
             if (user.role === 'hafiz' && existing.user_id === user.id) {
-                await execute("UPDATE users SET status = 'active' WHERE id = ? AND status = 'pending'", [user.id]);
+                // Ensure users.is_active is 1 if it was 0
+                await execute("UPDATE users SET is_active = 1 WHERE id = ? AND is_active = 0", [user.id]);
             }
         }
 

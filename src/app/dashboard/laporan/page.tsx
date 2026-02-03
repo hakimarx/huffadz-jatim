@@ -191,7 +191,7 @@ function LaporanHarianContent() {
             const transformedData: LaporanData[] = laporanData.map((item: any) => ({
                 id: item.id,
                 hafiz_id: item.hafiz_id,
-                tanggal: item.tanggal,
+                tanggal: item.tanggal ? (typeof item.tanggal === 'string' ? item.tanggal : new Date(item.tanggal).toISOString().split('T')[0]) : '',
                 jam: item.jam,
                 jenis_kegiatan: item.jenis_kegiatan,
                 deskripsi: item.deskripsi,

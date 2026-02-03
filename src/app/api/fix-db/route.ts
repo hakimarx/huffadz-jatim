@@ -61,15 +61,39 @@ export async function GET() {
                     verified_by INT,
                     verified_at DATETIME,
                     catatan_verifikasi TEXT,
+                    jam VARCHAR(10),
+                    foto_url VARCHAR(500),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     FOREIGN KEY (hafiz_id) REFERENCES hafiz(id) ON DELETE CASCADE
                 )
             `);
-            results.push("✓ Table 'laporan_harian' created or already exists.");
+            results.push("✓ Table 'laporan_harian' checked/created.");
         } catch (err: any) {
             results.push(`✗ Error creating 'laporan_harian': ${err.message}`);
         }
+
+        // 5. Create riwayat_mengajar table if not exists
+        try {
+            await execute(`
+                CREATE TABLE IF NOT EXISTS riwayat_mengajar (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    hafiz_id INT NOT NULL,
+                    nama_lembaga VARCHAR(255) NOT NULL,
+                    tmt_mulai DATE,
+                    tmt_selesai DATE,
+                    jabatan VARCHAR(100),
+                    keterangan TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (hafiz_id) REFERENCES hafiz(id) ON DELETE CASCADE
+                )
+            `);
+            results.push("✓ Table 'riwayat_mengajar' checked/created.");
+        } catch (err: any) {
+            results.push(`✗ Error creating 'riwayat_mengajar': ${err.message}`);
+        }
+
 
         return NextResponse.json({
             success: true,
