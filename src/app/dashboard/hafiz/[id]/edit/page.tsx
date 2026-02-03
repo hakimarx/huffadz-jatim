@@ -51,11 +51,22 @@ function EditHafizContent() {
                 const data = result.data;
 
                 // Format dates for input type="date"
+                // Format dates for input type="date"
                 if (data.tanggal_lahir) {
-                    data.tanggal_lahir = new Date(data.tanggal_lahir).toISOString().split('T')[0];
+                    try {
+                        data.tanggal_lahir = new Date(data.tanggal_lahir).toISOString().split('T')[0];
+                    } catch (e) {
+                        console.warn('Invalid tanggal_lahir:', data.tanggal_lahir);
+                        data.tanggal_lahir = '';
+                    }
                 }
                 if (data.tmt_mengajar) {
-                    data.tmt_mengajar = new Date(data.tmt_mengajar).toISOString().split('T')[0];
+                    try {
+                        data.tmt_mengajar = new Date(data.tmt_mengajar).toISOString().split('T')[0];
+                    } catch (e) {
+                        console.warn('Invalid tmt_mengajar:', data.tmt_mengajar);
+                        data.tmt_mengajar = '';
+                    }
                 }
 
                 setHafizData(data);

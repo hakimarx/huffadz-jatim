@@ -80,6 +80,22 @@ export async function PUT(
             }
         }
 
+        // Fix date parsing error in edit hafiz
+        if (data.tanggal_lahir) {
+            try {
+                data.tanggal_lahir = new Date(data.tanggal_lahir).toISOString().split('T')[0];
+            } catch (e) {
+                data.tanggal_lahir = '';
+            }
+        }
+        if (data.tmt_mengajar) {
+            try {
+                data.tmt_mengajar = new Date(data.tmt_mengajar).toISOString().split('T')[0];
+            } catch (e) {
+                data.tmt_mengajar = '';
+            }
+        }
+
         if (!existing) {
             if (!identifier || identifier === 'undefined' || identifier === 'null') {
                 return NextResponse.json({ error: 'ID Hafiz tidak valid' }, { status: 400 });
@@ -163,8 +179,18 @@ export async function PUT(
         // Handle is_aktif separately - only admins can update, and convert boolean to int
         if (data.is_aktif !== undefined && user.role !== 'hafiz') {
             updates.push('is_aktif = ?');
-            // Convert boolean to integer for MySQL
-            values.push(data.is_aktif === true || data.is_aktif === 1 ? 1 : 0);
+            const isActive = data.is_aktif === true || data.is_aktif === 1 ? 1 : 0;
+            values.push(isActive);
+
+            // Also update the associated user login status
+            if (existing.user_id) {
+                try {
+                    await execute('UPDATE users SET is_active = ? WHERE id = ?', [isActive, existing.user_id]);
+                    console.log(`Synced user status for user_id ${existing.user_id} to ${isActive}`);
+                } catch (userErr) {
+                    console.error('Failed to sync user status:', userErr);
+                }
+            }
         }
 
         updateFields.forEach(field => {
