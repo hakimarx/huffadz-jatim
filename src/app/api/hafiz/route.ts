@@ -31,10 +31,8 @@ export async function GET(request: NextRequest) {
             whereClause += ' AND user_id = ?';
             params.push(user.id);
         } else {
-            // For admins, default to showing active ones only, unless overridden by status filter
-            if (!status) {
-                whereClause += ' AND is_aktif = 1';
-            }
+            // Admin sees all regardless of active status by default
+            // If needed, we can add a specific filter for is_aktif later
 
             if (user.role === 'admin_kabko' && user.kabupaten_kota) {
                 whereClause += ' AND kabupaten_kota = ?';

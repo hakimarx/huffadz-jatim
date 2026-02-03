@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         await insert(
             `INSERT INTO hafiz (user_id, nik, nama, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, 
              desa_kelurahan, kecamatan, kabupaten_kota, telepon, tahun_tes, status_kelulusan, is_aktif, created_at, updated_at) 
-             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending', 1, NOW(), NOW())`,
+             VALUES (?, ?, ?, '-', '2000-01-01', 'L', '-', '-', '-', ?, ?, ?, 'pending', 0, NOW(), NOW())`,
             [userId, nik, nama, kabupaten_kota || 'Jawa Timur', telepon || null, new Date().getFullYear()]
         );
 
