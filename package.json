@@ -29,6 +29,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "pino": "^10.2.1",
+    "postgres": "^3.4.8",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.1",

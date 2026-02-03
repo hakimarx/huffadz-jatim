@@ -205,7 +205,7 @@ export async function registerUser(
         // Insert user
         const result = await query<{ insertId: number }>(
             `INSERT INTO users (email, password, nama, role, kabupaten_kota, telepon, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+       VALUES (?, ?, ?, ?, ?, ?, TRUE)`,
             [email, hashedPassword, nama, role, kabupaten_kota || null, telepon || null]
         );
 

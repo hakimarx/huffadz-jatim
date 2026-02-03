@@ -176,8 +176,8 @@ export async function POST(request: NextRequest) {
                 const hashedPassword = await hashPassword(defaultPassword);
 
                 userIdToLink = await insert(
-                    `INSERT INTO users (email, password, nama, role, kabupaten_kota, telepon, is_active, status, is_verified) 
-                     VALUES (?, ?, ?, 'hafiz', ?, ?, 1, 'pending', 1)`,
+                    `INSERT INTO users (email, password, nama, role, kabupaten_kota, telepon, is_active, is_verified) 
+                     VALUES (?, ?, ?, 'hafiz', ?, ?, TRUE, TRUE)`,
                     [tempEmail, hashedPassword, data.nama, data.kabupaten_kota, data.telepon || null]
                 );
                 console.log(`[POST Hafiz] Created auto-user for NIK ${data.nik}, UserID: ${userIdToLink}`);
@@ -193,15 +193,15 @@ export async function POST(request: NextRequest) {
                 alamat, rt, rw, desa_kelurahan, kecamatan, kabupaten_kota,
                 telepon, email, nama_bank, nomor_rekening, sertifikat_tahfidz, mengajar, tmt_mengajar,
                 tempat_mengajar, tahun_tes, status_kelulusan, nilai_tahfidz,
-                nilai_wawasan, keterangan, foto_profil, tanda_tangan, is_aktif, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+                nilai_wawasan, keterangan, foto_profil, tanda_tangan, is_active, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW())`,
             [
                 userIdToLink,
                 data.nik, data.nama, data.tempat_lahir, data.tanggal_lahir, data.jenis_kelamin,
                 data.alamat, data.rt || null, data.rw || null, data.desa_kelurahan, data.kecamatan,
                 data.kabupaten_kota, data.telepon || null, data.email || null,
                 data.nama_bank || null, data.nomor_rekening || null,
-                data.sertifikat_tahfidz || null, data.mengajar ? 1 : 0, data.tmt_mengajar || null,
+                data.sertifikat_tahfidz || null, Boolean(data.mengajar), data.tmt_mengajar || null,
                 data.tempat_mengajar || null, data.tahun_tes,
                 user.role === 'hafiz' ? 'pending' : (data.status_kelulusan || 'pending'),
                 data.nilai_tahfidz || null, data.nilai_wawasan || null, data.keterangan || null,
