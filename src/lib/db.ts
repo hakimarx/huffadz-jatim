@@ -62,6 +62,9 @@ export async function query<T = unknown>(
         });
 
         if (error.code === 'ECONNREFUSED') {
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('Gagal terhubung ke database. Pastikan Environment Variables (DATABASE_HOST, dll) sudah diatur dengan benar di Vercel.');
+            }
             throw new Error('Gagal terhubung ke database. Pastikan MySQL (XAMPP) sudah berjalan.');
         }
 
