@@ -19,9 +19,7 @@ import {
     FiChevronRight,
     FiLoader,
     FiPrinter,
-    FiClock,
-    FiMessageSquare,
-    FiUserPlus
+    FiMessageSquare
 } from 'react-icons/fi';
 
 interface NavItem {
@@ -34,7 +32,6 @@ interface NavItem {
 const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <FiHome />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Data Hafiz', href: '/dashboard/hafiz', icon: <FiUsers />, roles: ['admin_provinsi', 'admin_kabko'] },
-    { label: 'Tambah Hafiz', href: '/dashboard/hafiz/create', icon: <FiUserPlus />, roles: ['admin_provinsi'] },
     { label: 'Laporan', href: '/dashboard/laporan', icon: <FiFileText />, roles: ['admin_provinsi', 'admin_kabko', 'hafiz'] },
     { label: 'Cetak Laporan', href: '/dashboard/cetak-laporan', icon: <FiPrinter />, roles: ['admin_provinsi', 'admin_kabko'] },
     { label: 'Periode', href: '/dashboard/periode-tes', icon: <FiCalendar />, roles: ['admin_provinsi'] },

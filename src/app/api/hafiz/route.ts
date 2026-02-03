@@ -31,10 +31,8 @@ export async function GET(request: NextRequest) {
             whereClause += ' AND user_id = ?';
             params.push(user.id);
         } else {
-            // For admins, default to showing active ones only, unless overridden by status filter
-            if (!status) {
-                whereClause += ' AND is_aktif = 1';
-            }
+            // Admin sees all regardless of active status by default
+            // If needed, we can add a specific filter for is_aktif later
 
             if (user.role === 'admin_kabko' && user.kabupaten_kota) {
                 whereClause += ' AND kabupaten_kota = ?';
@@ -186,6 +184,29 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Helper to validate and format date
+        const formatDate = (dateString: string | null) => {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null; // Invalid date
+
+            // Simple sanity check for year
+            const year = date.getFullYear();
+            if (year < 1900 || year > 2100) return null;
+
+            return date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        };
+
+        const validatedTanggalLahir = formatDate(data.tanggal_lahir);
+        if (!validatedTanggalLahir) {
+            return NextResponse.json(
+                { error: 'Format tanggal lahir tidak valid' },
+                { status: 400 }
+            );
+        }
+
+        const validatedTmtMengajar = formatDate(data.tmt_mengajar);
+
         // Insert new hafiz
         const insertId = await insert(
             `INSERT INTO hafiz (
@@ -197,11 +218,11 @@ export async function POST(request: NextRequest) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW())`,
             [
                 userIdToLink,
-                data.nik, data.nama, data.tempat_lahir, data.tanggal_lahir, data.jenis_kelamin,
+                data.nik, data.nama, data.tempat_lahir, validatedTanggalLahir, data.jenis_kelamin,
                 data.alamat, data.rt || null, data.rw || null, data.desa_kelurahan, data.kecamatan,
                 data.kabupaten_kota, data.telepon || null, data.email || null,
                 data.nama_bank || null, data.nomor_rekening || null,
-                data.sertifikat_tahfidz || null, Boolean(data.mengajar), data.tmt_mengajar || null,
+                data.sertifikat_tahfidz || null, Boolean(data.mengajar), validatedTmtMengajar,
                 data.tempat_mengajar || null, data.tahun_tes,
                 user.role === 'hafiz' ? 'pending' : (data.status_kelulusan || 'pending'),
                 data.nilai_tahfidz || null, data.nilai_wawasan || null, data.keterangan || null,

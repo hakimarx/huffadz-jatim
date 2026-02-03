@@ -80,6 +80,22 @@ export async function PUT(
             }
         }
 
+        // Fix date parsing error in edit hafiz
+        if (data.tanggal_lahir) {
+            try {
+                data.tanggal_lahir = new Date(data.tanggal_lahir).toISOString().split('T')[0];
+            } catch (e) {
+                data.tanggal_lahir = '';
+            }
+        }
+        if (data.tmt_mengajar) {
+            try {
+                data.tmt_mengajar = new Date(data.tmt_mengajar).toISOString().split('T')[0];
+            } catch (e) {
+                data.tmt_mengajar = '';
+            }
+        }
+
         if (!existing) {
             if (!identifier || identifier === 'undefined' || identifier === 'null') {
                 return NextResponse.json({ error: 'ID Hafiz tidak valid' }, { status: 400 });
@@ -115,21 +131,67 @@ export async function PUT(
             }
         }
 
-        // Prepare update fields
+        // Helper to validate and format date (same as POST)
+        const formatDate = (dateString: string | null) => {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null; // Invalid date
+
+            // Simple sanity check for year
+            const year = date.getFullYear();
+            if (year < 1900 || year > 2100) return null;
+
+            return date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        };
+
+        // Prepare update fields - common fields that hafiz can also edit
         const updateFields = [
-            'nik', 'nama', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin',
+            'nik', 'nama', 'tempat_lahir', 'jenis_kelamin',
             'alamat', 'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota',
             'telepon', 'nama_bank', 'nomor_rekening', 'sertifikat_tahfidz',
-            'mengajar', 'tempat_mengajar', 'tmt_mengajar', 'foto_profil', 'tanda_tangan', 'is_aktif'
+            'mengajar', 'tempat_mengajar', 'foto_profil', 'tanda_tangan'
         ];
 
-        // Admin fields
+        // Admin-only fields - including is_aktif for status control
         if (user.role !== 'hafiz') {
             updateFields.push('status_kelulusan', 'nilai_tahfidz', 'nilai_wawasan', 'keterangan');
         }
 
         const updates: string[] = [];
         const values: any[] = [];
+
+        // Handle Date Fields separately
+        if (data.tanggal_lahir !== undefined) {
+            const formattedDate = formatDate(data.tanggal_lahir);
+            if (!formattedDate) {
+                return NextResponse.json({ error: 'Format tanggal lahir tidak valid' }, { status: 400 });
+            }
+            updates.push('tanggal_lahir = ?');
+            values.push(formattedDate);
+        }
+
+        if (data.tmt_mengajar !== undefined) {
+            const formattedDate = formatDate(data.tmt_mengajar);
+            updates.push('tmt_mengajar = ?');
+            values.push(formattedDate); // Can be null
+        }
+
+        // Handle is_aktif separately - only admins can update, and convert boolean to int
+        if (data.is_aktif !== undefined && user.role !== 'hafiz') {
+            updates.push('is_aktif = ?');
+            const isActive = data.is_aktif === true || data.is_aktif === 1 ? 1 : 0;
+            values.push(isActive);
+
+            // Also update the associated user login status
+            if (existing.user_id) {
+                try {
+                    await execute('UPDATE users SET is_active = ? WHERE id = ?', [isActive, existing.user_id]);
+                    console.log(`Synced user status for user_id ${existing.user_id} to ${isActive}`);
+                } catch (userErr) {
+                    console.error('Failed to sync user status:', userErr);
+                }
+            }
+        }
 
         updateFields.forEach(field => {
             if (data[field] !== undefined) {
@@ -148,7 +210,8 @@ export async function PUT(
 
             // If hafiz is updating their own profile, ensure user account is marked as active/not-pending
             if (user.role === 'hafiz' && existing.user_id === user.id) {
-                await execute("UPDATE users SET status = 'active' WHERE id = ? AND status = 'pending'", [user.id]);
+                // Ensure users.is_active is 1 if it was 0
+                await execute("UPDATE users SET is_active = 1 WHERE id = ? AND is_active = 0", [user.id]);
             }
         }
 

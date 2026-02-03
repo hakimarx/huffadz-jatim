@@ -178,7 +178,7 @@ function AdminProvinsiDashboard() {
                                 Pantau perkembangan jumlah hafiz dan kelulusan seleksi secara real-time.
                             </p>
                             <div className="mt-8 flex gap-4">
-                                <Link href="/dashboard/kuota" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary-700 hover:bg-neutral-50 font-bold text-base rounded-xl shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95 border-2 border-white/50" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                <Link href="/dashboard/kuota" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-neutral-900 hover:bg-neutral-100 font-bold text-base rounded-xl shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95 border-2 border-white/50" style={{ fontFamily: 'Outfit, sans-serif' }}>
                                     Lihat Statistik Lengkap
                                 </Link>
                             </div>

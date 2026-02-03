@@ -112,8 +112,15 @@ export async function query<T = unknown>(
             code: error.code,
         });
 
-        if (error.code === 'ECONNREFUSED' && !isPostgres) {
-            throw new Error('Gagal terhubung ke database. Pastikan MySQL sudah berjalan.');
+        if (error.code === 'ECONNREFUSED') {
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('Gagal terhubung ke database. Pastikan Environment Variables (DATABASE_URL atau DATABASE_HOST) sudah diatur dengan benar di Vercel.');
+            }
+            if (!isPostgres) {
+                throw new Error('Gagal terhubung ke database. Pastikan MySQL (XAMPP) sudah berjalan.');
+            } else {
+                throw new Error('Gagal terhubung ke database PostgreSQL/Supabase.');
+            }
         }
 
         throw error;
