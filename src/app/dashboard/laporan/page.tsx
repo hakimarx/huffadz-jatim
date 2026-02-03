@@ -94,6 +94,7 @@ function LaporanHarianContent() {
     const [kabKoList, setKabKoList] = useState<string[]>([]);
     const [selectedKabKo, setSelectedKabKo] = useState<string>('semua');
     const [selectedTahun, setSelectedTahun] = useState<number>(new Date().getFullYear());
+    const [selectedBulan, setSelectedBulan] = useState<number>(0); // 0 = Semua, 1 = Jan, etc.
     const [exporting, setExporting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'stats'>('stats');
@@ -117,7 +118,7 @@ function LaporanHarianContent() {
         if (user) {
             fetchLaporanData();
         }
-    }, [user, selectedKabKo, selectedTahun, filter, hafizId]);
+    }, [user, selectedKabKo, selectedTahun, selectedBulan, filter, hafizId]);
 
     async function fetchUserData() {
         try {
@@ -209,11 +210,17 @@ function LaporanHarianContent() {
                 }
             }));
 
-            const startDate = `${selectedTahun}-01-01`;
-            const endDate = `${selectedTahun}-12-31`;
-            let filteredData = transformedData.filter(l =>
-                l.tanggal >= startDate && l.tanggal <= endDate
-            );
+            let filteredData = transformedData.filter(l => {
+                if (!l.tanggal) return false;
+                const parts = l.tanggal.split('-'); // YYYY-MM-DD
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]);
+                
+                const yearMatch = year === selectedTahun;
+                const monthMatch = selectedBulan === 0 || month === selectedBulan;
+                
+                return yearMatch && monthMatch;
+            });
 
             if (user.role === 'admin_provinsi' && selectedKabKo !== 'semua') {
                 filteredData = filteredData.filter(l =>
@@ -512,27 +519,53 @@ function LaporanHarianContent() {
 
                 {/* Content based on active tab */}
                 <>
-                    {/* Filters for Admin Provinsi */}
-                    {isAdminProvinsi && (
-                        <div className="card mb-6">
-                            <div className="flex flex-wrap gap-4 items-end">
-                                {/* Year Filter */}
-                                <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                        <FiCalendar className="inline mr-1" /> Tahun
-                                    </label>
-                                    <select
-                                        value={selectedTahun}
-                                        onChange={(e) => setSelectedTahun(parseInt(e.target.value))}
-                                        className="form-select"
-                                    >
-                                        {availableYears.map(year => (
-                                            <option key={year} value={year}>{year}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                    {/* Filters for All Users (Tahun & Bulan) + Admin Specific (KabKo) */}
+                     <div className="card mb-6">
+                        <div className="flex flex-wrap gap-4 items-end">
+                            {/* Year Filter */}
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiCalendar className="inline mr-1" /> Tahun
+                                </label>
+                                <select
+                                    value={selectedTahun}
+                                    onChange={(e) => setSelectedTahun(parseInt(e.target.value))}
+                                    className="form-select w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    {availableYears.map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-                                {/* Kab/Ko Filter */}
+                            {/* Month Filter - NEW */}
+                            <div className="flex-1 min-w-[150px]">
+                                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                    <FiCalendar className="inline mr-1" /> Bulan
+                                </label>
+                                <select
+                                    value={selectedBulan}
+                                    onChange={(e) => setSelectedBulan(parseInt(e.target.value))}
+                                    className="form-select w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value={0}>Semua Bulan</option>
+                                    <option value={1}>Januari</option>
+                                    <option value={2}>Februari</option>
+                                    <option value={3}>Maret</option>
+                                    <option value={4}>April</option>
+                                    <option value={5}>Mei</option>
+                                    <option value={6}>Juni</option>
+                                    <option value={7}>Juli</option>
+                                    <option value={8}>Agustus</option>
+                                    <option value={9}>September</option>
+                                    <option value={10}>Oktober</option>
+                                    <option value={11}>November</option>
+                                    <option value={12}>Desember</option>
+                                </select>
+                            </div>
+
+                            {/* Kab/Ko Filter - Admin Provinsi Only */}
+                            {isAdminProvinsi && (
                                 <div className="flex-1 min-w-[250px]">
                                     <label className="block text-sm font-medium text-neutral-700 mb-2">
                                         <FiMapPin className="inline mr-1" /> Kabupaten/Kota
@@ -540,7 +573,7 @@ function LaporanHarianContent() {
                                     <select
                                         value={selectedKabKo}
                                         onChange={(e) => setSelectedKabKo(e.target.value)}
-                                        className="form-select"
+                                        className="form-select w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500"
                                     >
                                         <option value="semua">Semua Kabupaten/Kota</option>
                                         {kabKoList.map(kab => (
@@ -548,8 +581,10 @@ function LaporanHarianContent() {
                                         ))}
                                     </select>
                                 </div>
+                            )}
 
-                                {/* View Mode Toggle */}
+                             {/* View Mode Toggle - Admin Only */}
+                            {isAdminProvinsi && (
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setViewMode('stats')}
@@ -570,9 +605,9 @@ function LaporanHarianContent() {
                                         <FiBarChart2 /> Daftar
                                     </button>
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     {/* Stats Overview for Admin Provinsi */}
                     {isAdminProvinsi && viewMode === 'stats' && (
