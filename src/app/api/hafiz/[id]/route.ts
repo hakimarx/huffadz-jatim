@@ -115,21 +115,57 @@ export async function PUT(
             }
         }
 
-        // Prepare update fields
+        // Helper to validate and format date (same as POST)
+        const formatDate = (dateString: string | null) => {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null; // Invalid date
+
+            // Simple sanity check for year
+            const year = date.getFullYear();
+            if (year < 1900 || year > 2100) return null;
+
+            return date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        };
+
+        // Prepare update fields - common fields that hafiz can also edit
         const updateFields = [
-            'nik', 'nama', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin',
+            'nik', 'nama', 'tempat_lahir', 'jenis_kelamin',
             'alamat', 'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota',
             'telepon', 'nama_bank', 'nomor_rekening', 'sertifikat_tahfidz',
-            'mengajar', 'tempat_mengajar', 'tmt_mengajar', 'foto_profil', 'tanda_tangan', 'is_aktif'
+            'mengajar', 'tempat_mengajar', 'foto_profil', 'tanda_tangan'
         ];
 
-        // Admin fields
+        // Admin-only fields - including is_aktif for status control
         if (user.role !== 'hafiz') {
             updateFields.push('status_kelulusan', 'nilai_tahfidz', 'nilai_wawasan', 'keterangan');
         }
 
         const updates: string[] = [];
         const values: any[] = [];
+
+        // Handle Date Fields separately
+        if (data.tanggal_lahir !== undefined) {
+            const formattedDate = formatDate(data.tanggal_lahir);
+            if (!formattedDate) {
+                return NextResponse.json({ error: 'Format tanggal lahir tidak valid' }, { status: 400 });
+            }
+            updates.push('tanggal_lahir = ?');
+            values.push(formattedDate);
+        }
+
+        if (data.tmt_mengajar !== undefined) {
+            const formattedDate = formatDate(data.tmt_mengajar);
+            updates.push('tmt_mengajar = ?');
+            values.push(formattedDate); // Can be null
+        }
+
+        // Handle is_aktif separately - only admins can update, and convert boolean to int
+        if (data.is_aktif !== undefined && user.role !== 'hafiz') {
+            updates.push('is_aktif = ?');
+            // Convert boolean to integer for MySQL
+            values.push(data.is_aktif === true || data.is_aktif === 1 ? 1 : 0);
+        }
 
         updateFields.forEach(field => {
             if (data[field] !== undefined) {

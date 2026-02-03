@@ -459,32 +459,38 @@ function DataHafizContent() {
                                                         <button
                                                             onClick={async () => {
                                                                 try {
-                                                                    const newStatus = hafiz.is_aktif === true ? false : true;
+                                                                    // Handle both boolean and integer values from MySQL
+                                                                    const isCurrentlyActive = hafiz.is_aktif === true || hafiz.is_aktif === 1;
+                                                                    const newStatus = !isCurrentlyActive;
                                                                     const response = await fetch(`/api/hafiz/${hafiz.id}`, {
                                                                         method: 'PUT',
                                                                         headers: { 'Content-Type': 'application/json' },
                                                                         body: JSON.stringify({ is_aktif: newStatus })
                                                                     });
-                                                                    if (!response.ok) throw new Error('Failed to update');
+                                                                    if (!response.ok) {
+                                                                        const data = await response.json();
+                                                                        throw new Error(data.error || 'Failed to update');
+                                                                    }
                                                                     fetchHafizData();
-                                                                } catch (err) {
+                                                                } catch (err: any) {
                                                                     console.error('Error updating aktif status:', err);
+                                                                    alert('Gagal mengubah status: ' + (err.message || 'Unknown error'));
                                                                 }
                                                             }}
-                                                            className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${hafiz.is_aktif === true
+                                                            className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${(hafiz.is_aktif === true || hafiz.is_aktif === 1)
                                                                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                                                 : 'bg-red-100 text-red-800 hover:bg-red-200'
                                                                 }`}
                                                             title="Klik untuk mengubah status"
                                                         >
-                                                            {hafiz.is_aktif === true ? '✓ Aktif' : '✗ Tidak Aktif'}
+                                                            {(hafiz.is_aktif === true || hafiz.is_aktif === 1) ? '✓ Aktif' : '✗ Tidak Aktif'}
                                                         </button>
                                                     ) : (
-                                                        <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${hafiz.is_aktif === true
+                                                        <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${(hafiz.is_aktif === true || hafiz.is_aktif === 1)
                                                             ? 'bg-green-100 text-green-800'
                                                             : 'bg-red-100 text-red-800'
                                                             }`}>
-                                                            {hafiz.is_aktif === true ? '✓ Aktif' : '✗ Tidak Aktif'}
+                                                            {(hafiz.is_aktif === true || hafiz.is_aktif === 1) ? '✓ Aktif' : '✗ Tidak Aktif'}
                                                         </span>
                                                     )}
                                                 </td>

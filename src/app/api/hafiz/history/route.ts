@@ -38,14 +38,26 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Helper to validate and format date
+        const formatDate = (dateString: string | null) => {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null;
+            if (date.getFullYear() < 1900 || date.getFullYear() > 2100) return null;
+            return date.toISOString().split('T')[0];
+        };
+
+        const tmtMulai = formatDate(data.tmt_mulai);
+        const tmtSelesai = formatDate(data.tmt_selesai);
+
         const insertId = await insert(
             `INSERT INTO riwayat_mengajar (hafiz_id, tempat_mengajar, tmt_mulai, tmt_selesai, keterangan)
              VALUES (?, ?, ?, ?, ?)`,
             [
                 data.hafiz_id,
                 data.tempat_mengajar,
-                data.tmt_mulai || null,
-                data.tmt_selesai || null,
+                tmtMulai,
+                tmtSelesai,
                 data.keterangan || null
             ]
         );
